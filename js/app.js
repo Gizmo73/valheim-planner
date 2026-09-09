@@ -1,5 +1,6 @@
 import { EventBus } from './core/EventBus.js';
 import { Viewport } from './core/Viewport.js';
+import { MapScale } from './core/MapScale.js';
 import { Renderer } from './core/Renderer.js';
 import { LayerManager } from './layers/LayerManager.js';
 import { MapLayer } from './layers/MapLayer.js';
@@ -9,13 +10,16 @@ import { PanTool } from './tools/PanTool.js';
 import { RegionSelectTool } from './tools/RegionSelectTool.js';
 import { PlaceTool } from './tools/PlaceTool.js';
 import { SelectTool } from './tools/SelectTool.js';
+import { CalibrationTool } from './tools/CalibrationTool.js';
 import { Toolbar } from './ui/Toolbar.js';
 import { LayerPanel } from './ui/LayerPanel.js';
 import { AssetPanel } from './ui/AssetPanel.js';
+import { CalibrationPanel } from './ui/CalibrationPanel.js';
 
 const bus = new EventBus();
 const canvas = document.getElementById('main-canvas');
 const viewport = new Viewport(bus);
+const mapScale = new MapScale(bus);
 
 const layerManager = new LayerManager(bus);
 const mapLayer = new MapLayer(bus);
@@ -26,20 +30,23 @@ layerManager.addLayer(assetLayer);
 
 const toolManager = new ToolManager(canvas, viewport, bus);
 const panTool = new PanTool(viewport, bus);
-const regionTool = new RegionSelectTool(viewport, layerManager, bus);
-const placeTool = new PlaceTool(viewport, layerManager, assetLayer, bus);
-const selectTool = new SelectTool(viewport, layerManager, assetLayer, bus);
+const regionTool = new RegionSelectTool(viewport, layerManager, mapScale, bus);
+const placeTool = new PlaceTool(viewport, layerManager, assetLayer, mapScale, bus);
+const selectTool = new SelectTool(viewport, layerManager, assetLayer, mapScale, bus);
+const calibrationTool = new CalibrationTool(viewport, mapLayer, mapScale, bus);
 
 toolManager.register('pan', panTool);
 toolManager.register('region', regionTool);
 toolManager.register('place', placeTool);
 toolManager.register('select', selectTool);
+toolManager.register('calibrate', calibrationTool);
 
 const renderer = new Renderer(canvas, viewport, layerManager, toolManager, bus);
 
 const toolbar = new Toolbar(toolManager, bus);
 const layerPanel = new LayerPanel(layerManager, bus);
 const assetPanel = new AssetPanel(bus);
+const calibrationPanel = new CalibrationPanel(mapScale, bus);
 
 bus.on('file:selected', async (file) => {
   await mapLayer.loadFromFile(file);

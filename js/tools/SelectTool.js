@@ -1,10 +1,11 @@
 import { mapToGrid, snapToGrid, gridToMap } from '../core/CoordinateSystem.js';
 
 export class SelectTool {
-  constructor(viewport, layerManager, assetLayer, bus) {
+  constructor(viewport, layerManager, assetLayer, mapScale, bus) {
     this.viewport = viewport;
     this.layerManager = layerManager;
     this.assetLayer = assetLayer;
+    this.mapScale = mapScale;
     this.bus = bus;
     this.selected = null;
     this._dragging = false;
@@ -37,7 +38,7 @@ export class SelectTool {
     this.bus.emit('render:request');
   }
 
-  onMouseMove(pos) {
+  onMouseMove(pos, e) {
     if (!this._dragging || !this.selected) return;
 
     const map = this.viewport.screenToMap(pos.x, pos.y);
@@ -47,11 +48,72 @@ export class SelectTool {
     const layer = this.selected.workingLayer;
     if (!layer) return;
 
-    const grid = mapToGrid(targetMapX, targetMapY, layer);
-    const snapped = snapToGrid(grid.x, grid.y);
-    this.selected.gridX = snapped.x;
-    this.selected.gridY = snapped.y;
+    const mpp = this.mapScale.metresPerPixel;
+
+    if (e && e.shiftKey) {
+      const grid = mapToGrid(targetMapX, targetMapY, layer, mpp);
+      this.selected.gridX = grid.x;
+      this.selected.gridY = grid.y;
+    } else if (e && (e.ctrlKey || e.metaKey)) {
+      this._assetSnapMove(targetMapX, targetMapY, layer, mpp);
+    } else {
+      const grid = mapToGrid(targetMapX, targetMapY, layer, mpp);
+      const snapped = snapToGrid(grid.x, grid.y);
+      this.selected.gridX = snapped.x;
+      this.selected.gridY = snapped.y;
+    }
     this.bus.emit('render:request');
+  }
+
+  _assetSnapMove(targetMapX, targetMapY, layer, mpp) {
+    const asset = this.selected;
+    const existingPoints = this.assetLayer.getSnapPoints(asset);
+    if (existingPoints.length === 0) {
+      const grid = mapToGrid(targetMapX, targetMapY, layer, mpp);
+      const snapped = snapToGrid(grid.x, grid.y);
+      asset.gridX = snapped.x;
+      asset.gridY = snapped.y;
+      return;
+    }
+
+    const mapW = asset.widthM / mpp;
+    const mapH = asset.heightM / mpp;
+    const hw = mapW / 2;
+    const hh = mapH / 2;
+    const rad = asset.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    const cx = targetMapX + hw;
+    const cy = targetMapY + hh;
+    const localOffsets = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
+    const corners = localOffsets.map(([lx, ly]) => ({
+      x: cx + lx * cos - ly * sin,
+      y: cy + lx * sin + ly * cos,
+    }));
+
+    let bestDist = Infinity;
+    let bestDx = 0;
+    let bestDy = 0;
+
+    for (const ep of existingPoints) {
+      for (const c of corners) {
+        const dx = ep.x - c.x;
+        const dy = ep.y - c.y;
+        const d = dx * dx + dy * dy;
+        if (d < bestDist) {
+          bestDist = d;
+          bestDx = dx;
+          bestDy = dy;
+        }
+      }
+    }
+
+    const snappedMapX = targetMapX + bestDx;
+    const snappedMapY = targetMapY + bestDy;
+    const grid = mapToGrid(snappedMapX, snappedMapY, layer, mpp);
+    asset.gridX = grid.x;
+    asset.gridY = grid.y;
   }
 
   onMouseUp() {

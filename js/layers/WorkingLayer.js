@@ -1,8 +1,7 @@
-const METRES_PER_PIXEL = 4;
-
 export class WorkingLayer {
-  constructor(originX, originY, width, height, bus) {
+  constructor(originX, originY, width, height, bus, mapScale) {
     this.bus = bus;
+    this.mapScale = mapScale;
     this.id = null;
     this.name = 'Working Area';
     this.type = 'working';
@@ -11,8 +10,18 @@ export class WorkingLayer {
     this.originY = originY;
     this.width = width;
     this.height = height;
-    this.gridWidthM = width * METRES_PER_PIXEL;
-    this.gridHeightM = height * METRES_PER_PIXEL;
+  }
+
+  get _mpp() {
+    return this.mapScale ? this.mapScale.metresPerPixel : 4;
+  }
+
+  get gridWidthM() {
+    return this.width * this._mpp;
+  }
+
+  get gridHeightM() {
+    return this.height * this._mpp;
   }
 
   containsMapPoint(mx, my) {
@@ -38,10 +47,11 @@ export class WorkingLayer {
   }
 
   _drawGrid(ctx, viewport, canvasWidth, canvasHeight) {
-    const cellMap = 1 / METRES_PER_PIXEL;
+    const mpp = this._mpp;
+    const cellMap = 1 / mpp;
     const cellScreen = cellMap * viewport.zoom;
 
-    const majorCellMap = 1;
+    const majorCellMap = 4 / mpp;
     const majorCellScreen = majorCellMap * viewport.zoom;
 
     let drawMinor = cellScreen >= 8;

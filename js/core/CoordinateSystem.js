@@ -1,16 +1,14 @@
-const METRES_PER_PIXEL = 4;
-
-export function mapToGrid(mapX, mapY, layer) {
+export function mapToGrid(mapX, mapY, layer, mpp) {
   return {
-    x: (mapX - layer.originX) * METRES_PER_PIXEL,
-    y: (mapY - layer.originY) * METRES_PER_PIXEL,
+    x: (mapX - layer.originX) * mpp,
+    y: (mapY - layer.originY) * mpp,
   };
 }
 
-export function gridToMap(gridX, gridY, layer) {
+export function gridToMap(gridX, gridY, layer, mpp) {
   return {
-    x: layer.originX + gridX / METRES_PER_PIXEL,
-    y: layer.originY + gridY / METRES_PER_PIXEL,
+    x: layer.originX + gridX / mpp,
+    y: layer.originY + gridY / mpp,
   };
 }
 
@@ -21,6 +19,6 @@ export function snapToGrid(gridX, gridY) {
   };
 }
 
-export function gridSizeFromMapPixels(mapPixels) {
-  return mapPixels * METRES_PER_PIXEL;
+export function gridSizeFromMapPixels(mapPixels, mpp) {
+  return mapPixels * mpp;
 }
