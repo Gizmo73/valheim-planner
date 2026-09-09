@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Valheim Build Planner</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="toolbar"></div>
+
+    <div id="content">
+      <div id="canvas-container">
+        <canvas id="main-canvas"></canvas>
+        <div id="empty-state">
+          <h2>Valheim Build Planner</h2>
+          <p>Upload a map image to begin</p>
+        </div>
+      </div>
+
+      <div id="sidebar">
+        <div id="layer-panel">
+          <div class="panel-header">Layers</div>
+          <div id="layer-list"></div>
+        </div>
+
+        <div id="asset-panel">
+          <div class="panel-header">Assets</div>
+          <div id="asset-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="help-panel">
+      <div class="help-shortcuts">
+        <span><kbd>Space</kbd> + drag to pan</span>
+        <span><kbd>Scroll</kbd> to zoom</span>
+        <span><kbd>↑</kbd><kbd>↓</kbd> or <kbd>Scroll</kbd> to rotate</span>
+        <span><kbd>Del</kbd> to delete</span>
+        <span><kbd>Esc</kbd> to deselect</span>
+      </div>
+      <button id="help-close">✕</button>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
