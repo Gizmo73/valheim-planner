@@ -1,0 +1,38 @@
+export class MapLayer {
+  constructor(bus) {
+    this.bus = bus;
+    this.id = 'map';
+    this.name = 'Map';
+    this.type = 'map';
+    this.visible = true;
+    this.image = null;
+    this.width = 0;
+    this.height = 0;
+  }
+
+  loadFromFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          this.image = img;
+          this.width = img.naturalWidth;
+          this.height = img.naturalHeight;
+          this.bus.emit('map:loaded', { width: this.width, height: this.height });
+          this.bus.emit('render:request');
+          resolve();
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  render(ctx, viewport, canvasWidth, canvasHeight) {
+    if (!this.image) return;
+    ctx.drawImage(this.image, 0, 0, this.width, this.height);
+  }
+}
