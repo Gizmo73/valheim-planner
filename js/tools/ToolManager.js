@@ -9,6 +9,7 @@ export class ToolManager {
     this._isPanning = false;
     this._panStart = null;
     this._spaceDown = false;
+    this.snapMode = 'grid';
 
     canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
     canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
@@ -104,6 +105,22 @@ export class ToolManager {
     if (e.code === 'Space' && !e.repeat) {
       this._spaceDown = true;
       this.canvas.style.cursor = 'grab';
+      e.preventDefault();
+      return;
+    }
+
+    if ((e.code === 'ControlLeft' || e.code === 'ControlRight') && !e.repeat) {
+      this.snapMode = this.snapMode === 'asset' ? 'grid' : 'asset';
+      this.bus.emit('snap:changed', this.snapMode);
+      this.bus.emit('render:request');
+      e.preventDefault();
+      return;
+    }
+
+    if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) {
+      this.snapMode = this.snapMode === 'free' ? 'grid' : 'free';
+      this.bus.emit('snap:changed', this.snapMode);
+      this.bus.emit('render:request');
       e.preventDefault();
       return;
     }

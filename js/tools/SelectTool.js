@@ -11,6 +11,8 @@ export class SelectTool {
     this.selected = null;
     this._dragging = false;
     this._dragOffset = null;
+    this._snapMode = 'grid';
+    this.bus.on('snap:changed', (mode) => { this._snapMode = mode; });
   }
 
   activate() {}
@@ -39,7 +41,7 @@ export class SelectTool {
     this.bus.emit('render:request');
   }
 
-  onMouseMove(pos, e) {
+  onMouseMove(pos) {
     if (!this._dragging || !this.selected) return;
 
     const map = this.viewport.screenToMap(pos.x, pos.y);
@@ -51,11 +53,11 @@ export class SelectTool {
 
     const mpp = this.mapScale.metresPerPixel;
 
-    if (e && e.shiftKey) {
+    if (this._snapMode === 'free') {
       const grid = mapToGrid(targetMapX, targetMapY, layer, mpp);
       this.selected.gridX = grid.x;
       this.selected.gridY = grid.y;
-    } else if (e && (e.ctrlKey || e.metaKey)) {
+    } else if (this._snapMode === 'asset') {
       this._assetSnapMove(targetMapX, targetMapY, layer, mpp);
     } else {
       const grid = mapToGrid(targetMapX, targetMapY, layer, mpp);
@@ -125,11 +127,11 @@ export class SelectTool {
     if (!this.selected) return;
 
     if (e.code === 'KeyQ' || e.code === 'ArrowLeft' || e.code === 'ArrowDown') {
-      this.selected.rotate(-15);
+      this.selected.rotate(-22.5);
       this.bus.emit('render:request');
       e.preventDefault();
     } else if (e.code === 'KeyE' || e.code === 'ArrowRight' || e.code === 'ArrowUp') {
-      this.selected.rotate(15);
+      this.selected.rotate(22.5);
       this.bus.emit('render:request');
       e.preventDefault();
     } else if (e.code === 'KeyD') {
