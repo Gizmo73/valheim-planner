@@ -79,18 +79,15 @@ export class SelectTool {
       return;
     }
 
-    const mapW = asset.widthM / mpp;
-    const mapH = asset.heightM / mpp;
-    const hw = mapW / 2;
-    const hh = mapH / 2;
+    const hw = asset.mapWidth / 2;
+    const hh = asset.mapHeight / 2;
     const rad = asset.rotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
 
     const cx = targetMapX + hw;
     const cy = targetMapY + hh;
-    const localOffsets = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
-    const corners = localOffsets.map(([lx, ly]) => ({
+    const snapPts = asset.getLocalSnapOffsets().map(([lx, ly]) => ({
       x: cx + lx * cos - ly * sin,
       y: cy + lx * sin + ly * cos,
     }));
@@ -100,9 +97,9 @@ export class SelectTool {
     let bestDy = 0;
 
     for (const ep of existingPoints) {
-      for (const c of corners) {
-        const dx = ep.x - c.x;
-        const dy = ep.y - c.y;
+      for (const sp of snapPts) {
+        const dx = ep.x - sp.x;
+        const dy = ep.y - sp.y;
         const d = dx * dx + dy * dy;
         if (d < bestDist) {
           bestDist = d;
