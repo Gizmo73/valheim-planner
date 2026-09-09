@@ -1,9 +1,10 @@
 import { WorkingLayer } from '../layers/WorkingLayer.js';
 
 export class RegionSelectTool {
-  constructor(viewport, layerManager, bus) {
+  constructor(viewport, layerManager, mapScale, bus) {
     this.viewport = viewport;
     this.layerManager = layerManager;
+    this.mapScale = mapScale;
     this.bus = bus;
     this._dragging = false;
     this._startMap = null;
@@ -36,7 +37,7 @@ export class RegionSelectTool {
 
     const rect = this._getRect();
     if (rect.w > 1 && rect.h > 1) {
-      const wl = new WorkingLayer(rect.x, rect.y, rect.w, rect.h, this.bus);
+      const wl = new WorkingLayer(rect.x, rect.y, rect.w, rect.h, this.bus, this.mapScale);
       wl.name = 'Working Area ' + (this.layerManager.getByType('working').length + 1);
       this.layerManager.addLayer(wl);
       this.bus.emit('tool:activate', 'select');
@@ -72,8 +73,9 @@ export class RegionSelectTool {
     ctx.fillStyle = 'rgba(0, 200, 255, 0.1)';
     ctx.fillRect(s1.x, s1.y, s2.x - s1.x, s2.y - s1.y);
 
-    const wM = Math.round(rect.w * 4);
-    const hM = Math.round(rect.h * 4);
+    const mpp = this.mapScale.metresPerPixel;
+    const wM = Math.round(rect.w * mpp);
+    const hM = Math.round(rect.h * mpp);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.font = '12px monospace';
     ctx.fillText(`${wM}m x ${hM}m`, s1.x + 4, s1.y - 6);

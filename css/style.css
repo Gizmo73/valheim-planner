@@ -92,6 +92,55 @@ html, body {
   text-align: right;
 }
 
+/* Calibration controls */
+.calibration-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.calibration-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+
+.calibration-input {
+  width: 64px;
+  padding: 2px 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 11px;
+  font-family: monospace;
+}
+
+.calibration-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.calibration-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.calibration-lock {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.calibration-lock:hover {
+  background: var(--accent-dim);
+  border-color: var(--border);
+}
+
 /* Main content */
 #content {
   display: flex;

@@ -1,5 +1,3 @@
-const METRES_PER_PIXEL = 4;
-
 let nextAssetId = 1;
 
 export class Asset {
@@ -12,24 +10,29 @@ export class Asset {
     this.gridY = 0;
     this.rotation = 0;
     this.workingLayer = null;
+    this.mapScale = null;
+  }
+
+  get _mpp() {
+    return this.mapScale ? this.mapScale.metresPerPixel : 4;
   }
 
   get mapX() {
     if (!this.workingLayer) return 0;
-    return this.workingLayer.originX + this.gridX / METRES_PER_PIXEL;
+    return this.workingLayer.originX + this.gridX / this._mpp;
   }
 
   get mapY() {
     if (!this.workingLayer) return 0;
-    return this.workingLayer.originY + this.gridY / METRES_PER_PIXEL;
+    return this.workingLayer.originY + this.gridY / this._mpp;
   }
 
   get mapWidth() {
-    return this.widthM / METRES_PER_PIXEL;
+    return this.widthM / this._mpp;
   }
 
   get mapHeight() {
-    return this.heightM / METRES_PER_PIXEL;
+    return this.heightM / this._mpp;
   }
 
   rotate(degrees) {
@@ -51,7 +54,7 @@ export class Asset {
     return Math.abs(localX) <= hw && Math.abs(localY) <= hh;
   }
 
-  render(ctx) {
+  render(ctx, viewport) {
     const cx = this.mapX + this.mapWidth / 2;
     const cy = this.mapY + this.mapHeight / 2;
 
@@ -59,10 +62,16 @@ export class Asset {
     ctx.translate(cx, cy);
     ctx.rotate(this.rotation * Math.PI / 180);
     this.draw(ctx, -this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+
+    const lw = viewport ? 1 / viewport.zoom : 0.5;
+    ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+    ctx.lineWidth = lw;
+    ctx.strokeRect(-this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+
     ctx.restore();
   }
 
-  renderPreview(ctx, mapX, mapY, rotation, alpha) {
+  renderPreview(ctx, mapX, mapY, rotation, alpha, viewport) {
     const cx = mapX + this.mapWidth / 2;
     const cy = mapY + this.mapHeight / 2;
 
@@ -71,6 +80,12 @@ export class Asset {
     ctx.translate(cx, cy);
     ctx.rotate(rotation * Math.PI / 180);
     this.draw(ctx, -this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+
+    const lw = viewport ? 1 / viewport.zoom : 0.5;
+    ctx.strokeStyle = 'rgba(200, 200, 200, 0.4)';
+    ctx.lineWidth = lw;
+    ctx.strokeRect(-this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+
     ctx.restore();
   }
 
