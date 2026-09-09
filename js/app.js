@@ -57,6 +57,18 @@ bus.on('file:selected', async (file) => {
 bus.on('asset:startPlace', (type) => {
   placeTool.setAssetType(type);
   toolManager.activate('place');
+
+  const mpp = mapScale.metresPerPixel;
+  const cellScreen = (1 / mpp) * viewport.zoom;
+  if (cellScreen < 8) {
+    const layers = layerManager.getByType('working');
+    const layer = layers.find(l => l.visible) || layers[0];
+    if (layer) {
+      const minZoom = 12 * mpp;
+      viewport.fitRect(layer.originX, layer.originY, layer.width, layer.height,
+        renderer.width, renderer.height, minZoom);
+    }
+  }
 });
 
 bus.on('tool:activate', (name) => {

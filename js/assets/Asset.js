@@ -67,16 +67,27 @@ export class Asset {
   render(ctx, viewport) {
     const cx = this.mapX + this.mapWidth / 2;
     const cy = this.mapY + this.mapHeight / 2;
+    const zoom = viewport ? viewport.zoom : 1;
+    const screenW = this.mapWidth * zoom;
+    const screenH = this.mapHeight * zoom;
 
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(this.rotation * Math.PI / 180);
-    this.draw(ctx, -this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
 
-    const lw = viewport ? 1 / viewport.zoom : 0.5;
-    ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
-    ctx.lineWidth = lw;
-    ctx.strokeRect(-this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+    if (screenW >= 4 && screenH >= 4) {
+      this.draw(ctx, -this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+      ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+      ctx.lineWidth = 1 / zoom;
+      ctx.strokeRect(-this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+    } else {
+      const s = 5 / zoom;
+      ctx.fillStyle = '#e8a020';
+      ctx.fillRect(-s, -s, s * 2, s * 2);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1 / zoom;
+      ctx.strokeRect(-s, -s, s * 2, s * 2);
+    }
 
     ctx.restore();
   }
@@ -84,17 +95,28 @@ export class Asset {
   renderPreview(ctx, mapX, mapY, rotation, alpha, viewport) {
     const cx = mapX + this.mapWidth / 2;
     const cy = mapY + this.mapHeight / 2;
+    const zoom = viewport ? viewport.zoom : 1;
+    const screenW = this.mapWidth * zoom;
+    const screenH = this.mapHeight * zoom;
 
     ctx.save();
     ctx.globalAlpha = alpha || 0.6;
     ctx.translate(cx, cy);
     ctx.rotate(rotation * Math.PI / 180);
-    this.draw(ctx, -this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
 
-    const lw = viewport ? 1 / viewport.zoom : 0.5;
-    ctx.strokeStyle = 'rgba(200, 200, 200, 0.4)';
-    ctx.lineWidth = lw;
-    ctx.strokeRect(-this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+    if (screenW >= 4 && screenH >= 4) {
+      this.draw(ctx, -this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+      ctx.strokeStyle = 'rgba(200, 200, 200, 0.4)';
+      ctx.lineWidth = 1 / zoom;
+      ctx.strokeRect(-this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+    } else {
+      const s = 5 / zoom;
+      ctx.fillStyle = '#e8a020';
+      ctx.fillRect(-s, -s, s * 2, s * 2);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1 / zoom;
+      ctx.strokeRect(-s, -s, s * 2, s * 2);
+    }
 
     ctx.restore();
   }

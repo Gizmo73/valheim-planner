@@ -53,6 +53,19 @@ export class Viewport {
     this.bus.emit('render:request');
   }
 
+  fitRect(mapX, mapY, mapW, mapH, canvasWidth, canvasHeight, minZoom) {
+    const scaleX = canvasWidth / mapW;
+    const scaleY = canvasHeight / mapH;
+    let targetZoom = Math.min(scaleX, scaleY) * 0.85;
+    if (minZoom && targetZoom < minZoom) targetZoom = minZoom;
+    targetZoom = Math.min(targetZoom, this.maxZoom);
+    this.zoom = targetZoom;
+    this.panX = canvasWidth / 2 - (mapX + mapW / 2) * this.zoom;
+    this.panY = canvasHeight / 2 - (mapY + mapH / 2) * this.zoom;
+    this.bus.emit('viewport:changed');
+    this.bus.emit('render:request');
+  }
+
   getVisibleMapBounds(canvasWidth, canvasHeight) {
     const topLeft = this.screenToMap(0, 0);
     const bottomRight = this.screenToMap(canvasWidth, canvasHeight);
