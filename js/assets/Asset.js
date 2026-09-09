@@ -35,6 +35,15 @@ export class Asset {
     return this.heightM / this._mpp;
   }
 
+  getLocalSnapOffsets() {
+    const hw = this.mapWidth / 2;
+    const hh = this.mapHeight / 2;
+    return [
+      [-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh],
+      [0, -hh], [hw, 0], [0, hh], [-hw, 0],
+    ];
+  }
+
   rotate(degrees) {
     this.rotation = ((this.rotation + degrees) % 360 + 360) % 360;
   }
@@ -49,8 +58,9 @@ export class Asset {
     const localX = dx * Math.cos(rad) - dy * Math.sin(rad);
     const localY = dx * Math.sin(rad) + dy * Math.cos(rad);
 
-    const hw = this.mapWidth / 2;
-    const hh = this.mapHeight / 2;
+    const minHit = 0.5 / this._mpp;
+    const hw = Math.max(this.mapWidth / 2, minHit);
+    const hh = Math.max(this.mapHeight / 2, minHit);
     return Math.abs(localX) <= hw && Math.abs(localY) <= hh;
   }
 
