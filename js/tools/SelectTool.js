@@ -1,3 +1,4 @@
+import { createAsset } from '../assets/AssetRegistry.js';
 import { mapToGrid, snapToGrid, gridToMap } from '../core/CoordinateSystem.js';
 
 export class SelectTool {
@@ -120,24 +121,19 @@ export class SelectTool {
     this._dragging = false;
   }
 
-  onWheel(pos, e) {
-    if (!this.selected) return false;
-    const dir = e.deltaY > 0 ? 15 : -15;
-    this.selected.rotate(dir);
-    this.bus.emit('render:request');
-    return true;
-  }
-
   onKeyDown(e) {
     if (!this.selected) return;
 
-    if (e.code === 'ArrowLeft' || e.code === 'ArrowDown') {
+    if (e.code === 'KeyQ' || e.code === 'ArrowLeft' || e.code === 'ArrowDown') {
       this.selected.rotate(-15);
       this.bus.emit('render:request');
       e.preventDefault();
-    } else if (e.code === 'ArrowRight' || e.code === 'ArrowUp') {
+    } else if (e.code === 'KeyE' || e.code === 'ArrowRight' || e.code === 'ArrowUp') {
       this.selected.rotate(15);
       this.bus.emit('render:request');
+      e.preventDefault();
+    } else if (e.code === 'KeyD') {
+      this._duplicateSelected();
       e.preventDefault();
     } else if (e.code === 'Delete' || e.code === 'Backspace') {
       this.assetLayer.removeAsset(this.selected);
@@ -149,6 +145,20 @@ export class SelectTool {
       this.bus.emit('asset:selected', null);
       this.bus.emit('render:request');
     }
+  }
+
+  _duplicateSelected() {
+    const src = this.selected;
+    const copy = createAsset(src.type);
+    if (!copy) return;
+    copy.mapScale = this.mapScale;
+    copy.gridX = src.gridX + src.widthM;
+    copy.gridY = src.gridY;
+    copy.rotation = src.rotation;
+    copy.workingLayer = src.workingLayer;
+    this.assetLayer.addAsset(copy);
+    this.selected = copy;
+    this.bus.emit('asset:selected', copy);
   }
 
   renderOverlay(ctx, viewport) {

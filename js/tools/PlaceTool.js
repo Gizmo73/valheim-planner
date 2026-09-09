@@ -138,23 +138,19 @@ export class PlaceTool {
     this.assetLayer.addAsset(asset);
   }
 
-  onWheel(pos, e) {
-    const dir = e.deltaY > 0 ? 15 : -15;
-    this.rotation = ((this.rotation + dir) % 360 + 360) % 360;
-    if (this._cursorMap) {
-      this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y, e);
-    }
-    this.bus.emit('render:request');
-    return true;
-  }
-
   onKeyDown(e) {
-    if (e.code === 'ArrowLeft' || e.code === 'ArrowDown') {
+    if (e.code === 'KeyQ' || e.code === 'ArrowLeft' || e.code === 'ArrowDown') {
       this.rotation = ((this.rotation - 15) % 360 + 360) % 360;
+      if (this._cursorMap) {
+        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y, e);
+      }
       this.bus.emit('render:request');
       e.preventDefault();
-    } else if (e.code === 'ArrowRight' || e.code === 'ArrowUp') {
+    } else if (e.code === 'KeyE' || e.code === 'ArrowRight' || e.code === 'ArrowUp') {
       this.rotation = ((this.rotation + 15) % 360 + 360) % 360;
+      if (this._cursorMap) {
+        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y, e);
+      }
       this.bus.emit('render:request');
       e.preventDefault();
     } else if (e.code === 'Escape') {
