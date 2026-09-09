@@ -15,6 +15,7 @@ import { Toolbar } from './ui/Toolbar.js';
 import { LayerPanel } from './ui/LayerPanel.js';
 import { AssetPanel } from './ui/AssetPanel.js';
 import { CalibrationPanel } from './ui/CalibrationPanel.js';
+import { MobileControls } from './ui/MobileControls.js';
 
 const bus = new EventBus();
 const canvas = document.getElementById('main-canvas');
@@ -47,6 +48,7 @@ const toolbar = new Toolbar(toolManager, bus);
 const layerPanel = new LayerPanel(layerManager, bus);
 const assetPanel = new AssetPanel(bus);
 const calibrationPanel = new CalibrationPanel(mapScale, bus);
+const mobileControls = new MobileControls(toolManager, bus);
 
 bus.on('file:selected', async (file) => {
   await mapLayer.loadFromFile(file);
@@ -69,6 +71,8 @@ bus.on('asset:startPlace', (type) => {
         renderer.width, renderer.height, minZoom);
     }
   }
+
+  closeSidebar();
 });
 
 bus.on('tool:activate', (name) => {
@@ -84,4 +88,24 @@ toolManager.activate('select');
 
 document.getElementById('help-close').addEventListener('click', () => {
   document.getElementById('help-panel').style.display = 'none';
+});
+
+// Sidebar toggle for mobile
+const sidebar = document.getElementById('sidebar');
+const backdrop = document.getElementById('sidebar-backdrop');
+
+function closeSidebar() {
+  if (window.innerWidth <= 768) {
+    sidebar.classList.remove('open');
+    backdrop.classList.add('hidden');
+  }
+}
+
+if (backdrop) {
+  backdrop.addEventListener('click', closeSidebar);
+}
+
+bus.on('sidebar:toggle', () => {
+  const isOpen = sidebar.classList.toggle('open');
+  backdrop.classList.toggle('hidden', !isOpen);
 });

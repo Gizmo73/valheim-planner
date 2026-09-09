@@ -11,6 +11,7 @@ export class ToolManager {
     this._spaceDown = false;
     this.snapMode = 'grid';
 
+    // Mouse events
     canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
     canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
     canvas.addEventListener('mouseup', (e) => this._onMouseUp(e));
@@ -18,6 +19,14 @@ export class ToolManager {
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', (e) => this._onKeyDown(e));
     window.addEventListener('keyup', (e) => this._onKeyUp(e));
+
+    // Touch events
+    this._touchState = { active: [], startTime: 0, startPos: null, moved: false, panning: false };
+    this._pinch = { active: false, startDist: 0, startZoom: 0, center: null };
+    canvas.addEventListener('touchstart', (e) => this._onTouchStart(e), { passive: false });
+    canvas.addEventListener('touchmove', (e) => this._onTouchMove(e), { passive: false });
+    canvas.addEventListener('touchend', (e) => this._onTouchEnd(e), { passive: false });
+    canvas.addEventListener('touchcancel', (e) => this._onTouchEnd(e), { passive: false });
   }
 
   register(name, tool) {
@@ -41,6 +50,13 @@ export class ToolManager {
     const rect = this.canvas.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
+
+  _getTouchPos(touch) {
+    const rect = this.canvas.getBoundingClientRect();
+    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+  }
+
+  // --- Mouse handlers ---
 
   _onMouseDown(e) {
     const pos = this._getPos(e);
@@ -75,8 +91,6 @@ export class ToolManager {
   }
 
   _onMouseUp(e) {
-    const pos = this._getPos(e);
-
     if (this._isPanning) {
       this._isPanning = false;
       this.canvas.style.cursor = '';
@@ -84,6 +98,7 @@ export class ToolManager {
     }
 
     if (this.currentTool && this.currentTool.onMouseUp) {
+      const pos = this._getPos(e);
       this.currentTool.onMouseUp(pos, e);
     }
   }
@@ -137,6 +152,128 @@ export class ToolManager {
         this.canvas.style.cursor = '';
       }
     }
+  }
+
+  // --- Touch handlers ---
+
+  _onTouchStart(e) {
+    e.preventDefault();
+    const touches = e.touches;
+    const ts = this._touchState;
+
+    if (touches.length === 1) {
+      const t = touches[0];
+      ts.startTime = Date.now();
+      ts.startPos = { x: t.clientX, y: t.clientY };
+      ts.moved = false;
+      ts.panning = false;
+      ts.lastPos = { x: t.clientX, y: t.clientY };
+    } else if (touches.length === 2) {
+      ts.panning = false;
+      ts.moved = true;
+      const t0 = touches[0];
+      const t1 = touches[1];
+      const dx = t1.clientX - t0.clientX;
+      const dy = t1.clientY - t0.clientY;
+      const rect = this.canvas.getBoundingClientRect();
+      this._pinch = {
+        active: true,
+        startDist: Math.hypot(dx, dy),
+        startZoom: this.viewport.zoom,
+        center: {
+          x: (t0.clientX + t1.clientX) / 2 - rect.left,
+          y: (t0.clientY + t1.clientY) / 2 - rect.top,
+        },
+        lastDist: Math.hypot(dx, dy),
+      };
+    }
+  }
+
+  _onTouchMove(e) {
+    e.preventDefault();
+    const touches = e.touches;
+    const ts = this._touchState;
+
+    if (touches.length === 2 && this._pinch.active) {
+      const t0 = touches[0];
+      const t1 = touches[1];
+      const dx = t1.clientX - t0.clientX;
+      const dy = t1.clientY - t0.clientY;
+      const dist = Math.hypot(dx, dy);
+      const scale = dist / this._pinch.startDist;
+      const newZoom = Math.max(
+        this.viewport.minZoom,
+        Math.min(this.viewport.maxZoom, this._pinch.startZoom * scale)
+      );
+
+      const mapBefore = this.viewport.screenToMap(this._pinch.center.x, this._pinch.center.y);
+      this.viewport.zoom = newZoom;
+      this.viewport.panX = this._pinch.center.x - mapBefore.x * this.viewport.zoom;
+      this.viewport.panY = this._pinch.center.y - mapBefore.y * this.viewport.zoom;
+      this.viewport.bus.emit('viewport:changed');
+      this.viewport.bus.emit('render:request');
+      return;
+    }
+
+    if (touches.length === 1) {
+      const t = touches[0];
+      const dx = t.clientX - ts.startPos.x;
+      const dy = t.clientY - ts.startPos.y;
+
+      if (!ts.moved && Math.hypot(dx, dy) > 10) {
+        ts.moved = true;
+        ts.panning = true;
+        ts.lastPos = { x: t.clientX, y: t.clientY };
+      }
+
+      if (ts.panning) {
+        const pdx = t.clientX - ts.lastPos.x;
+        const pdy = t.clientY - ts.lastPos.y;
+        ts.lastPos = { x: t.clientX, y: t.clientY };
+        this.viewport.panBy(pdx, pdy);
+      }
+    }
+  }
+
+  _onTouchEnd(e) {
+    e.preventDefault();
+    const ts = this._touchState;
+
+    if (this._pinch.active && e.touches.length < 2) {
+      this._pinch.active = false;
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        ts.startPos = { x: t.clientX, y: t.clientY };
+        ts.lastPos = { x: t.clientX, y: t.clientY };
+        ts.moved = true;
+        ts.panning = true;
+      }
+      return;
+    }
+
+    if (e.touches.length === 0 && !ts.moved) {
+      const elapsed = Date.now() - ts.startTime;
+      if (elapsed < 300 && ts.startPos) {
+        const pos = this._getTouchPos({ clientX: ts.startPos.x, clientY: ts.startPos.y });
+        if (this.currentTool) {
+          if (this.currentTool.onMouseDown) this.currentTool.onMouseDown(pos, {});
+          if (this.currentTool.onMouseUp) this.currentTool.onMouseUp(pos, {});
+        }
+      }
+    }
+
+    if (e.touches.length === 0) {
+      ts.panning = false;
+      ts.moved = false;
+    }
+  }
+
+  // --- Snap mode (called from mobile controls too) ---
+
+  setSnapMode(mode) {
+    this.snapMode = mode;
+    this.bus.emit('snap:changed', mode);
+    this.bus.emit('render:request');
   }
 
   renderOverlay(ctx, viewport) {

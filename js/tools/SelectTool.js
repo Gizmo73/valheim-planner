@@ -13,6 +13,22 @@ export class SelectTool {
     this._dragOffset = null;
     this._snapMode = 'grid';
     this.bus.on('snap:changed', (mode) => { this._snapMode = mode; });
+    this.bus.on('mobile:rotate', (deg) => {
+      if (this.selected) {
+        this.selected.rotate(deg);
+        this.bus.emit('render:request');
+      }
+    });
+    this.bus.on('mobile:duplicate', () => {
+      if (this.selected) this._duplicateSelected();
+    });
+    this.bus.on('mobile:delete', () => {
+      if (this.selected) {
+        this.assetLayer.removeAsset(this.selected);
+        this.selected = null;
+        this.bus.emit('asset:selected', null);
+      }
+    });
   }
 
   activate() {}

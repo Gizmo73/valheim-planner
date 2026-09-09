@@ -20,6 +20,13 @@ export class PlaceTool {
         this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
       }
     });
+    this.bus.on('mobile:rotate', (deg) => {
+      this.rotation = ((this.rotation + deg) % 360 + 360) % 360;
+      if (this._cursorMap) {
+        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
+      }
+      this.bus.emit('render:request');
+    });
   }
 
   setAssetType(type) {

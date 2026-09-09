@@ -22,12 +22,16 @@ html, body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 #app {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
 }
 
 /* Toolbar */
@@ -40,6 +44,7 @@ html, body {
   border-bottom: 1px solid var(--border);
   min-height: 38px;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .toolbar-group {
@@ -90,6 +95,10 @@ html, body {
   font-family: monospace;
   min-width: 50px;
   text-align: right;
+}
+
+.sidebar-toggle {
+  display: none;
 }
 
 /* Calibration controls */
@@ -146,6 +155,7 @@ html, body {
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
 }
 
 #canvas-container {
@@ -158,6 +168,7 @@ html, body {
 #main-canvas {
   display: block;
   cursor: crosshair;
+  touch-action: none;
 }
 
 #empty-state {
@@ -189,6 +200,11 @@ html, body {
   flex-direction: column;
   overflow: hidden;
   user-select: none;
+  flex-shrink: 0;
+}
+
+#sidebar-backdrop {
+  display: none;
 }
 
 .panel-header {
@@ -307,6 +323,64 @@ html, body {
   color: var(--text-dim);
 }
 
+/* Mobile controls */
+#mobile-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  z-index: 50;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+#mobile-controls.hidden {
+  display: none;
+}
+
+.mobile-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-btn:active {
+  background: var(--accent-dim);
+}
+
+.mobile-btn.toggle.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mobile-btn.hidden {
+  display: none;
+}
+
+.mobile-sep {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  margin: 0 2px;
+}
+
 /* Help panel */
 #help-panel {
   position: fixed;
@@ -369,4 +443,157 @@ kbd {
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 3px;
+}
+
+/* ===================== */
+/* Mobile / Touch layout */
+/* ===================== */
+
+@media (max-width: 768px) {
+  /* Toolbar */
+  #toolbar {
+    min-height: 48px;
+    padding: 4px;
+    gap: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .toolbar-btn {
+    min-height: 40px;
+    min-width: 40px;
+    padding: 6px 8px;
+    font-size: 13px;
+    justify-content: center;
+  }
+
+  .toolbar-label {
+    display: none;
+  }
+
+  .toolbar-icon {
+    font-size: 18px;
+  }
+
+  .toolbar-sep {
+    margin: 0 2px;
+  }
+
+  .calibration-controls {
+    gap: 2px;
+  }
+
+  .calibration-label {
+    display: none;
+  }
+
+  .calibration-input {
+    width: 48px;
+    font-size: 12px;
+    padding: 4px;
+  }
+
+  /* Sidebar toggle visible */
+  .sidebar-toggle {
+    display: flex;
+  }
+
+  /* Sidebar as overlay */
+  #sidebar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 260px;
+    z-index: 200;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+  }
+
+  #sidebar.open {
+    transform: translateX(0);
+  }
+
+  #sidebar-backdrop {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 199;
+  }
+
+  #sidebar-backdrop.hidden {
+    display: none;
+  }
+
+  .asset-item {
+    padding: 10px 10px;
+  }
+
+  .layer-row {
+    padding: 10px;
+  }
+
+  /* Help panel */
+  #help-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .toolbar-btn {
+    min-width: 36px;
+    padding: 6px;
+  }
+
+  #mobile-controls {
+    bottom: 8px;
+    padding: 4px 6px;
+    gap: 3px;
+  }
+
+  .mobile-btn {
+    min-width: 38px;
+    min-height: 38px;
+    padding: 6px 8px;
+    font-size: 14px;
+  }
+}
+
+/* Coarse pointer = touch device */
+@media (pointer: coarse) {
+  .toolbar-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .sidebar-toggle {
+    display: flex;
+  }
+
+  #help-panel {
+    display: none;
+  }
+
+  .asset-item {
+    padding: 10px 10px;
+    min-height: 48px;
+  }
+
+  .layer-row {
+    padding: 10px;
+    min-height: 44px;
+  }
+
+  .layer-eye, .layer-delete {
+    min-width: 36px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }

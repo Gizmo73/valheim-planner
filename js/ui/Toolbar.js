@@ -52,6 +52,14 @@ export class Toolbar {
     this._el.appendChild(uploadBtn);
     this._el.appendChild(fileInput);
 
+    // Sidebar toggle (visible on mobile)
+    const sidebarBtn = document.createElement('button');
+    sidebarBtn.className = 'toolbar-btn sidebar-toggle';
+    sidebarBtn.innerHTML = '<span class="toolbar-icon">☰</span>';
+    sidebarBtn.title = 'Toggle panels';
+    sidebarBtn.addEventListener('click', () => this.bus.emit('sidebar:toggle'));
+    this._el.appendChild(sidebarBtn);
+
     const zoomLabel = document.createElement('span');
     zoomLabel.className = 'zoom-label';
     zoomLabel.id = 'zoom-label';
