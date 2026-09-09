@@ -89,6 +89,7 @@ export class ToolManager {
 
   _onWheel(e) {
     e.preventDefault();
+    if (this._isPanning) return;
     const pos = this._getPos(e);
 
     if (this.currentTool && this.currentTool.onWheel) {
