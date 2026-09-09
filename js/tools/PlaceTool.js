@@ -14,6 +14,12 @@ export class PlaceTool {
     this._cursorMap = null;
     this._snappedPos = null;
     this._snapMode = 'grid';
+    this.bus.on('snap:changed', (mode) => {
+      this._snapMode = mode;
+      if (this._cursorMap) {
+        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
+      }
+    });
   }
 
   setAssetType(type) {
@@ -41,9 +47,9 @@ export class PlaceTool {
     return layers.length > 0 ? layers[layers.length - 1] : null;
   }
 
-  _getPosition(mapX, mapY, e) {
-    if (e && e.shiftKey) return this._getFreePosition(mapX, mapY);
-    if (e && (e.ctrlKey || e.metaKey)) return this._getAssetSnappedPosition(mapX, mapY);
+  _getPosition(mapX, mapY) {
+    if (this._snapMode === 'free') return this._getFreePosition(mapX, mapY);
+    if (this._snapMode === 'asset') return this._getAssetSnappedPosition(mapX, mapY);
     return this._getGridSnappedPosition(mapX, mapY);
   }
 
@@ -115,18 +121,17 @@ export class PlaceTool {
     return { mapX: snappedMapX, mapY: snappedMapY, gridX: grid.x, gridY: grid.y, layer, mode: 'asset' };
   }
 
-  onMouseMove(pos, e) {
+  onMouseMove(pos) {
     this._cursorMap = this.viewport.screenToMap(pos.x, pos.y);
-    this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y, e);
-    this._snapMode = this._snappedPos ? this._snappedPos.mode : 'grid';
+    this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
     this.bus.emit('render:request');
   }
 
-  onMouseDown(pos, e) {
+  onMouseDown(pos) {
     if (!this.assetType) return;
 
     const rawMap = this.viewport.screenToMap(pos.x, pos.y);
-    const snapped = this._getPosition(rawMap.x, rawMap.y, e);
+    const snapped = this._getPosition(rawMap.x, rawMap.y);
     if (!snapped) return;
 
     const asset = createAsset(this.assetType);
@@ -140,16 +145,16 @@ export class PlaceTool {
 
   onKeyDown(e) {
     if (e.code === 'KeyQ' || e.code === 'ArrowLeft' || e.code === 'ArrowDown') {
-      this.rotation = ((this.rotation - 15) % 360 + 360) % 360;
+      this.rotation = (this.rotation - 22.5 + 360) % 360;
       if (this._cursorMap) {
-        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y, e);
+        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
       }
       this.bus.emit('render:request');
       e.preventDefault();
     } else if (e.code === 'KeyE' || e.code === 'ArrowRight' || e.code === 'ArrowUp') {
-      this.rotation = ((this.rotation + 15) % 360 + 360) % 360;
+      this.rotation = (this.rotation + 22.5) % 360;
       if (this._cursorMap) {
-        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y, e);
+        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
       }
       this.bus.emit('render:request');
       e.preventDefault();
