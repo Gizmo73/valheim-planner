@@ -63,7 +63,8 @@ export class CalibrationPanel {
     this._container.appendChild(this._mppInput);
     this._container.appendChild(this._lockBtn);
 
-    toolbar.appendChild(this._container);
+    const zoomLabel = document.getElementById('zoom-label');
+    toolbar.insertBefore(this._container, zoomLabel);
   }
 
   _show() {
