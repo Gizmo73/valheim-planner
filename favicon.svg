@@ -1,38 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
-    <pattern id="grid" width="8" height="8" patternUnits="userSpaceOnUse">
-      <path d="M8 0H0V8" fill="none" stroke="rgba(255,255,255,.05)" stroke-width=".25"/>
+    <pattern id="g" width="5.2" height="5.2" patternUnits="userSpaceOnUse" x="6" y="6">
+      <rect width="5.2" height="5.2" fill="none" stroke="rgba(255,255,255,.12)" stroke-width=".3"/>
     </pattern>
   </defs>
 
-  <!-- Blueprint background -->
-  <rect width="64" height="64" fill="#1b4d8e"/>
-  <rect width="64" height="64" fill="url(#grid)"/>
+  <rect width="64" height="64" fill="#2563a8"/>
+  <rect x="6" y="6" width="52" height="52" fill="url(#g)"/>
 
-  <!-- Circle frame and crosshairs -->
-  <circle cx="32" cy="33" r="27" fill="none" stroke="rgba(255,255,255,.12)" stroke-width=".4"/>
-  <line x1="32" y1="3" x2="32" y2="63" stroke="rgba(255,255,255,.07)" stroke-width=".25" stroke-dasharray="2 2"/>
-  <line x1="3" y1="33" x2="61" y2="33" stroke="rgba(255,255,255,.07)" stroke-width=".25" stroke-dasharray="2 2"/>
+  <!-- V — left arm with serif top -->
+  <polygon points="5,7 22,7 18,15 32,58 8,15" fill="white"/>
+  <!-- V — right arm with serif top -->
+  <polygon points="42,7 59,7 56,15 32,58 46,15" fill="white"/>
 
-  <!-- V — two thick angular bars -->
-  <path d="M8 7 L18 7 L33 54 L31 58 Z"
-        fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.7)" stroke-width="1" stroke-linejoin="miter"/>
-  <path d="M56 7 L46 7 L31 54 L33 58 Z"
-        fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.7)" stroke-width="1" stroke-linejoin="miter"/>
+  <!-- Hammer handle -->
+  <polygon points="12,51 37,25 40,29 15,55" fill="white"/>
+  <!-- Handle grip cap -->
+  <circle cx="13.5" cy="53" r="2.5" fill="white"/>
 
-  <!-- Hammer — rotated diagonally across the V -->
-  <g transform="rotate(-42, 32, 32)">
-    <!-- Handle -->
-    <rect x="4" y="30" width="34" height="4" rx="1.5"
-          fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.8)" stroke-width="1"/>
-    <!-- Leather grip wrap -->
-    <rect x="3" y="28.5" width="11" height="7" rx="2.5"
-          fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.55)" stroke-width=".7"/>
-    <!-- Head — flat striking face -->
-    <rect x="37" y="22.5" width="11" height="19" rx="1.5"
-          fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.8)" stroke-width="1"/>
-    <!-- Head — cross-peen wedge -->
-    <path d="M48 25.5 L55.5 31 L55.5 33 L48 38.5"
-          fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.8)" stroke-width="1" stroke-linejoin="round"/>
-  </g>
+  <!-- Hammer head — cross-peen (upper-left, flared) -->
+  <polygon points="40,25 33,13 24,21 36,30" fill="white"/>
+  <!-- Hammer head — striking face (lower-right, block) -->
+  <polygon points="41,23 49,31 42,39 34,31" fill="white"/>
 </svg>
