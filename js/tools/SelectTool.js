@@ -1,4 +1,3 @@
-import { createAsset } from '../assets/AssetRegistry.js';
 import { mapToGrid, snapToGrid, gridToMap } from '../core/CoordinateSystem.js';
 
 export class SelectTool {
@@ -20,7 +19,7 @@ export class SelectTool {
       }
     });
     this.bus.on('mobile:duplicate', () => {
-      if (this.selected) this._duplicateSelected();
+      if (this.selected) this.bus.emit('asset:startPlace', this.selected.type);
     });
     this.bus.on('mobile:delete', () => {
       if (this.selected) {
@@ -148,7 +147,7 @@ export class SelectTool {
       this.bus.emit('render:request');
       e.preventDefault();
     } else if (e.code === 'KeyD') {
-      this._duplicateSelected();
+      this.bus.emit('asset:startPlace', this.selected.type);
       e.preventDefault();
     } else if (e.code === 'Delete' || e.code === 'Backspace') {
       this.assetLayer.removeAsset(this.selected);
@@ -160,20 +159,6 @@ export class SelectTool {
       this.bus.emit('asset:selected', null);
       this.bus.emit('render:request');
     }
-  }
-
-  _duplicateSelected() {
-    const src = this.selected;
-    const copy = createAsset(src.type);
-    if (!copy) return;
-    copy.mapScale = this.mapScale;
-    copy.gridX = src.gridX + src.widthM;
-    copy.gridY = src.gridY;
-    copy.rotation = src.rotation;
-    copy.workingLayer = src.workingLayer;
-    this.assetLayer.addAsset(copy);
-    this.selected = copy;
-    this.bus.emit('asset:selected', copy);
   }
 
   renderOverlay(ctx, viewport) {
