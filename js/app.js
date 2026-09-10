@@ -1,6 +1,7 @@
 import { EventBus } from './core/EventBus.js';
 import { Viewport } from './core/Viewport.js';
 import { MapScale } from './core/MapScale.js';
+import { PerspectiveTransform } from './core/PerspectiveTransform.js';
 import { Renderer } from './core/Renderer.js';
 import { SaveLoad } from './core/SaveLoad.js';
 import { LayerManager } from './layers/LayerManager.js';
@@ -126,4 +127,19 @@ if (backdrop) {
 bus.on('sidebar:toggle', () => {
   const isOpen = sidebar.classList.toggle('open');
   backdrop.classList.toggle('hidden', !isOpen);
+});
+
+bus.on('calibration:apply', () => {
+  if (!mapLayer.image) return;
+  const pins = calibrationTool.pins;
+  const tileW = mapScale.tileW;
+  const tileH = mapScale.tileH;
+  const result = PerspectiveTransform.correctImage(mapLayer.image, pins, tileW, tileH);
+  if (result) {
+    mapLayer.applyCorrectedImage(result.canvas);
+    mapScale.locked = false;
+    mapScale.metresPerPixel = result.metresPerPixel;
+    viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
+    toolManager.activate('select');
+  }
 });

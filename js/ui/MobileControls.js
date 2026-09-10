@@ -4,6 +4,7 @@ export class MobileControls {
     this.bus = bus;
     this._currentTool = null;
     this._hasSelection = false;
+    this._fillActive = false;
     this._el = document.getElementById('mobile-controls');
     if (!this._el) return;
 
@@ -11,6 +12,7 @@ export class MobileControls {
 
     bus.on('tool:changed', (name) => {
       this._currentTool = name;
+      this._fillActive = false;
       this._updateVisibility();
     });
     bus.on('asset:selected', (asset) => {
@@ -19,6 +21,12 @@ export class MobileControls {
     });
     bus.on('snap:changed', (mode) => {
       this._updateSnapButtons(mode);
+    });
+    bus.on('fill:changed', (active) => {
+      this._fillActive = active;
+      if (this._buttons['fill']) {
+        this._buttons['fill'].classList.toggle('active', active);
+      }
     });
   }
 
@@ -31,17 +39,25 @@ export class MobileControls {
       { id: 'snap-asset', label: 'Snap', title: 'Asset snap', group: 'snap', toggle: true },
       { id: 'snap-free', label: 'Free', title: 'Free place', group: 'snap', toggle: true },
       { id: 'sep2', sep: true },
+      { id: 'fill', label: 'Fill', title: 'Grid fill', group: 'place-only', toggle: true },
+      { id: 'select-all', label: 'All', title: 'Select all', group: 'select-any' },
       { id: 'duplicate', label: 'Dup', title: 'Duplicate', group: 'select-only' },
       { id: 'delete', label: 'Del', title: 'Delete', group: 'select-only' },
+      { id: 'group', label: 'Grp', title: 'Group selected', group: 'select-only' },
+      { id: 'sep3', sep: true, group: 'select-any' },
+      { id: 'region', label: '⬚', title: 'New working area', group: 'select-any' },
     ];
 
     this._buttons = {};
+    this._seps = [];
 
     for (const a of actions) {
       if (a.sep) {
         const sep = document.createElement('div');
         sep.className = 'mobile-sep';
+        if (a.group) sep.dataset.group = a.group;
         this._el.appendChild(sep);
+        this._seps.push(sep);
         continue;
       }
 
@@ -82,11 +98,23 @@ export class MobileControls {
       case 'snap-free':
         this.toolManager.setSnapMode('free');
         break;
+      case 'fill':
+        this.bus.emit('mobile:fill');
+        break;
+      case 'select-all':
+        this.bus.emit('mobile:selectAll');
+        break;
       case 'duplicate':
         this.bus.emit('mobile:duplicate');
         break;
       case 'delete':
         this.bus.emit('mobile:delete');
+        break;
+      case 'group':
+        this.bus.emit('mobile:group');
+        break;
+      case 'region':
+        this.toolManager.activate('region');
         break;
     }
   }
@@ -109,8 +137,23 @@ export class MobileControls {
 
     for (const [id, btn] of Object.entries(this._buttons)) {
       const group = btn.dataset.group;
+      let visible = show;
       if (group === 'select-only') {
-        btn.classList.toggle('hidden', !isSelect || !this._hasSelection);
+        visible = isSelect && this._hasSelection;
+      } else if (group === 'place-only') {
+        visible = isPlace;
+      } else if (group === 'select-any') {
+        visible = isSelect;
+      }
+      btn.classList.toggle('hidden', !visible);
+    }
+
+    for (const sep of this._seps) {
+      const group = sep.dataset.group;
+      if (group === 'select-any') {
+        sep.classList.toggle('hidden', !isSelect);
+      } else if (group === 'place-only') {
+        sep.classList.toggle('hidden', !isPlace);
       }
     }
   }

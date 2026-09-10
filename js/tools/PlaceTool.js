@@ -32,6 +32,16 @@ export class PlaceTool {
       }
       this.bus.emit('render:request');
     });
+    this.bus.on('mobile:fill', () => {
+      this._fillMode = !this._fillMode;
+      this._filling = false;
+      this.bus.emit('fill:changed', this._fillMode);
+      this.bus.emit('render:request');
+    });
+  }
+
+  hitTest(pos) {
+    return this._fillMode;
   }
 
   setAssetType(type) {
@@ -237,6 +247,7 @@ export class PlaceTool {
     }
 
     this._fillMode = false;
+    this.bus.emit('fill:changed', false);
     this.bus.emit('render:request');
   }
 
@@ -258,6 +269,7 @@ export class PlaceTool {
     } else if (e.code === 'KeyF') {
       this._fillMode = !this._fillMode;
       this._filling = false;
+      this.bus.emit('fill:changed', this._fillMode);
       this.bus.emit('render:request');
       e.preventDefault();
     } else if (e.code === 'Escape') {

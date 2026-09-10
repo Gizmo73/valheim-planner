@@ -163,12 +163,26 @@ export class ToolManager {
 
     if (touches.length === 1) {
       const t = touches[0];
+      const pos = this._getTouchPos(t);
       ts.startTime = Date.now();
       ts.startPos = { x: t.clientX, y: t.clientY };
       ts.moved = false;
       ts.panning = false;
+      ts.toolDrag = false;
       ts.lastPos = { x: t.clientX, y: t.clientY };
+
+      if (this.currentTool && this.currentTool.hitTest && this.currentTool.hitTest(pos)) {
+        ts.toolDrag = true;
+        if (this.currentTool.onMouseDown) {
+          this.currentTool.onMouseDown(pos, {});
+        }
+      }
     } else if (touches.length === 2) {
+      if (ts.toolDrag && this.currentTool && this.currentTool.onMouseUp) {
+        const pos = this._getTouchPos(touches[0]);
+        this.currentTool.onMouseUp(pos, {});
+      }
+      ts.toolDrag = false;
       ts.panning = false;
       ts.moved = true;
       const t0 = touches[0];
@@ -217,6 +231,17 @@ export class ToolManager {
 
     if (touches.length === 1) {
       const t = touches[0];
+
+      if (ts.toolDrag) {
+        const pos = this._getTouchPos(t);
+        ts.lastPos = { x: t.clientX, y: t.clientY };
+        ts.moved = true;
+        if (this.currentTool && this.currentTool.onMouseMove) {
+          this.currentTool.onMouseMove(pos, {});
+        }
+        return;
+      }
+
       const dx = t.clientX - ts.startPos.x;
       const dy = t.clientY - ts.startPos.y;
 
@@ -247,24 +272,34 @@ export class ToolManager {
         ts.lastPos = { x: t.clientX, y: t.clientY };
         ts.moved = true;
         ts.panning = true;
+        ts.toolDrag = false;
       }
       return;
     }
 
-    if (e.touches.length === 0 && !ts.moved) {
-      const elapsed = Date.now() - ts.startTime;
-      if (elapsed < 300 && ts.startPos) {
-        const pos = this._getTouchPos({ clientX: ts.startPos.x, clientY: ts.startPos.y });
-        if (this.currentTool) {
-          if (this.currentTool.onMouseDown) this.currentTool.onMouseDown(pos, {});
-          if (this.currentTool.onMouseUp) this.currentTool.onMouseUp(pos, {});
+    if (e.touches.length === 0) {
+      if (ts.toolDrag) {
+        const ct = e.changedTouches[0];
+        const pos = ct
+          ? this._getTouchPos(ct)
+          : this._getTouchPos({ clientX: ts.lastPos.x, clientY: ts.lastPos.y });
+        if (this.currentTool && this.currentTool.onMouseUp) {
+          this.currentTool.onMouseUp(pos, {});
+        }
+      } else if (!ts.moved) {
+        const elapsed = Date.now() - ts.startTime;
+        if (elapsed < 300 && ts.startPos) {
+          const pos = this._getTouchPos({ clientX: ts.startPos.x, clientY: ts.startPos.y });
+          if (this.currentTool) {
+            if (this.currentTool.onMouseDown) this.currentTool.onMouseDown(pos, {});
+            if (this.currentTool.onMouseUp) this.currentTool.onMouseUp(pos, {});
+          }
         }
       }
-    }
 
-    if (e.touches.length === 0) {
       ts.panning = false;
       ts.moved = false;
+      ts.toolDrag = false;
     }
   }
 

@@ -37,6 +37,9 @@ export class SaveLoad {
       scale: {
         metresPerPixel: this.mapScale.metresPerPixel,
         locked: this.mapScale.locked,
+        mapMode: this.mapScale.mapMode,
+        tileW: this.mapScale.tileW,
+        tileH: this.mapScale.tileH,
       },
       workingLayers,
       groups,
@@ -78,6 +81,9 @@ export class SaveLoad {
 
     if (data.scale) {
       this.mapScale.locked = false;
+      if (data.scale.mapMode) this.mapScale.mapMode = data.scale.mapMode;
+      if (data.scale.tileW > 0) this.mapScale.tileW = data.scale.tileW;
+      if (data.scale.tileH > 0) this.mapScale.tileH = data.scale.tileH;
       this.mapScale.metresPerPixel = data.scale.metresPerPixel;
       this.mapScale.locked = data.scale.locked;
     }

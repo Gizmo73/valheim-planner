@@ -36,9 +36,23 @@ export class SelectTool {
         this.bus.emit('asset:selected', null);
       }
     });
+    this.bus.on('mobile:group', () => {
+      if (this.selection.length > 0) this._groupSelected();
+    });
+    this.bus.on('mobile:selectAll', () => {
+      const allAssets = this.assetLayer.assets.slice();
+      this._setSelection(allAssets);
+      this.bus.emit('render:request');
+    });
   }
 
   activate() {}
+
+  hitTest(pos) {
+    const map = this.viewport.screenToMap(pos.x, pos.y);
+    const hit = this.assetLayer.hitTest(map.x, map.y);
+    return hit !== null && hit !== undefined;
+  }
 
   deactivate() {
     this.selected = null;
@@ -221,6 +235,7 @@ export class SelectTool {
     }
 
     this._dragging = false;
+    this.bus.emit('render:request');
   }
 
   onKeyDown(e) {
