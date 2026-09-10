@@ -53,7 +53,7 @@ function generateThatchTexture(variant) {
     ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.lineTo(0, h);
     ctx.closePath();
     ctx.clip();
-    drawThatchStrands(ctx, 0, 0, w, h, 'down');
+    drawThatchStrands(ctx, 0, 0, w, h, 'right');
     ctx.restore();
 
     // 2. Lower-right triangle (horizontal strands)
@@ -62,7 +62,7 @@ function generateThatchTexture(variant) {
     ctx.moveTo(w, 0); ctx.lineTo(w, h); ctx.lineTo(0, h);
     ctx.closePath();
     ctx.clip();
-    drawThatchStrands(ctx, 0, 0, w, h, 'right');
+    drawThatchStrands(ctx, 0, 0, w, h, 'down');
     ctx.restore();
 
     // 3. Dual Valley Crease Shadows (Uniform along the entire seam)
@@ -132,7 +132,7 @@ function generateThatchTexture(variant) {
     ctx.moveTo(w, 0); ctx.lineTo(w, h); ctx.lineTo(0, h);
     ctx.closePath();
     ctx.clip();
-    drawThatchStrands(ctx, 0, 0, w, h, 'down');
+    drawThatchStrands(ctx, 0, 0, w, h, 'right');
     ctx.restore();
 
     // 2. Upper-left triangle (horizontal strands)
@@ -141,7 +141,7 @@ function generateThatchTexture(variant) {
     ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.lineTo(0, h);
     ctx.closePath();
     ctx.clip();
-    drawThatchStrands(ctx, 0, 0, w, h, 'right');
+    drawThatchStrands(ctx, 0, 0, w, h, 'down');
     ctx.restore();
 
     // 3. Drop shadow cast strictly onto lower-right face
