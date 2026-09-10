@@ -197,6 +197,10 @@ function generateThatchTexture(variant) {
   return c;
 }
 
+function makeThumbnail(variant) {
+  return generateThatchTexture(variant);
+}
+
 function thatchAsset(type, variant) {
   return class extends Asset {
     constructor() {
