@@ -66,6 +66,15 @@ export class CalibrationTool {
 
   deactivate() {}
 
+  hitTest(pos) {
+    if (this.mapScale.locked) return false;
+    const map = this.viewport.screenToMap(pos.x, pos.y);
+    if (this._mode === 'world') {
+      return this._hitTestWorld(map.x, map.y) !== null;
+    }
+    return this._hitTestLocal(map.x, map.y) >= 0;
+  }
+
   _activateWorld() {
     if (!this._worldInitialized && this.mapLayer.image) {
       this._centerX = this.mapLayer.width / 2;
@@ -172,9 +181,12 @@ export class CalibrationTool {
   }
 
   onMouseUp() {
-    this._dragging = false;
-    this._dragType = null;
-    this._dragIndex = -1;
+    if (this._dragging) {
+      this._dragging = false;
+      this._dragType = null;
+      this._dragIndex = -1;
+      this.bus.emit('render:request');
+    }
   }
 
   onKeyDown(e) {
@@ -188,6 +200,7 @@ export class CalibrationTool {
       this._renderWorldOverlay(ctx, viewport);
     } else {
       this._renderLocalOverlay(ctx, viewport);
+      this._renderMagnifier(ctx, viewport);
     }
   }
 
@@ -313,6 +326,104 @@ export class CalibrationTool {
     const tileW = this.mapScale.tileW;
     const tileH = this.mapScale.tileH;
     ctx.fillText(`${tileW}×${tileH} tiles  |  drag pins to reference corners`, screenPos.x, screenPos.y);
+    ctx.restore();
+  }
+
+  _renderMagnifier(ctx, viewport) {
+    if (!this._dragging || this._dragIndex < 0) return;
+
+    const pin = this._pins[this._dragIndex];
+    const screenPin = viewport.mapToScreen(pin.x, pin.y);
+    const canvasW = ctx.canvas.width;
+    const canvasH = ctx.canvas.height;
+
+    const R = 70;
+    const MAG = 4;
+    const innerZoom = viewport.zoom * MAG;
+
+    let cx = screenPin.x;
+    let cy = screenPin.y - R - 35;
+    if (cy - R < 10) cy = screenPin.y + R + 35;
+    cx = Math.max(R + 5, Math.min(canvasW - R - 5, cx));
+    cy = Math.max(R + 5, Math.min(canvasH - R - 5, cy));
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.clip();
+
+    ctx.fillStyle = '#111';
+    ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+
+    const ipx = cx - pin.x * innerZoom;
+    const ipy = cy - pin.y * innerZoom;
+
+    if (this.mapLayer.image) {
+      ctx.save();
+      ctx.translate(ipx, ipy);
+      ctx.scale(innerZoom, innerZoom);
+      ctx.drawImage(this.mapLayer.image, 0, 0, this.mapLayer.width, this.mapLayer.height);
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.translate(ipx, ipy);
+    ctx.scale(innerZoom, innerZoom);
+
+    ctx.strokeStyle = 'rgba(255, 200, 50, 0.6)';
+    ctx.lineWidth = 1.5 / innerZoom;
+    ctx.setLineDash([4 / innerZoom, 3 / innerZoom]);
+    ctx.beginPath();
+    ctx.moveTo(this._pins[0].x, this._pins[0].y);
+    for (let i = 1; i < 4; i++) ctx.lineTo(this._pins[i].x, this._pins[i].y);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    for (let i = 0; i < 4; i++) {
+      const p = this._pins[i];
+      const r = (i === this._dragIndex ? 5 : 3) / innerZoom;
+      ctx.fillStyle = i === this._dragIndex ? 'rgba(255, 220, 80, 1)' : 'rgba(255, 200, 50, 0.5)';
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.lineWidth = 1 / innerZoom;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.strokeStyle = 'rgba(255, 200, 50, 0.9)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 14, cy); ctx.lineTo(cx - 5, cy);
+    ctx.moveTo(cx + 5, cy);  ctx.lineTo(cx + 14, cy);
+    ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy - 5);
+    ctx.moveTo(cx, cy + 5);  ctx.lineTo(cx, cy + 14);
+    ctx.stroke();
+
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 200, 50, 0.9)';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 200, 50, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    const edgeY = cy < screenPin.y ? cy + R : cy - R;
+    ctx.beginPath();
+    ctx.moveTo(cx, edgeY);
+    ctx.lineTo(screenPin.x, screenPin.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
     ctx.restore();
   }
 }

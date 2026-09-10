@@ -13,6 +13,10 @@ export class RegionSelectTool {
 
   activate() {}
 
+  hitTest() {
+    return true;
+  }
+
   deactivate() {
     this._dragging = false;
     this._startMap = null;
