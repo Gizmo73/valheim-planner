@@ -3,6 +3,44 @@ import { Asset } from './Asset.js';
 const TILE_PX = 64;
 const textureCache = {};
 
+function drawDirectionArrow(ctx, centerX, centerY, angleDegrees, length = 24) {
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate((angleDegrees * Math.PI) / 180);
+
+  const headSize = length * 0.4;
+  const halfLen = length / 2;
+
+  // Path definition for a clean downward-pointing arrow
+  const path = new Path2D();
+  path.moveTo(0, halfLen);                            // Arrow tip
+  path.lineTo(-headSize, halfLen - headSize);         // Left head wing
+  path.lineTo(-headSize * 0.4, halfLen - headSize);   // Left inner neck
+  path.lineTo(-headSize * 0.4, -halfLen);             // Top-left stem
+  path.lineTo(headSize * 0.4, -halfLen);              // Top-right stem
+  path.lineTo(headSize * 0.4, halfLen - headSize);    // Right inner neck
+  path.lineTo(headSize, halfLen - headSize);          // Right head wing
+  path.closePath();
+
+  // 1. Subtle drop shadow underneath
+  ctx.save();
+  ctx.translate(1.5, 2);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fill(path);
+  ctx.restore();
+
+  // 2. Gold Arrow Fill
+  ctx.fillStyle = 'rgba(255, 215, 0, 0.85)';
+  ctx.fill(path);
+
+  // 3. Crisp Outline
+  ctx.strokeStyle = '#1A130B';
+  ctx.lineWidth = 1.2;
+  ctx.stroke(path);
+
+  ctx.restore();
+}
+
 function drawShingleGrid(ctx, x, y, w, h, orientation = 'down') {
   ctx.save();
   ctx.beginPath();
@@ -98,9 +136,12 @@ function generateShingleTexture(variant) {
 
   if (variant === 'straight') {
     drawShingleGrid(ctx, 0, 0, w, h, 'down');
+    
+    // Downward arrow in the center
+    drawDirectionArrow(ctx, w / 2, h / 2, 0, 26);
 
   } else if (variant === 'inner-corner') {
-    // 1. Upper-left face (pointing down)
+    // 1. Upper-left face
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.lineTo(0, h);
@@ -109,7 +150,7 @@ function generateShingleTexture(variant) {
     drawShingleGrid(ctx, 0, 0, w, h, 'down');
     ctx.restore();
 
-    // 2. Lower-right face (rotated 90 deg pointing right)
+    // 2. Lower-right face
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(w, 0); ctx.lineTo(w, h); ctx.lineTo(0, h);
@@ -176,6 +217,10 @@ function generateShingleTexture(variant) {
 
     ctx.restore();
 
+    // Arrows indicating directional flow for both corner sides
+    drawDirectionArrow(ctx, w * 0.32, h * 0.32, 0, 20); // Top-left side points right
+    drawDirectionArrow(ctx, w * 0.68, h * 0.68, 90, 20);   // Bottom-right side points down
+
     // 5. "I" Badge Indicator
     ctx.save();
     ctx.fillStyle = 'rgba(15, 12, 10, 0.85)';
@@ -193,7 +238,7 @@ function generateShingleTexture(variant) {
     ctx.restore();
 
   } else if (variant === 'outer-corner') {
-    // 1. Lower-right face (pointing down)
+    // 1. Lower-right face
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(w, 0); ctx.lineTo(w, h); ctx.lineTo(0, h);
@@ -202,7 +247,7 @@ function generateShingleTexture(variant) {
     drawShingleGrid(ctx, 0, 0, w, h, 'down');
     ctx.restore();
 
-    // 2. Upper-left face (rotated 90 deg pointing right)
+    // 2. Upper-left face
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.lineTo(0, h);
@@ -235,6 +280,10 @@ function generateShingleTexture(variant) {
     ctx.moveTo(0, h); ctx.lineTo(w, 0);
     ctx.stroke();
 
+    // Arrows indicating directional flow for both corner sides
+    drawDirectionArrow(ctx, w * 0.32, h * 0.32, 90, 20);   // Top-left side points down
+    drawDirectionArrow(ctx, w * 0.68, h * 0.68, 0, 20); // Bottom-right side points right
+
     // 5. "O" Badge Indicator
     ctx.save();
     ctx.fillStyle = 'rgba(15, 12, 10, 0.85)';
@@ -261,6 +310,10 @@ function generateShingleTexture(variant) {
     ctx.strokeStyle = '#3D2612';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(0, h / 2 - 5, w, 10);
+
+    // Flow arrows on top and bottom sections
+    drawDirectionArrow(ctx, w / 2, h * 0.25, 180, 18); // Top section points up
+    drawDirectionArrow(ctx, w / 2, h * 0.75, 0, 18);   // Bottom section points down
   }
 
   textureCache[variant] = c;
