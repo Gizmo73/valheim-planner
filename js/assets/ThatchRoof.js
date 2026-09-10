@@ -4,68 +4,30 @@ const TILE_PX = 64;
 const textureCache = {};
 
 function drawThatchStrands(ctx, x, y, w, h, direction) {
-  // direction: 'down' = strands run top-to-bottom, 'right' = strands run left-to-right
   ctx.save();
   ctx.beginPath();
   ctx.rect(x, y, w, h);
   ctx.clip();
 
-  ctx.fillStyle = '#B89530';
+  // Base warm thatch color
+  ctx.fillStyle = '#C29B38';
   ctx.fillRect(x, y, w, h);
 
+  // Evenly spaced fine grain lines
+  const step = 3;
   if (direction === 'right') {
-    for (let cx = x; cx < x + w; cx += 3) {
-      const v = Math.random() * 12;
-      ctx.fillStyle = `rgba(${Math.random() > 0.5 ? 200 : 80}, ${Math.random() > 0.5 ? 160 : 60}, 0, ${v / 255})`;
-      ctx.fillRect(cx, y, 3, h);
-    }
-
-    ctx.strokeStyle = 'rgba(160, 130, 40, 0.10)';
-    ctx.lineWidth = 0.5;
-    for (let i = y - w; i < y + h + w; i += 3) {
-      ctx.beginPath();
-      ctx.moveTo(x, i);
-      ctx.lineTo(x + w, i + w * 0.15 + (Math.random() - 0.5) * 4);
-      ctx.stroke();
-    }
-
-    const bundleW = 20;
-    ctx.strokeStyle = 'rgba(100, 80, 20, 0.10)';
-    ctx.lineWidth = 1;
-    for (let bx = x + bundleW; bx < x + w; bx += bundleW) {
-      ctx.beginPath();
-      ctx.moveTo(bx, y);
-      for (let by = y; by < y + h; by += 8) {
-        ctx.lineTo(bx + (Math.random() - 0.5) * 1.5, by + 8);
-      }
-      ctx.stroke();
+    for (let cy = y; cy < y + h; cy += step) {
+      ctx.fillStyle = (cy % (step * 2) === 0) 
+        ? 'rgba(255, 235, 160, 0.35)' 
+        : 'rgba(50, 35, 10, 0.25)';
+      ctx.fillRect(x, cy, w, 1.5);
     }
   } else {
-    for (let cy = y; cy < y + h; cy += 3) {
-      const v = Math.random() * 12;
-      ctx.fillStyle = `rgba(${Math.random() > 0.5 ? 200 : 80}, ${Math.random() > 0.5 ? 160 : 60}, 0, ${v / 255})`;
-      ctx.fillRect(x, cy, w, 3);
-    }
-
-    ctx.strokeStyle = 'rgba(160, 130, 40, 0.10)';
-    ctx.lineWidth = 0.5;
-    for (let i = x - h; i < x + w + h; i += 3) {
-      ctx.beginPath();
-      ctx.moveTo(i, y);
-      ctx.lineTo(i + h * 0.15 + (Math.random() - 0.5) * 4, y + h);
-      ctx.stroke();
-    }
-
-    const bundleH = 20;
-    ctx.strokeStyle = 'rgba(100, 80, 20, 0.10)';
-    ctx.lineWidth = 1;
-    for (let by = y + bundleH; by < y + h; by += bundleH) {
-      ctx.beginPath();
-      ctx.moveTo(x, by);
-      for (let bx = x; bx < x + w; bx += 8) {
-        ctx.lineTo(bx + 8, by + (Math.random() - 0.5) * 1.5);
-      }
-      ctx.stroke();
+    for (let cx = x; cx < x + w; cx += step) {
+      ctx.fillStyle = (cx % (step * 2) === 0) 
+        ? 'rgba(255, 235, 160, 0.35)' 
+        : 'rgba(50, 35, 10, 0.25)';
+      ctx.fillRect(cx, y, 1.5, h);
     }
   }
 
@@ -83,89 +45,155 @@ function generateThatchTexture(variant) {
 
   if (variant === 'straight') {
     drawThatchStrands(ctx, 0, 0, w, h, 'down');
+
   } else if (variant === 'inner-corner') {
-    // Bottom-left is the inner corner: strands run down on the left half,
-    // strands run right on the bottom half, meeting at bottom-left
+    // 1. Upper-left triangle (vertical strands)
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.clip();
     drawThatchStrands(ctx, 0, 0, w, h, 'down');
-    drawThatchStrands(ctx, 0, h / 2, w, h / 2, 'right');
+    ctx.restore();
 
-    // Diagonal seam where directions meet
-    ctx.strokeStyle = 'rgba(80, 60, 10, 0.3)';
-    ctx.lineWidth = 2;
+    // 2. Lower-right triangle (horizontal strands)
+    ctx.save();
     ctx.beginPath();
-    ctx.moveTo(0, h);
-    ctx.lineTo(w, h / 2);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
-    ctx.lineWidth = 1;
+    ctx.moveTo(w, 0); ctx.lineTo(w, h); ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.clip();
+    drawThatchStrands(ctx, 0, 0, w, h, 'right');
+    ctx.restore();
+
+    // 3. Dual Valley Crease Shadows (Uniform along the entire seam)
+    const shadowDist = 18;
+
+    // A. Upper-Left Shadow (casting inward perpendicular to seam)
+    ctx.save();
     ctx.beginPath();
-    ctx.moveTo(0, h - 1);
-    ctx.lineTo(w, h / 2 - 1);
+    ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.clip();
+
+    const shadowGradLeft = ctx.createLinearGradient(0, h, -shadowDist, h - shadowDist);
+    shadowGradLeft.addColorStop(0, 'rgba(0, 0, 0, 0.70)');
+    shadowGradLeft.addColorStop(0.5, 'rgba(0, 0, 0, 0.30)');
+    shadowGradLeft.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+
+    ctx.fillStyle = shadowGradLeft;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+
+    // B. Lower-Right Shadow (casting inward perpendicular to seam)
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(w, 0); ctx.lineTo(w, h); ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.clip();
+
+    const shadowGradRight = ctx.createLinearGradient(0, h, shadowDist, h + shadowDist);
+    shadowGradRight.addColorStop(0, 'rgba(0, 0, 0, 0.70)');
+    shadowGradRight.addColorStop(0.5, 'rgba(0, 0, 0, 0.30)');
+    shadowGradRight.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+
+    ctx.fillStyle = shadowGradRight;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+
+    // C. Center Deep Crease Contact Line
+    ctx.strokeStyle = 'rgba(15, 8, 0, 0.9)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(0, h); ctx.lineTo(w, 0);
     ctx.stroke();
+
+    // 4. "I" Badge Indicator
+    ctx.save();
+    ctx.fillStyle = 'rgba(20, 15, 5, 0.75)';
+    ctx.beginPath();
+    ctx.arc(w - 18, 18, 12, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('I', w - 18, 18.5);
+    ctx.restore();
+
   } else if (variant === 'outer-corner') {
-    // Bottom-left is the outer corner: strands fan out from corner
-    drawThatchStrands(ctx, 0, 0, w, h / 2, 'down');
-    drawThatchStrands(ctx, w / 2, h / 2, w / 2, h / 2, 'down');
-    drawThatchStrands(ctx, 0, h / 2, w / 2, h / 2, 'right');
+    // 1. Lower-right triangle (vertical strands)
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(w, 0); ctx.lineTo(w, h); ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.clip();
+    drawThatchStrands(ctx, 0, 0, w, h, 'down');
+    ctx.restore();
 
-    // Diagonal seam at corner
-    ctx.strokeStyle = 'rgba(80, 60, 10, 0.3)';
+    // 2. Upper-left triangle (horizontal strands)
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.clip();
+    drawThatchStrands(ctx, 0, 0, w, h, 'right');
+    ctx.restore();
+
+    // 3. Drop shadow cast strictly onto lower-right face
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, h); ctx.lineTo(w, 0); ctx.lineTo(w, h);
+    ctx.closePath();
+    ctx.clip();
+
+    const shadowDist = 24;
+    const shadowGrad = ctx.createLinearGradient(0, h, shadowDist, h + shadowDist);
+    shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.65)');
+    shadowGrad.addColorStop(0.4, 'rgba(0, 0, 0, 0.25)');
+    shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+
+    ctx.fillStyle = shadowGrad;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+
+    // 4. Highlight ridge crest
+    ctx.strokeStyle = 'rgba(255, 245, 200, 0.8)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, h / 2);
-    ctx.lineTo(w / 2, h);
+    ctx.moveTo(0, h); ctx.lineTo(w, 0);
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
-    ctx.lineWidth = 1;
+
+    // 5. "O" Badge Indicator
+    ctx.save();
+    ctx.fillStyle = 'rgba(20, 15, 5, 0.75)';
     ctx.beginPath();
-    ctx.moveTo(0, h / 2 + 1);
-    ctx.lineTo(w / 2 + 1, h);
+    ctx.arc(w - 18, 18, 12, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
+
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('O', w - 18, 18.5);
+    ctx.restore();
+
   } else if (variant === 'ridge') {
-    // Top half strands go down, bottom half strands go down (opposite sides of ridge)
     drawThatchStrands(ctx, 0, 0, w, h / 2 - 2, 'down');
     drawThatchStrands(ctx, 0, h / 2 + 2, w, h / 2 - 2, 'down');
-
-    // Ridge board - a darker wooden strip across the center
-    ctx.fillStyle = '#7A5C18';
+    ctx.fillStyle = '#6B4E1B';
     ctx.fillRect(0, h / 2 - 3, w, 6);
-    // Wood grain on ridge board
-    ctx.strokeStyle = 'rgba(60, 45, 10, 0.25)';
-    ctx.lineWidth = 0.5;
-    for (let gx = 0; gx < w; gx += 6) {
-      ctx.beginPath();
-      ctx.moveTo(gx, h / 2 - 3);
-      ctx.lineTo(gx + (Math.random() - 0.5) * 2, h / 2 + 3);
-      ctx.stroke();
-    }
-    // Highlight and shadow edges
-    ctx.strokeStyle = 'rgba(255, 220, 150, 0.15)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, h / 2 - 3);
-    ctx.lineTo(w, h / 2 - 3);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-    ctx.beginPath();
-    ctx.moveTo(0, h / 2 + 3);
-    ctx.lineTo(w, h / 2 + 3);
-    ctx.stroke();
   }
 
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
-
   textureCache[variant] = c;
-  return c;
-}
-
-function makeThumbnail(variant) {
-  const tex = generateThatchTexture(variant);
-  const c = document.createElement('canvas');
-  c.width = 48; c.height = 48;
-  const ctx = c.getContext('2d');
-  ctx.drawImage(tex, 2, 2, 44, 44);
   return c;
 }
 
