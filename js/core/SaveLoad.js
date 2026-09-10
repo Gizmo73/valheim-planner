@@ -21,6 +21,8 @@ export class SaveLoad {
       width: wl.width,
       height: wl.height,
       visible: wl.visible,
+      gridAnchorX: wl.gridAnchorX,
+      gridAnchorY: wl.gridAnchorY,
     }));
 
     const assets = this.assetLayer.assets.map(a => a.serialize());
@@ -105,6 +107,8 @@ export class SaveLoad {
         );
         wl.name = wlData.name;
         wl.visible = wlData.visible;
+        if (wlData.gridAnchorX != null) wl.gridAnchorX = wlData.gridAnchorX;
+        if (wlData.gridAnchorY != null) wl.gridAnchorY = wlData.gridAnchorY;
         this.layerManager.addLayer(wl);
         layerMap[wlData.id] = wl;
       }

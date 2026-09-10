@@ -10,6 +10,8 @@ export class WorkingLayer {
     this.originY = originY;
     this.width = width;
     this.height = height;
+    this.gridAnchorX = null;
+    this.gridAnchorY = null;
   }
 
   get _mpp() {
@@ -67,18 +69,21 @@ export class WorkingLayer {
 
     if (visLeft >= visRight || visTop >= visBottom) return;
 
+    const anchorX = this.gridAnchorX != null ? this.gridAnchorX : this.originX;
+    const anchorY = this.gridAnchorY != null ? this.gridAnchorY : this.originY;
+
     if (drawMinor) {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
       ctx.lineWidth = 0.5 / viewport.zoom;
       ctx.beginPath();
 
-      const startX = this.originX + Math.ceil((visLeft - this.originX) / cellMap) * cellMap;
+      const startX = anchorX + Math.ceil((visLeft - anchorX) / cellMap) * cellMap;
       for (let x = startX; x <= visRight; x += cellMap) {
         ctx.moveTo(x, visTop);
         ctx.lineTo(x, visBottom);
       }
 
-      const startY = this.originY + Math.ceil((visTop - this.originY) / cellMap) * cellMap;
+      const startY = anchorY + Math.ceil((visTop - anchorY) / cellMap) * cellMap;
       for (let y = startY; y <= visBottom; y += cellMap) {
         ctx.moveTo(visLeft, y);
         ctx.lineTo(visRight, y);
@@ -92,13 +97,13 @@ export class WorkingLayer {
       ctx.lineWidth = 1 / viewport.zoom;
       ctx.beginPath();
 
-      const startX = this.originX + Math.ceil((visLeft - this.originX) / majorCellMap) * majorCellMap;
+      const startX = anchorX + Math.ceil((visLeft - anchorX) / majorCellMap) * majorCellMap;
       for (let x = startX; x <= visRight; x += majorCellMap) {
         ctx.moveTo(x, visTop);
         ctx.lineTo(x, visBottom);
       }
 
-      const startY = this.originY + Math.ceil((visTop - this.originY) / majorCellMap) * majorCellMap;
+      const startY = anchorY + Math.ceil((visTop - anchorY) / majorCellMap) * majorCellMap;
       for (let y = startY; y <= visBottom; y += majorCellMap) {
         ctx.moveTo(visLeft, y);
         ctx.lineTo(visRight, y);

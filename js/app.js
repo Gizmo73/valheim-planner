@@ -13,6 +13,7 @@ import { RegionSelectTool } from './tools/RegionSelectTool.js';
 import { PlaceTool } from './tools/PlaceTool.js';
 import { SelectTool } from './tools/SelectTool.js';
 import { CalibrationTool } from './tools/CalibrationTool.js';
+import { WorkingLayer } from './layers/WorkingLayer.js';
 import { Toolbar } from './ui/Toolbar.js';
 import { LayerPanel } from './ui/LayerPanel.js';
 import { AssetPanel } from './ui/AssetPanel.js';
@@ -140,6 +141,19 @@ bus.on('calibration:apply', () => {
     mapScale.locked = false;
     mapScale.metresPerPixel = result.metresPerPixel;
     viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
+
+    if (mapScale.mapMode === 'local') {
+      const existing = layerManager.getByType('working');
+      for (const wl of existing) layerManager.removeLayer(wl.id);
+      const wl = new WorkingLayer(0, 0, mapLayer.width, mapLayer.height, bus, mapScale);
+      wl.name = 'Working Area 1';
+      if (result.refRect) {
+        wl.gridAnchorX = result.refRect.x;
+        wl.gridAnchorY = result.refRect.y;
+      }
+      layerManager.addLayer(wl);
+    }
+
     toolManager.activate('select');
   }
 });

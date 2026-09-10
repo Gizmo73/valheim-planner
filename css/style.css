@@ -489,8 +489,8 @@ html, body {
 #mobile-controls {
   position: absolute;
   bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 12px;
+  right: 12px;
   display: flex;
   gap: 4px;
   align-items: center;
@@ -500,6 +500,14 @@ html, body {
   padding: 6px 10px;
   z-index: 50;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+#mobile-controls::-webkit-scrollbar {
+  display: none;
 }
 
 #mobile-controls.hidden {
@@ -520,6 +528,7 @@ html, body {
   font-size: 16px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
 .mobile-btn:active {
@@ -541,6 +550,7 @@ html, body {
   height: 28px;
   background: var(--border);
   margin: 0 2px;
+  flex-shrink: 0;
 }
 
 /* Help panel */

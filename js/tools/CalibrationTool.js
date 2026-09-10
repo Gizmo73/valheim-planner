@@ -33,6 +33,7 @@ export class CalibrationTool {
     this._startCenter = null;
     this._dragIndex = -1;
     this._startPin = null;
+    this._pinDampening = 1 / 4;
 
     bus.on('scale:changed', () => {
       if (!this._updatingFromCircle && this._worldInitialized && this._mode === 'world') {
@@ -172,9 +173,10 @@ export class CalibrationTool {
         this.bus.emit('render:request');
       }
     } else {
+      const d = this._pinDampening;
       this._pins[this._dragIndex] = {
-        x: this._startPin.x + (map.x - this._dragStart.x),
-        y: this._startPin.y + (map.y - this._dragStart.y),
+        x: this._startPin.x + (map.x - this._dragStart.x) * d,
+        y: this._startPin.y + (map.y - this._dragStart.y) * d,
       };
       this.bus.emit('render:request');
     }
