@@ -140,6 +140,10 @@ export class PerspectiveTransform {
     }
 
     outCtx.putImageData(outImg, 0, 0);
-    return { canvas: outCanvas, metresPerPixel: 1 / ppm };
+    return {
+      canvas: outCanvas,
+      metresPerPixel: 1 / ppm,
+      refRect: { x: cx - tw / 2, y: cy - th / 2, w: tw, h: th },
+    };
   }
 }

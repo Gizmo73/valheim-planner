@@ -147,6 +147,10 @@ bus.on('calibration:apply', () => {
       for (const wl of existing) layerManager.removeLayer(wl.id);
       const wl = new WorkingLayer(0, 0, mapLayer.width, mapLayer.height, bus, mapScale);
       wl.name = 'Working Area 1';
+      if (result.refRect) {
+        wl.gridAnchorX = result.refRect.x;
+        wl.gridAnchorY = result.refRect.y;
+      }
       layerManager.addLayer(wl);
     }
 
