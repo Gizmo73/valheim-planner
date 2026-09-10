@@ -1,5 +1,5 @@
 import { Asset } from './Asset.js';
-import { generateCobblestoneBase } from './StoneFloor.js';
+import { generateStoneBase } from './StoneFloor.js';
 
 const TILE_PX = 64;
 let cachedTexture = null;
@@ -7,7 +7,7 @@ let cachedTexture = null;
 function generateTexture() {
   if (cachedTexture) return cachedTexture;
   const w = 2 * TILE_PX, h = 2 * TILE_PX;
-  const c = generateCobblestoneBase(w, h);
+  const c = generateStoneBase(w, h);
   const ctx = c.getContext('2d');
 
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';

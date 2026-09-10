@@ -3,50 +3,66 @@ import { Asset } from './Asset.js';
 const TILE_PX = 64;
 const textureCache = {};
 
-function roundedRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
-export function generateCobblestoneBase(w, h) {
+export function generateStoneBase(w, h) {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
   const ctx = c.getContext('2d');
 
-  ctx.fillStyle = '#4E4A44';
+  // Smooth grey base
+  ctx.fillStyle = '#5A5650';
   ctx.fillRect(0, 0, w, h);
 
-  const sw = 18, sh = 14, gap = 2.5;
-  for (let row = -1; row <= Math.ceil(h / (sh + gap)); row++) {
-    const offset = (row % 2) * ((sw + gap) * 0.5);
-    for (let col = -1; col <= Math.ceil(w / (sw + gap)); col++) {
-      const bx = col * (sw + gap) + offset + (Math.random() - 0.5) * 2;
-      const by = row * (sh + gap) + (Math.random() - 0.5) * 1.5;
-      const bw = sw + (Math.random() - 0.5) * 4;
-      const bh = sh + (Math.random() - 0.5) * 3;
-      const shade = 95 + Math.floor(Math.random() * 35);
+  // Very subtle tonal variation - large soft patches
+  for (let i = 0; i < 8; i++) {
+    const px = Math.random() * w;
+    const py = Math.random() * h;
+    const pr = 15 + Math.random() * 30;
+    const grad = ctx.createRadialGradient(px, py, 0, px, py, pr);
+    const v = Math.random() > 0.5 ? 255 : 0;
+    grad.addColorStop(0, `rgba(${v}, ${v}, ${v}, 0.025)`);
+    grad.addColorStop(1, 'rgba(128, 128, 128, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+  }
 
-      ctx.fillStyle = `rgb(${shade - 3}, ${shade}, ${shade - 5})`;
-      roundedRect(ctx, bx, by, bw, bh, 3);
-      ctx.fill();
+  // Very faint surface noise
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const noise = (Math.random() - 0.5) * 6;
+    data[i] += noise;
+    data[i + 1] += noise;
+    data[i + 2] += noise;
+  }
+  ctx.putImageData(imgData, 0, 0);
 
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-      roundedRect(ctx, bx + 2, by + 1, bw - 4, bh * 0.4, 2);
-      ctx.fill();
+  // Subtle mortar lines between blocks - very low contrast
+  const blockW = 24 + Math.random() * 8;
+  const blockH = 16 + Math.random() * 6;
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)';
+  ctx.lineWidth = 0.5;
+  for (let row = 0; row <= Math.ceil(h / blockH); row++) {
+    const y = row * blockH;
+    const offset = (row % 2) * (blockW * 0.5);
+    // Horizontal mortar line
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    for (let x = 0; x < w; x += 6) {
+      ctx.lineTo(x + 6, y + (Math.random() - 0.5) * 0.5);
+    }
+    ctx.stroke();
+    // Vertical mortar lines
+    for (let col = 0; col <= Math.ceil(w / blockW); col++) {
+      const x = col * blockW + offset;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + (Math.random() - 0.5) * 0.5, y + blockH);
+      ctx.stroke();
     }
   }
 
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.10)';
   ctx.lineWidth = 1;
   ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
 
@@ -56,7 +72,7 @@ export function generateCobblestoneBase(w, h) {
 function generateTexture(tilesW, tilesH) {
   const key = `${tilesW}x${tilesH}`;
   if (textureCache[key]) return textureCache[key];
-  const c = generateCobblestoneBase(tilesW * TILE_PX, tilesH * TILE_PX);
+  const c = generateStoneBase(tilesW * TILE_PX, tilesH * TILE_PX);
   textureCache[key] = c;
   return c;
 }
