@@ -31,12 +31,17 @@ export class Toolbar {
 
     this._el.appendChild(group);
 
-    const sep = document.createElement('div');
-    sep.className = 'toolbar-sep';
-    this._el.appendChild(sep);
+    const sep1 = document.createElement('div');
+    sep1.className = 'toolbar-sep';
+    this._el.appendChild(sep1);
+
+    // File group: Upload, Save, Load
+    const fileGroup = document.createElement('div');
+    fileGroup.className = 'toolbar-group';
 
     const uploadBtn = document.createElement('button');
     uploadBtn.className = 'toolbar-btn';
+    uploadBtn.title = 'Upload Map';
     uploadBtn.innerHTML = '<span class="toolbar-icon">📁</span><span class="toolbar-label">Upload Map</span>';
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -49,8 +54,35 @@ export class Toolbar {
         fileInput.value = '';
       }
     });
-    this._el.appendChild(uploadBtn);
-    this._el.appendChild(fileInput);
+    fileGroup.appendChild(uploadBtn);
+    fileGroup.appendChild(fileInput);
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'toolbar-btn';
+    saveBtn.title = 'Save Project';
+    saveBtn.innerHTML = '<span class="toolbar-icon">💾</span><span class="toolbar-label">Save</span>';
+    saveBtn.addEventListener('click', () => this.bus.emit('project:save'));
+    fileGroup.appendChild(saveBtn);
+
+    const loadBtn = document.createElement('button');
+    loadBtn.className = 'toolbar-btn';
+    loadBtn.title = 'Load Project';
+    loadBtn.innerHTML = '<span class="toolbar-icon">📂</span><span class="toolbar-label">Load</span>';
+    const loadInput = document.createElement('input');
+    loadInput.type = 'file';
+    loadInput.accept = '.json';
+    loadInput.style.display = 'none';
+    loadBtn.addEventListener('click', () => loadInput.click());
+    loadInput.addEventListener('change', () => {
+      if (loadInput.files[0]) {
+        this.bus.emit('project:load', loadInput.files[0]);
+        loadInput.value = '';
+      }
+    });
+    fileGroup.appendChild(loadBtn);
+    fileGroup.appendChild(loadInput);
+
+    this._el.appendChild(fileGroup);
 
     // Sidebar toggle (visible on mobile)
     const sidebarBtn = document.createElement('button');

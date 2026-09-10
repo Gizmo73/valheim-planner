@@ -8,12 +8,14 @@ export class MapLayer {
     this.image = null;
     this.width = 0;
     this.height = 0;
+    this._dataURL = null;
   }
 
   loadFromFile(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
+        this._dataURL = e.target.result;
         const img = new Image();
         img.onload = () => {
           this.image = img;
@@ -29,6 +31,27 @@ export class MapLayer {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  }
+
+  loadFromDataURL(dataURL) {
+    return new Promise((resolve, reject) => {
+      this._dataURL = dataURL;
+      const img = new Image();
+      img.onload = () => {
+        this.image = img;
+        this.width = img.naturalWidth;
+        this.height = img.naturalHeight;
+        this.bus.emit('map:loaded', { width: this.width, height: this.height });
+        this.bus.emit('render:request');
+        resolve();
+      };
+      img.onerror = reject;
+      img.src = dataURL;
+    });
+  }
+
+  getDataURL() {
+    return this._dataURL;
   }
 
   render(ctx, viewport, canvasWidth, canvasHeight) {

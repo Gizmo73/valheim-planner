@@ -11,7 +11,9 @@ export class Asset {
     this.rotation = 0;
     this.workingLayer = null;
     this.mapScale = null;
+    this.groupId = 'default';
     this._shape = 'rect';
+    this._snapAlignment = 'corner';
   }
 
   get _mpp() {
@@ -34,6 +36,13 @@ export class Asset {
 
   get mapHeight() {
     return this.heightM / this._mpp;
+  }
+
+  getGridSnapOffset() {
+    if (this._snapAlignment === 'center') {
+      return { x: -this.widthM / 2, y: -this.heightM / 2 };
+    }
+    return { x: 0, y: 0 };
   }
 
   getLocalSnapOffsets() {
@@ -151,6 +160,17 @@ export class Asset {
     }
 
     ctx.restore();
+  }
+
+  serialize() {
+    return {
+      type: this.type,
+      gridX: this.gridX,
+      gridY: this.gridY,
+      rotation: this.rotation,
+      groupId: this.groupId,
+      workingLayerId: this.workingLayer ? this.workingLayer.id : null,
+    };
   }
 
   draw(ctx, x, y, w, h) {

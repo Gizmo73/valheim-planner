@@ -1,6 +1,6 @@
 import { Asset } from './Asset.js';
 
-const BEAM_WIDTH_M = 0.1;
+const BEAM_WIDTH_M = 0.5;
 
 let cachedTex1m = null;
 let cachedTex2m = null;
@@ -32,12 +32,12 @@ function generateBeamTexture(w, h) {
 }
 
 function getTexture1m() {
-  if (!cachedTex1m) cachedTex1m = generateBeamTexture(48, 6);
+  if (!cachedTex1m) cachedTex1m = generateBeamTexture(48, 16);
   return cachedTex1m;
 }
 
 function getTexture2m() {
-  if (!cachedTex2m) cachedTex2m = generateBeamTexture(48, 6);
+  if (!cachedTex2m) cachedTex2m = generateBeamTexture(64, 16);
   return cachedTex2m;
 }
 
@@ -62,6 +62,7 @@ function makeThumbnail(texFn, srcW, srcH) {
 export class WoodBeam1m extends Asset {
   constructor() {
     super('wood-beam-1m', 1, BEAM_WIDTH_M);
+    this._snapAlignment = 'center';
   }
 
   getLocalSnapOffsets() {
@@ -74,13 +75,14 @@ export class WoodBeam1m extends Asset {
   }
 
   static getThumbnail() {
-    return makeThumbnail(getTexture1m, 48, 6);
+    return makeThumbnail(getTexture1m, 48, 16);
   }
 }
 
 export class WoodBeam2m extends Asset {
   constructor() {
     super('wood-beam-2m', 2, BEAM_WIDTH_M);
+    this._snapAlignment = 'center';
   }
 
   getLocalSnapOffsets() {
@@ -93,13 +95,14 @@ export class WoodBeam2m extends Asset {
   }
 
   static getThumbnail() {
-    return makeThumbnail(getTexture2m, 48, 6);
+    return makeThumbnail(getTexture2m, 64, 16);
   }
 }
 
 export class WoodBeamVertical extends Asset {
   constructor() {
     super('wood-beam-vertical', BEAM_WIDTH_M, BEAM_WIDTH_M);
+    this._snapAlignment = 'center';
   }
 
   getLocalSnapOffsets() {

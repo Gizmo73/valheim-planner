@@ -99,6 +99,7 @@ function makeThumbnail(texFn, srcW, srcH) {
 export class LogBeam2m extends Asset {
   constructor() {
     super('log-beam-2m', 2, BEAM_WIDTH_M);
+    this._snapAlignment = 'center';
   }
 
   getLocalSnapOffsets() {
@@ -118,6 +119,7 @@ export class LogBeam2m extends Asset {
 export class LogBeam4m extends Asset {
   constructor() {
     super('log-beam-4m', 4, BEAM_WIDTH_M);
+    this._snapAlignment = 'center';
   }
 
   getLocalSnapOffsets() {
@@ -138,6 +140,7 @@ export class LogPole extends Asset {
   constructor() {
     super('log-pole', BEAM_WIDTH_M, BEAM_WIDTH_M);
     this._shape = 'circle';
+    this._snapAlignment = 'center';
   }
 
   getLocalSnapOffsets() {

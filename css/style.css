@@ -224,7 +224,7 @@ html, body {
 }
 
 #layer-list {
-  max-height: 200px;
+  max-height: 280px;
   overflow-y: auto;
 }
 
@@ -272,6 +272,93 @@ html, body {
 .layer-delete:hover {
   color: #ff6666;
   background: rgba(255, 0, 0, 0.1);
+}
+
+/* Asset group header */
+.layer-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  background: var(--bg-panel-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.layer-add-group {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 6px;
+  line-height: 1.4;
+}
+
+.layer-add-group:hover {
+  background: var(--accent-dim);
+}
+
+.group-row {
+  background: rgba(0, 200, 255, 0.03);
+}
+
+.layer-controls {
+  display: flex;
+  gap: 2px;
+}
+
+.layer-order-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 9px;
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+.layer-order-btn:hover {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.layer-rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: 1px 4px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+}
+
+/* Asset size edit */
+.asset-size-input {
+  width: 60px;
+  padding: 1px 4px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 10px;
+  outline: none;
+}
+
+.asset-size {
+  cursor: pointer;
+}
+
+.asset-size:hover {
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 /* Asset panel */

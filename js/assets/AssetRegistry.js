@@ -14,9 +14,9 @@ import { ShingleStraight, ShingleInnerCorner, ShingleOuterCorner, ShingleRidge }
 const registry = [
   { type: 'wood-plank-floor', name: 'Wood Floor 2x2', cls: WoodPlankFloor, widthM: 2, heightM: 2, category: 'Wood' },
   { type: 'wood-plank-floor-1x1', name: 'Wood Floor 1x1', cls: WoodPlankFloor1x1, widthM: 1, heightM: 1, category: 'Wood' },
-  { type: 'wood-beam-2m', name: 'Wood Beam 2m', cls: WoodBeam2m, widthM: 2, heightM: 0.1, category: 'Wood' },
-  { type: 'wood-beam-1m', name: 'Wood Beam 1m', cls: WoodBeam1m, widthM: 1, heightM: 0.1, category: 'Wood' },
-  { type: 'wood-beam-vertical', name: 'Vertical Beam', cls: WoodBeamVertical, widthM: 0.1, heightM: 0.1, category: 'Wood' },
+  { type: 'wood-beam-2m', name: 'Wood Beam 2m', cls: WoodBeam2m, widthM: 2, heightM: 0.5, category: 'Wood' },
+  { type: 'wood-beam-1m', name: 'Wood Beam 1m', cls: WoodBeam1m, widthM: 1, heightM: 0.5, category: 'Wood' },
+  { type: 'wood-beam-vertical', name: 'Vertical Beam', cls: WoodBeamVertical, widthM: 0.5, heightM: 0.5, category: 'Wood' },
   { type: 'log-beam-2m', name: 'Log Beam 2m', cls: LogBeam2m, widthM: 2, heightM: 0.2, category: 'Wood' },
   { type: 'log-beam-4m', name: 'Log Beam 4m', cls: LogBeam4m, widthM: 4, heightM: 0.2, category: 'Wood' },
   { type: 'log-pole', name: 'Log Pole', cls: LogPole, widthM: 0.2, heightM: 0.2, category: 'Wood' },
@@ -54,6 +54,10 @@ export function getAssetTypes() {
   return registry;
 }
 
+export function getEntry(type) {
+  return registry.find(r => r.type === type) || null;
+}
+
 export function getCategories() {
   const cats = [];
   const seen = new Set();
@@ -70,4 +74,11 @@ export function createAsset(type) {
   const entry = registry.find(r => r.type === type);
   if (!entry) return null;
   return new entry.cls();
+}
+
+export function updateAssetSize(type, widthM, heightM) {
+  const entry = registry.find(r => r.type === type);
+  if (!entry) return;
+  entry.widthM = widthM;
+  entry.heightM = heightM;
 }

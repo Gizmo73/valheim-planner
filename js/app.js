@@ -2,6 +2,7 @@ import { EventBus } from './core/EventBus.js';
 import { Viewport } from './core/Viewport.js';
 import { MapScale } from './core/MapScale.js';
 import { Renderer } from './core/Renderer.js';
+import { SaveLoad } from './core/SaveLoad.js';
 import { LayerManager } from './layers/LayerManager.js';
 import { MapLayer } from './layers/MapLayer.js';
 import { AssetLayer } from './layers/AssetLayer.js';
@@ -45,15 +46,29 @@ toolManager.register('calibrate', calibrationTool);
 const renderer = new Renderer(canvas, viewport, layerManager, toolManager, bus);
 
 const toolbar = new Toolbar(toolManager, bus);
-const layerPanel = new LayerPanel(layerManager, bus);
+const layerPanel = new LayerPanel(layerManager, assetLayer, bus);
 const assetPanel = new AssetPanel(bus);
 const calibrationPanel = new CalibrationPanel(mapScale, bus);
 const mobileControls = new MobileControls(toolManager, bus);
+
+const saveLoad = new SaveLoad(layerManager, mapLayer, assetLayer, mapScale, viewport, renderer, bus);
 
 bus.on('file:selected', async (file) => {
   await mapLayer.loadFromFile(file);
   viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
   document.getElementById('empty-state').style.display = 'none';
+});
+
+bus.on('project:save', () => {
+  saveLoad.save();
+});
+
+bus.on('project:load', async (file) => {
+  try {
+    await saveLoad.load(file);
+  } catch (err) {
+    alert('Failed to load project: ' + err.message);
+  }
 });
 
 bus.on('asset:startPlace', (type) => {
