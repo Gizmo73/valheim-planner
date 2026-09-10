@@ -5,6 +5,7 @@ export class MobileControls {
     this._currentTool = null;
     this._hasSelection = false;
     this._fillActive = false;
+    this._mapMode = 'local';
     this._el = document.getElementById('mobile-controls');
     if (!this._el) return;
 
@@ -28,6 +29,10 @@ export class MobileControls {
         this._buttons['fill'].classList.toggle('active', active);
       }
     });
+    bus.on('calibration:modeChanged', (mode) => {
+      this._mapMode = mode;
+      this._updateVisibility();
+    });
   }
 
   _init() {
@@ -44,8 +49,8 @@ export class MobileControls {
       { id: 'duplicate', label: 'Dup', title: 'Duplicate', group: 'select-only' },
       { id: 'delete', label: 'Del', title: 'Delete', group: 'select-only' },
       { id: 'group', label: 'Grp', title: 'Group selected', group: 'select-only' },
-      { id: 'sep3', sep: true, group: 'select-any' },
-      { id: 'region', label: '⬚', title: 'New working area', group: 'select-any' },
+      { id: 'sep3', sep: true, group: 'world-select' },
+      { id: 'region', label: '⬚', title: 'New working area', group: 'world-select' },
     ];
 
     this._buttons = {};
@@ -135,6 +140,8 @@ export class MobileControls {
 
     this._el.classList.toggle('hidden', !show);
 
+    const isWorld = this._mapMode === 'world';
+
     for (const [id, btn] of Object.entries(this._buttons)) {
       const group = btn.dataset.group;
       let visible = show;
@@ -144,6 +151,8 @@ export class MobileControls {
         visible = isPlace;
       } else if (group === 'select-any') {
         visible = isSelect;
+      } else if (group === 'world-select') {
+        visible = isSelect && isWorld;
       }
       btn.classList.toggle('hidden', !visible);
     }
@@ -154,6 +163,8 @@ export class MobileControls {
         sep.classList.toggle('hidden', !isSelect);
       } else if (group === 'place-only') {
         sep.classList.toggle('hidden', !isPlace);
+      } else if (group === 'world-select') {
+        sep.classList.toggle('hidden', !(isSelect && isWorld));
       }
     }
   }

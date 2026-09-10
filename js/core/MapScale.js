@@ -5,7 +5,7 @@ export class MapScale {
     this.bus = bus;
     this._metresPerPixel = 4;
     this._locked = false;
-    this._mapMode = 'world';
+    this._mapMode = 'local';
     this._tileW = 2;
     this._tileH = 2;
   }
