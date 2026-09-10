@@ -59,6 +59,7 @@ function wallAsset(type, lengthM, thickM) {
   return class extends Asset {
     constructor() {
       super(type, lengthM, thickM);
+      this._snapAlignment = 'center';
     }
 
     getLocalSnapOffsets() {

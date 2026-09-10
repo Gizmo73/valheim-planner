@@ -1,4 +1,4 @@
-import { getAssetTypes } from '../assets/AssetRegistry.js';
+import { getAssetTypes, updateAssetSize } from '../assets/AssetRegistry.js';
 
 export class AssetPanel {
   constructor(bus) {
@@ -45,6 +45,11 @@ export class AssetPanel {
       const size = document.createElement('div');
       size.className = 'asset-size';
       size.textContent = `${t.widthM}x${t.heightM}m`;
+      size.title = 'Click to edit size';
+      size.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._editSize(t, size);
+      });
 
       const info = document.createElement('div');
       info.className = 'asset-info';
@@ -61,6 +66,55 @@ export class AssetPanel {
       this._el.appendChild(item);
       this._itemsByType[t.type] = item;
     }
+  }
+
+  _editSize(entry, sizeEl) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'asset-size-input';
+    input.value = `${entry.widthM}x${entry.heightM}`;
+    sizeEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const finish = () => {
+      const val = input.value.trim();
+      const match = val.match(/^([\d.]+)\s*x\s*([\d.]+)$/);
+      if (match) {
+        const w = parseFloat(match[1]);
+        const h = parseFloat(match[2]);
+        if (w > 0 && h > 0) {
+          updateAssetSize(entry.type, w, h);
+          entry.widthM = w;
+          entry.heightM = h;
+        }
+      }
+      const newSize = document.createElement('div');
+      newSize.className = 'asset-size';
+      newSize.textContent = `${entry.widthM}x${entry.heightM}m`;
+      newSize.title = 'Click to edit size';
+      newSize.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._editSize(entry, newSize);
+      });
+      input.replaceWith(newSize);
+    };
+
+    input.addEventListener('blur', finish);
+    input.addEventListener('keydown', (e) => {
+      if (e.code === 'Enter') { input.blur(); }
+      if (e.code === 'Escape') {
+        const newSize = document.createElement('div');
+        newSize.className = 'asset-size';
+        newSize.textContent = `${entry.widthM}x${entry.heightM}m`;
+        newSize.title = 'Click to edit size';
+        newSize.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          this._editSize(entry, newSize);
+        });
+        input.replaceWith(newSize);
+      }
+    });
   }
 
   _selectByType(type) {
