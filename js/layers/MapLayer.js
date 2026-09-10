@@ -50,7 +50,19 @@ export class MapLayer {
     });
   }
 
+  applyCorrectedImage(canvas) {
+    this.image = canvas;
+    this.width = canvas.width;
+    this.height = canvas.height;
+    this._dataURL = null;
+    this.bus.emit('map:loaded', { width: this.width, height: this.height });
+    this.bus.emit('render:request');
+  }
+
   getDataURL() {
+    if (!this._dataURL && this.image && this.image instanceof HTMLCanvasElement) {
+      this._dataURL = this.image.toDataURL('image/jpeg', 0.92);
+    }
     return this._dataURL;
   }
 
