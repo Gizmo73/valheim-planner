@@ -267,6 +267,10 @@ function generateShingleTexture(variant) {
   return c;
 }
 
+function makeThumbnail(variant) {
+  return generateShingleTexture(variant);
+}
+
 function shingleAsset(type, variant) {
   return class extends Asset {
     constructor() {
