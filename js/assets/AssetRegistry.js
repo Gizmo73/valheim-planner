@@ -9,6 +9,7 @@ import { StoneFloor1x1, StoneFloor2x1, StoneFloor2x2, StoneFloor4x1 } from './St
 import { StoneStairs2x2 } from './StoneStairs.js';
 import { Marble1x1, Marble2x1, Marble2x2, MarbleColumn1x1, MarbleColumn2x2, MarbleStairs2x2 } from './BlackMarble.js';
 import { ThatchStraight, ThatchInnerCorner, ThatchOuterCorner, ThatchRidge } from './ThatchRoof.js';
+import { ShingleStraight, ShingleInnerCorner, ShingleOuterCorner, ShingleRidge } from './ShingleRoof.js';
 
 const registry = [
   { type: 'wood-plank-floor', name: 'Wood Floor 2x2', cls: WoodPlankFloor, widthM: 2, heightM: 2, category: 'Wood' },
@@ -43,6 +44,10 @@ const registry = [
   { type: 'thatch-inner-corner', name: 'Thatch Inner Corner', cls: ThatchInnerCorner, widthM: 2, heightM: 2, category: 'Thatch' },
   { type: 'thatch-outer-corner', name: 'Thatch Outer Corner', cls: ThatchOuterCorner, widthM: 2, heightM: 2, category: 'Thatch' },
   { type: 'thatch-ridge', name: 'Thatch Ridge', cls: ThatchRidge, widthM: 2, heightM: 2, category: 'Thatch' },
+  { type: 'shingle-straight', name: 'Shingle Straight', cls: ShingleStraight, widthM: 2, heightM: 2, category: 'Shingle' },
+  { type: 'shingle-inner-corner', name: 'Shingle Inner Corner', cls: ShingleInnerCorner, widthM: 2, heightM: 2, category: 'Shingle' },
+  { type: 'shingle-outer-corner', name: 'Shingle Outer Corner', cls: ShingleOuterCorner, widthM: 2, heightM: 2, category: 'Shingle' },
+  { type: 'shingle-ridge', name: 'Shingle Ridge', cls: ShingleRidge, widthM: 2, heightM: 2, category: 'Shingle' },
 ];
 
 export function getAssetTypes() {
