@@ -11,6 +11,7 @@ export class Asset {
     this.rotation = 0;
     this.workingLayer = null;
     this.mapScale = null;
+    this._shape = 'rect';
   }
 
   get _mpp() {
@@ -58,10 +59,45 @@ export class Asset {
     const localX = dx * Math.cos(rad) - dy * Math.sin(rad);
     const localY = dx * Math.sin(rad) + dy * Math.cos(rad);
 
+    if (this._shape === 'circle') {
+      const r = Math.max(this.mapWidth, this.mapHeight) / 2;
+      const minR = 0.5 / this._mpp;
+      const effectiveR = Math.max(r, minR);
+      return localX * localX + localY * localY <= effectiveR * effectiveR;
+    }
+
     const minHit = 0.5 / this._mpp;
     const hw = Math.max(this.mapWidth / 2, minHit);
     const hh = Math.max(this.mapHeight / 2, minHit);
     return Math.abs(localX) <= hw && Math.abs(localY) <= hh;
+  }
+
+  _drawOutline(ctx, zoom) {
+    ctx.lineWidth = 1 / zoom;
+    if (this._shape === 'circle') {
+      ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.min(this.mapWidth, this.mapHeight) / 2, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (this._shape === 'octagon') {
+      const hw = this.mapWidth / 2, hh = this.mapHeight / 2;
+      const d = Math.min(this.mapWidth, this.mapHeight) * 0.2;
+      ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+      ctx.beginPath();
+      ctx.moveTo(-hw + d, -hh);
+      ctx.lineTo(hw - d, -hh);
+      ctx.lineTo(hw, -hh + d);
+      ctx.lineTo(hw, hh - d);
+      ctx.lineTo(hw - d, hh);
+      ctx.lineTo(-hw + d, hh);
+      ctx.lineTo(-hw, hh - d);
+      ctx.lineTo(-hw, -hh + d);
+      ctx.closePath();
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+      ctx.strokeRect(-this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+    }
   }
 
   render(ctx, viewport) {
@@ -77,9 +113,7 @@ export class Asset {
 
     if (screenW >= 4 && screenH >= 4) {
       this.draw(ctx, -this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
-      ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
-      ctx.lineWidth = 1 / zoom;
-      ctx.strokeRect(-this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+      this._drawOutline(ctx, zoom);
     } else {
       const s = 5 / zoom;
       ctx.fillStyle = '#e8a020';
@@ -106,9 +140,7 @@ export class Asset {
 
     if (screenW >= 4 && screenH >= 4) {
       this.draw(ctx, -this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
-      ctx.strokeStyle = 'rgba(200, 200, 200, 0.4)';
-      ctx.lineWidth = 1 / zoom;
-      ctx.strokeRect(-this.mapWidth / 2, -this.mapHeight / 2, this.mapWidth, this.mapHeight);
+      this._drawOutline(ctx, zoom);
     } else {
       const s = 5 / zoom;
       ctx.fillStyle = '#e8a020';

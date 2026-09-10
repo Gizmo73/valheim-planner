@@ -5,13 +5,27 @@ export class AssetPanel {
     this.bus = bus;
     this._el = document.getElementById('asset-list');
     this._selected = null;
+    this._itemsByType = {};
     this._init();
+
+    this.bus.on('asset:startPlace', (type) => {
+      this._selectByType(type);
+    });
   }
 
   _init() {
     const types = getAssetTypes();
+    let currentCategory = null;
 
     for (const t of types) {
+      if (t.category && t.category !== currentCategory) {
+        currentCategory = t.category;
+        const header = document.createElement('div');
+        header.className = 'asset-category';
+        header.textContent = currentCategory;
+        this._el.appendChild(header);
+      }
+
       const item = document.createElement('div');
       item.className = 'asset-item';
       item.dataset.type = t.type;
@@ -41,13 +55,20 @@ export class AssetPanel {
       item.appendChild(info);
 
       item.addEventListener('click', () => {
-        if (this._selected) this._selected.classList.remove('selected');
-        item.classList.add('selected');
-        this._selected = item;
         this.bus.emit('asset:startPlace', t.type);
       });
 
       this._el.appendChild(item);
+      this._itemsByType[t.type] = item;
+    }
+  }
+
+  _selectByType(type) {
+    if (this._selected) this._selected.classList.remove('selected');
+    const item = this._itemsByType[type];
+    if (item) {
+      item.classList.add('selected');
+      this._selected = item;
     }
   }
 

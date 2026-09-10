@@ -58,7 +58,9 @@ bus.on('file:selected', async (file) => {
 
 bus.on('asset:startPlace', (type) => {
   placeTool.setAssetType(type);
-  toolManager.activate('place');
+  if (toolManager.currentToolName !== 'place') {
+    toolManager.activate('place');
+  }
 
   const mpp = mapScale.metresPerPixel;
   const cellScreen = (1 / mpp) * viewport.zoom;
@@ -73,6 +75,7 @@ bus.on('asset:startPlace', (type) => {
   }
 
   closeSidebar();
+  bus.emit('render:request');
 });
 
 bus.on('tool:activate', (name) => {

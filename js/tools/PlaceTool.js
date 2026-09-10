@@ -36,7 +36,12 @@ export class PlaceTool {
     if (this._previewAsset) this._previewAsset.mapScale = this.mapScale;
   }
 
-  activate() {}
+  activate() {
+    if (this.assetType && !this._previewAsset) {
+      this._previewAsset = createAsset(this.assetType);
+      if (this._previewAsset) this._previewAsset.mapScale = this.mapScale;
+    }
+  }
 
   deactivate() {
     this._previewAsset = null;

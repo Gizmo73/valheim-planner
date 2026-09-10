@@ -284,6 +284,21 @@ html, body {
   padding: 6px;
 }
 
+.asset-category {
+  padding: 6px 10px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.asset-category:first-child {
+  margin-top: 0;
+}
+
 .asset-item {
   display: flex;
   align-items: center;
