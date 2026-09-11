@@ -144,10 +144,18 @@ export class SelectTool {
       finalGridY = result.gridY;
     } else {
       const grid = mapToGrid(targetMapX, targetMapY, layer, mpp);
-      const offset = primary.getGridSnapOffset();
-      const snapped = snapToGrid(grid.x - offset.x, grid.y - offset.y);
-      finalGridX = snapped.x + offset.x;
-      finalGridY = snapped.y + offset.y;
+      const hw = primary.widthM / 2;
+      const hh = primary.heightM / 2;
+      const rad = primary.rotation * Math.PI / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const anchorX = primary._snapAlignment === 'center' ? 0 : -hw;
+      const anchorY = primary._snapAlignment === 'center' ? 0 : -hh;
+      const snapPtX = grid.x + hw + anchorX * cos - anchorY * sin;
+      const snapPtY = grid.y + hh + anchorX * sin + anchorY * cos;
+      const snapped = snapToGrid(snapPtX, snapPtY);
+      finalGridX = snapped.x - hw - anchorX * cos + anchorY * sin;
+      finalGridY = snapped.y - hh - anchorX * sin - anchorY * cos;
     }
 
     const deltaGridX = finalGridX - primary.gridX;

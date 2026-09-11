@@ -90,11 +90,24 @@ export class PlaceTool {
 
     const mpp = this.mapScale.metresPerPixel;
     const grid = mapToGrid(mapX, mapY, layer, mpp);
+    const asset = this._previewAsset;
+    if (!asset) return null;
 
-    const offset = this._previewAsset ? this._previewAsset.getGridSnapOffset() : { x: 0, y: 0 };
-    const snapped = snapToGrid(grid.x - offset.x, grid.y - offset.y);
-    const adjustedX = snapped.x + offset.x;
-    const adjustedY = snapped.y + offset.y;
+    const hw = asset.widthM / 2;
+    const hh = asset.heightM / 2;
+    const rad = this.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    const anchorX = asset._snapAlignment === 'center' ? 0 : -hw;
+    const anchorY = asset._snapAlignment === 'center' ? 0 : -hh;
+
+    const snapPtX = grid.x + hw + anchorX * cos - anchorY * sin;
+    const snapPtY = grid.y + hh + anchorX * sin + anchorY * cos;
+    const snapped = snapToGrid(snapPtX, snapPtY);
+
+    const adjustedX = snapped.x - hw - anchorX * cos + anchorY * sin;
+    const adjustedY = snapped.y - hh - anchorX * sin - anchorY * cos;
 
     const mapPos = gridToMap(adjustedX, adjustedY, layer, mpp);
     return { mapX: mapPos.x, mapY: mapPos.y, gridX: adjustedX, gridY: adjustedY, layer, mode: 'grid' };
