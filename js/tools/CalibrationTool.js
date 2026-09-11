@@ -40,13 +40,13 @@ export class CalibrationTool {
     this._previewAnchorX = 0;
     this._previewAnchorY = 0;
     this._previewMpp = 1;
-    this._correctionX = 1;
-    this._correctionY = 1;
+    this._localCorrections = new Map();
     this._pvDragging = false;
     this._pvDragStartScreen = null;
-    this._pvDragGridCoord = null;
-    this._pvDragStartCorrX = 1;
-    this._pvDragStartCorrY = 1;
+    this._pvDragGridKey = null;
+    this._pvDragStartCorr = null;
+    this._pvDragDistX = 0;
+    this._pvDragDistY = 0;
     this._pvHoveredIntersection = null;
 
     bus.on('scale:changed', () => {
@@ -75,8 +75,8 @@ export class CalibrationTool {
     return this._previewActive;
   }
 
-  get corrections() {
-    return { x: this._correctionX, y: this._correctionY };
+  get localCorrections() {
+    return this._localCorrections;
   }
 
   activate() {
@@ -99,11 +99,14 @@ export class CalibrationTool {
     this._previewAnchorX = anchorX;
     this._previewAnchorY = anchorY;
     this._previewMpp = mpp;
-    this._correctionX = 1;
-    this._correctionY = 1;
+    this._localCorrections = new Map();
     this._pvDragging = false;
     this._pvHoveredIntersection = null;
-    this.mapLayer.setPreviewCorrection(anchorX, anchorY, 1, 1);
+    this.mapLayer.setPreviewCorrectionField(
+      anchorX, anchorY, mpp,
+      (gx, gy) => this.getCorrectionAt(gx, gy),
+      () => this._localCorrections.size > 0
+    );
     this.bus.emit('calibration:previewChanged', true);
     this.bus.emit('render:request');
   }
@@ -112,6 +115,7 @@ export class CalibrationTool {
     this._previewActive = false;
     this._pvDragging = false;
     this._pvHoveredIntersection = null;
+    this._localCorrections.clear();
     this.mapLayer.clearPreviewCorrection();
     this.bus.emit('calibration:previewChanged', false);
     this.bus.emit('render:request');
@@ -190,6 +194,37 @@ export class CalibrationTool {
     return -1;
   }
 
+  // --- Grid preview correction interpolation ---
+
+  getCorrectionAt(gx, gy) {
+    if (this._localCorrections.size === 0) return { corrX: 1, corrY: 1 };
+    const key = `${gx},${gy}`;
+    if (this._localCorrections.has(key)) return this._localCorrections.get(key);
+
+    let sumWx = 0, sumWy = 0, sumW = 0;
+    const dA = Math.hypot(gx, gy);
+    if (dA > 0.001) {
+      const wA = 1 / (dA * dA);
+      sumWx += wA;
+      sumWy += wA;
+      sumW += wA;
+    } else {
+      return { corrX: 1, corrY: 1 };
+    }
+    for (const [k, corr] of this._localCorrections) {
+      const sep = k.indexOf(',');
+      const cx = parseFloat(k.slice(0, sep));
+      const cy = parseFloat(k.slice(sep + 1));
+      const d = Math.hypot(gx - cx, gy - cy);
+      if (d < 0.001) return { corrX: corr.corrX, corrY: corr.corrY };
+      const w = 1 / (d * d);
+      sumWx += w * corr.corrX;
+      sumWy += w * corr.corrY;
+      sumW += w;
+    }
+    return { corrX: sumWx / sumW, corrY: sumWy / sumW };
+  }
+
   // --- Grid preview intersection detection ---
 
   _getVisibleIntersections(viewport) {
@@ -232,8 +267,8 @@ export class CalibrationTool {
     let count = 0;
     for (let x = startX; x <= endX && count < maxCount; x += cellMap) {
       for (let y = startY; y <= endY && count < maxCount; y += cellMap) {
-        const gx = (x - ax) * mpp;
-        const gy = (y - ay) * mpp;
+        const gx = Math.round((x - ax) * mpp);
+        const gy = Math.round((y - ay) * mpp);
         intersections.push({ mapX: x, mapY: y, gridX: gx, gridY: gy });
         count++;
       }
@@ -333,16 +368,15 @@ export class CalibrationTool {
 
     const ax = this._previewAnchorX;
     const ay = this._previewAnchorY;
-    const dxMap = hit.mapX - ax;
-    const dyMap = hit.mapY - ay;
+    if (Math.abs(hit.mapX - ax) < 1 && Math.abs(hit.mapY - ay) < 1) return;
 
-    if (Math.abs(dxMap) < 1 && Math.abs(dyMap) < 1) return;
+    const key = `${hit.gridX},${hit.gridY}`;
+    const existing = this._localCorrections.get(key) || { corrX: 1, corrY: 1 };
 
     this._pvDragging = true;
     this._pvDragStartScreen = { x: pos.x, y: pos.y };
-    this._pvDragGridCoord = { gx: hit.gridX, gy: hit.gridY };
-    this._pvDragStartCorrX = this._correctionX;
-    this._pvDragStartCorrY = this._correctionY;
+    this._pvDragGridKey = key;
+    this._pvDragStartCorr = { ...existing };
 
     const screenAnchor = this.viewport.mapToScreen(ax, ay);
     this._pvDragDistX = pos.x - screenAnchor.x;
@@ -359,23 +393,20 @@ export class CalibrationTool {
 
     const dx = (pos.x - this._pvDragStartScreen.x) * this._pinDampening;
     const dy = (pos.y - this._pvDragStartScreen.y) * this._pinDampening;
-
     const distX = this._pvDragDistX;
     const distY = this._pvDragDistY;
 
+    const corr = { ...this._pvDragStartCorr };
     if (Math.abs(distX) > 10) {
-      this._correctionX = this._pvDragStartCorrX * distX / (distX + dx);
-      this._correctionX = Math.max(0.5, Math.min(2.0, this._correctionX));
+      corr.corrX = this._pvDragStartCorr.corrX * distX / (distX + dx);
+      corr.corrX = Math.max(0.5, Math.min(2.0, corr.corrX));
     }
     if (Math.abs(distY) > 10) {
-      this._correctionY = this._pvDragStartCorrY * distY / (distY + dy);
-      this._correctionY = Math.max(0.5, Math.min(2.0, this._correctionY));
+      corr.corrY = this._pvDragStartCorr.corrY * distY / (distY + dy);
+      corr.corrY = Math.max(0.5, Math.min(2.0, corr.corrY));
     }
 
-    this.mapLayer.setPreviewCorrection(
-      this._previewAnchorX, this._previewAnchorY,
-      this._correctionX, this._correctionY
-    );
+    this._localCorrections.set(this._pvDragGridKey, corr);
     this.bus.emit('render:request');
   }
 
@@ -491,12 +522,12 @@ export class CalibrationTool {
         if (Math.abs(ix.gridX) < 0.01 && Math.abs(ix.gridY) < 0.01) continue;
 
         const screen = viewport.mapToScreen(ix.mapX, ix.mapY);
+        const key = `${ix.gridX},${ix.gridY}`;
+        const hasCorrHere = this._localCorrections.has(key);
         const isHovered = this._pvHoveredIntersection &&
           Math.abs(this._pvHoveredIntersection.mapX - ix.mapX) < 0.01 &&
           Math.abs(this._pvHoveredIntersection.mapY - ix.mapY) < 0.01;
-        const isDragged = this._pvDragging && this._pvDragGridCoord &&
-          Math.abs(this._pvDragGridCoord.gx - ix.gridX) < 0.01 &&
-          Math.abs(this._pvDragGridCoord.gy - ix.gridY) < 0.01;
+        const isDragged = this._pvDragging && this._pvDragGridKey === key;
 
         if (isDragged) {
           ctx.fillStyle = 'rgba(255, 220, 80, 0.9)';
@@ -504,12 +535,15 @@ export class CalibrationTool {
         } else if (isHovered) {
           ctx.fillStyle = 'rgba(0, 200, 255, 0.6)';
           ctx.strokeStyle = 'rgba(0, 200, 255, 1)';
+        } else if (hasCorrHere) {
+          ctx.fillStyle = 'rgba(255, 160, 50, 0.5)';
+          ctx.strokeStyle = 'rgba(255, 160, 50, 0.8)';
         } else {
           ctx.fillStyle = 'rgba(0, 200, 255, 0.15)';
           ctx.strokeStyle = 'rgba(0, 200, 255, 0.4)';
         }
 
-        const r = (isHovered || isDragged) ? handleRadius + 2 : handleRadius;
+        const r = (isHovered || isDragged || hasCorrHere) ? handleRadius + 2 : handleRadius;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(screen.x, screen.y, r, 0, Math.PI * 2);
@@ -519,20 +553,32 @@ export class CalibrationTool {
     }
 
     // Info HUD in screen space
+    const hovNonAnchor = this._pvHoveredIntersection &&
+      !(Math.abs(this._pvHoveredIntersection.gridX) < 0.01 && Math.abs(this._pvHoveredIntersection.gridY) < 0.01);
+    const showDetail = this._pvDragging || hovNonAnchor;
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-    ctx.fillRect(8, 8, 260, this._pvDragging ? 62 : 44);
+    ctx.fillRect(8, 8, 300, showDetail ? 62 : 44);
     ctx.fillStyle = 'rgba(0, 200, 255, 0.9)';
     ctx.font = 'bold 12px monospace';
     ctx.fillText('Grid Preview  —  drag intersections to fine-tune', 14, 24);
     ctx.font = '11px monospace';
     ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
-    const effMppX = (mpp / this._correctionX).toFixed(4);
-    const effMppY = (mpp / this._correctionY).toFixed(4);
-    ctx.fillText(`X: ${effMppX} m/px  Y: ${effMppY} m/px`, 14, 42);
-    if (this._pvDragging) {
-      ctx.fillStyle = 'rgba(255, 200, 50, 0.8)';
-      ctx.fillText(`correction: X ×${this._correctionX.toFixed(3)}  Y ×${this._correctionY.toFixed(3)}`, 14, 58);
+    const n = this._localCorrections.size;
+    ctx.fillText(`Base: ${mpp.toFixed(4)} m/px  |  ${n} correction${n !== 1 ? 's' : ''}`, 14, 42);
+    if (this._pvDragging && this._pvDragGridKey) {
+      const corr = this._localCorrections.get(this._pvDragGridKey);
+      if (corr) {
+        ctx.fillStyle = 'rgba(255, 200, 50, 0.8)';
+        ctx.fillText(`correction: X ×${corr.corrX.toFixed(3)}  Y ×${corr.corrY.toFixed(3)}`, 14, 58);
+      }
+    } else if (hovNonAnchor) {
+      const hGx = this._pvHoveredIntersection.gridX;
+      const hGy = this._pvHoveredIntersection.gridY;
+      const corr = this.getCorrectionAt(hGx, hGy);
+      const stored = this._localCorrections.has(`${hGx},${hGy}`);
+      ctx.fillStyle = stored ? 'rgba(255, 160, 50, 0.8)' : 'rgba(200, 200, 200, 0.7)';
+      ctx.fillText(`(${hGx}, ${hGy}): X ×${corr.corrX.toFixed(3)}  Y ×${corr.corrY.toFixed(3)}`, 14, 58);
     }
     ctx.restore();
   }

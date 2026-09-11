@@ -67,8 +67,8 @@ export class MapLayer {
     return this._dataURL;
   }
 
-  setPreviewCorrection(anchorX, anchorY, scaleX, scaleY) {
-    this._previewCorrection = { anchorX, anchorY, scaleX, scaleY };
+  setPreviewCorrectionField(anchorX, anchorY, mpp, correctionFn, hasCorrections) {
+    this._previewCorrection = { anchorX, anchorY, mpp, correctionFn, hasCorrections };
     this.bus.emit('render:request');
   }
 
@@ -77,33 +77,58 @@ export class MapLayer {
     this.bus.emit('render:request');
   }
 
-  applyScaleCorrection(anchorX, anchorY, scaleX, scaleY) {
-    const src = this.image;
+  applyMeshWarpCorrection(anchorX, anchorY, mpp, correctionFn) {
     const w = this.width;
     const h = this.height;
     const out = document.createElement('canvas');
     out.width = w;
     out.height = h;
     const ctx = out.getContext('2d');
-    ctx.translate(anchorX, anchorY);
-    ctx.scale(scaleX, scaleY);
-    ctx.translate(-anchorX, -anchorY);
-    ctx.drawImage(src, 0, 0, w, h);
+    const cellSize = 16;
+    for (let sy = 0; sy < h; sy += cellSize) {
+      for (let sx = 0; sx < w; sx += cellSize) {
+        const sw = Math.min(cellSize, w - sx);
+        const sh = Math.min(cellSize, h - sy);
+        const gx = (sx + sw / 2 - anchorX) * mpp;
+        const gy = (sy + sh / 2 - anchorY) * mpp;
+        const corr = correctionFn(gx, gy);
+        const dx = anchorX + (sx - anchorX) * corr.corrX;
+        const dy = anchorY + (sy - anchorY) * corr.corrY;
+        const dw = sw * corr.corrX;
+        const dh = sh * corr.corrY;
+        ctx.drawImage(this.image, sx, sy, sw, sh, dx, dy, dw, dh);
+      }
+    }
     return out;
   }
 
   render(ctx, viewport, canvasWidth, canvasHeight) {
     if (!this.image) return;
-    if (this._previewCorrection) {
-      const { anchorX, anchorY, scaleX, scaleY } = this._previewCorrection;
-      ctx.save();
-      ctx.translate(anchorX, anchorY);
-      ctx.scale(scaleX, scaleY);
-      ctx.translate(-anchorX, -anchorY);
-      ctx.drawImage(this.image, 0, 0, this.width, this.height);
-      ctx.restore();
+    if (this._previewCorrection && this._previewCorrection.hasCorrections && this._previewCorrection.hasCorrections()) {
+      this._renderMeshWarp(ctx);
     } else {
       ctx.drawImage(this.image, 0, 0, this.width, this.height);
+    }
+  }
+
+  _renderMeshWarp(ctx) {
+    const { anchorX, anchorY, mpp, correctionFn } = this._previewCorrection;
+    const w = this.width;
+    const h = this.height;
+    const cellSize = 32;
+    for (let sy = 0; sy < h; sy += cellSize) {
+      for (let sx = 0; sx < w; sx += cellSize) {
+        const sw = Math.min(cellSize, w - sx);
+        const sh = Math.min(cellSize, h - sy);
+        const gx = (sx + sw / 2 - anchorX) * mpp;
+        const gy = (sy + sh / 2 - anchorY) * mpp;
+        const corr = correctionFn(gx, gy);
+        const dx = anchorX + (sx - anchorX) * corr.corrX;
+        const dy = anchorY + (sy - anchorY) * corr.corrY;
+        const dw = sw * corr.corrX;
+        const dh = sh * corr.corrY;
+        ctx.drawImage(this.image, sx, sy, sw, sh, dx, dy, dw, dh);
+      }
     }
   }
 }

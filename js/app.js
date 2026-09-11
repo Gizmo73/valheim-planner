@@ -211,44 +211,15 @@ bus.on('calibration:apply', () => {
 });
 
 bus.on('calibration:previewConfirm', () => {
-  const { x: corrX, y: corrY } = calibrationTool.corrections;
+  const corrections = calibrationTool.localCorrections;
   const mpp = calibrationTool._previewMpp;
   const ax = calibrationTool._previewAnchorX;
   const ay = calibrationTool._previewAnchorY;
 
-  const needsResample = Math.abs(corrX - 1) > 0.001 || Math.abs(corrY - 1) > 0.001;
-
-  if (needsResample) {
-    const corrected = mapLayer.applyScaleCorrection(ax, ay, corrX, corrY);
+  if (corrections.size > 0) {
+    const getCorrAt = (gx, gy) => calibrationTool.getCorrectionAt(gx, gy);
+    const corrected = mapLayer.applyMeshWarpCorrection(ax, ay, mpp, getCorrAt);
     mapLayer.applyCorrectedImage(corrected);
-
-    const newMpp = mpp / Math.sqrt(corrX * corrY);
-    mapScale.metresPerPixel = newMpp;
-
-    // Update working layer and asset positions
-    const layers = layerManager.getByType('working');
-    const wl = layers[0];
-    if (wl) {
-      wl.width = mapLayer.width;
-      wl.height = mapLayer.height;
-      // Anchor stays at same pixel position since we scaled around it
-    }
-
-    // Re-map assets from old mpp to new mpp
-    if (wl) {
-      const oldMpp = mpp;
-      const newAx = wl.gridAnchorX != null ? wl.gridAnchorX : wl.originX;
-      const newAy = wl.gridAnchorY != null ? wl.gridAnchorY : wl.originY;
-      for (const asset of assetLayer.assets) {
-        const mapPx = newAx + asset.gridX / oldMpp;
-        const mapPy = newAy + asset.gridY / oldMpp;
-        // Apply the same correction transform to the asset's map position
-        const corrMapX = ax + (mapPx - ax) * corrX;
-        const corrMapY = ay + (mapPy - ay) * corrY;
-        asset.gridX = (corrMapX - newAx) * newMpp;
-        asset.gridY = (corrMapY - newAy) * newMpp;
-      }
-    }
   }
 
   // Show the working layer grid again
