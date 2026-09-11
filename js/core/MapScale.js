@@ -6,8 +6,9 @@ export class MapScale {
     this._metresPerPixel = 4;
     this._locked = false;
     this._mapMode = 'local';
-    this._tileW = 2;
-    this._tileH = 2;
+    this._cbCols = 2;
+    this._cbRows = 2;
+    this._cbSpacing = 16;
   }
 
   get metresPerPixel() {
@@ -41,21 +42,32 @@ export class MapScale {
     this.bus.emit('calibration:modeChanged', val);
   }
 
-  get tileW() { return this._tileW; }
+  get cbCols() { return this._cbCols; }
 
-  set tileW(val) {
-    if (val > 0 && isFinite(val)) {
-      this._tileW = val;
-      this.bus.emit('calibration:tileSizeChanged', { w: this._tileW, h: this._tileH });
+  set cbCols(val) {
+    const v = Math.round(val);
+    if (v >= 2 && v <= 10) {
+      this._cbCols = v;
+      this.bus.emit('calibration:gridChanged');
     }
   }
 
-  get tileH() { return this._tileH; }
+  get cbRows() { return this._cbRows; }
 
-  set tileH(val) {
-    if (val > 0 && isFinite(val)) {
-      this._tileH = val;
-      this.bus.emit('calibration:tileSizeChanged', { w: this._tileW, h: this._tileH });
+  set cbRows(val) {
+    const v = Math.round(val);
+    if (v >= 2 && v <= 10) {
+      this._cbRows = v;
+      this.bus.emit('calibration:gridChanged');
+    }
+  }
+
+  get cbSpacing() { return this._cbSpacing; }
+
+  set cbSpacing(val) {
+    if (val >= 2 && isFinite(val)) {
+      this._cbSpacing = val;
+      this.bus.emit('calibration:gridChanged');
     }
   }
 

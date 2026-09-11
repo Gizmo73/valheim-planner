@@ -16,14 +16,14 @@ export class CalibrationTool {
     this._worldInitialized = false;
     this._updatingFromCircle = false;
 
-    // Local mode state
-    this._pins = [
-      { x: 0, y: 0 },
-      { x: 0, y: 0 },
-      { x: 0, y: 0 },
-      { x: 0, y: 0 },
-    ];
+    // Checkerboard mode state
+    this._pins = [];
+    this._enabled = [];
     this._localInitialized = false;
+    this._snapEnabled = true;
+    this._snapRadius = 15;
+    this._imageData = null;
+    this._gray = null;
 
     // Shared drag state
     this._dragging = false;
@@ -61,14 +61,28 @@ export class CalibrationTool {
       this.bus.emit('render:request');
     });
 
+    bus.on('calibration:gridChanged', () => {
+      if (this._mode === 'local') {
+        this._localInitialized = false;
+        this._activateLocal();
+        this.bus.emit('render:request');
+      }
+    });
+
     bus.on('map:loaded', () => {
       this._worldInitialized = false;
       this._localInitialized = false;
+      this._imageData = null;
+      this._gray = null;
     });
   }
 
   get pins() {
     return this._pins.map(p => ({ ...p }));
+  }
+
+  get enabled() {
+    return [...this._enabled];
   }
 
   get previewActive() {
@@ -77,6 +91,35 @@ export class CalibrationTool {
 
   get localCorrections() {
     return this._localCorrections;
+  }
+
+  get snapEnabled() {
+    return this._snapEnabled;
+  }
+
+  set snapEnabled(val) {
+    this._snapEnabled = !!val;
+  }
+
+  get snapRadius() {
+    return this._snapRadius;
+  }
+
+  set snapRadius(val) {
+    this._snapRadius = Math.max(3, Math.min(40, Math.round(val)));
+  }
+
+  pinWorldCoords() {
+    const cols = this.mapScale.cbCols;
+    const rows = this.mapScale.cbRows;
+    const spacing = this.mapScale.cbSpacing;
+    const coords = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        coords.push({ x: c * spacing, y: r * spacing });
+      }
+    }
+    return coords;
   }
 
   activate() {
@@ -144,31 +187,40 @@ export class CalibrationTool {
   }
 
   _activateLocal() {
-    if (!this._localInitialized && this.mapLayer.image) {
-      const w = this.mapLayer.width;
-      const h = this.mapLayer.height;
-      const size = Math.min(w, h) * 0.3;
-      const cx = w / 2;
-      const cy = h / 2;
-      const tileW = this.mapScale.tileW;
-      const tileH = this.mapScale.tileH;
-      const aspect = tileW / tileH;
-      let hw, hh;
-      if (aspect >= 1) {
-        hw = size / 2;
-        hh = hw / aspect;
-      } else {
-        hh = size / 2;
-        hw = hh * aspect;
+    const pinCount = this.mapScale.cbCols * this.mapScale.cbRows;
+    if (this._localInitialized && this._pins.length === pinCount) return;
+    if (!this.mapLayer.image) return;
+
+    const w = this.mapLayer.width;
+    const h = this.mapLayer.height;
+    const cols = this.mapScale.cbCols;
+    const rows = this.mapScale.cbRows;
+    const spacing = this.mapScale.cbSpacing;
+
+    const gridWorldW = (cols - 1) * spacing;
+    const gridWorldH = (rows - 1) * spacing;
+    const scaleX = gridWorldW > 0 ? (w * 0.6) / gridWorldW : 1;
+    const scaleY = gridWorldH > 0 ? (h * 0.6) / gridWorldH : 1;
+    const scale = Math.min(scaleX, scaleY);
+
+    const cx = w / 2;
+    const cy = h / 2;
+    const originX = cx - (gridWorldW * scale) / 2;
+    const originY = cy - (gridWorldH * scale) / 2;
+
+    this._pins = [];
+    this._enabled = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        this._pins.push({
+          x: originX + c * spacing * scale,
+          y: originY + r * spacing * scale,
+        });
+        this._enabled.push(true);
       }
-      this._pins = [
-        { x: cx - hw, y: cy - hh },
-        { x: cx + hw, y: cy - hh },
-        { x: cx + hw, y: cy + hh },
-        { x: cx - hw, y: cy + hh },
-      ];
-      this._localInitialized = true;
     }
+
+    this._localInitialized = true;
   }
 
   _updateScaleFromCircle() {
@@ -187,11 +239,137 @@ export class CalibrationTool {
 
   _hitTestLocal(mapX, mapY) {
     const threshold = 15 / this.viewport.zoom;
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < this._pins.length; i++) {
       const dist = Math.hypot(mapX - this._pins[i].x, mapY - this._pins[i].y);
       if (dist < threshold) return i;
     }
     return -1;
+  }
+
+  // --- Corner snap detection (Shi-Tomasi + sub-pixel refinement) ---
+
+  _ensureImageData() {
+    if (!this._imageData) {
+      const tmp = document.createElement('canvas');
+      tmp.width = this.mapLayer.width;
+      tmp.height = this.mapLayer.height;
+      const t = tmp.getContext('2d');
+      t.drawImage(this.mapLayer.image, 0, 0, this.mapLayer.width, this.mapLayer.height);
+      this._imageData = t.getImageData(0, 0, this.mapLayer.width, this.mapLayer.height);
+      this._gray = null;
+    }
+    if (!this._gray) {
+      const d = this._imageData.data;
+      const n = this.mapLayer.width * this.mapLayer.height;
+      const g = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+      }
+      this._gray = g;
+    }
+  }
+
+  _snapPoint(p, R) {
+    const g = this._gray;
+    const W = this.mapLayer.width;
+    const H = this.mapLayer.height;
+    const ws = 5;
+    const cx = Math.round(p.x), cy = Math.round(p.y);
+    const half = R + ws + 3;
+    const x0 = Math.max(1, cx - half), y0 = Math.max(1, cy - half);
+    const x1 = Math.min(W - 2, cx + half), y1 = Math.min(H - 2, cy + half);
+    const pw = x1 - x0 + 1, ph = y1 - y0 + 1;
+    if (pw < 2 * ws + 5 || ph < 2 * ws + 5) return { ok: false, why: 'too close to edge' };
+
+    const B = new Float32Array(pw * ph);
+    for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) {
+      const i = (y0 + y) * W + (x0 + x);
+      B[y * pw + x] = (4 * g[i] + 2 * (g[i - 1] + g[i + 1] + g[i - W] + g[i + W])
+        + g[i - W - 1] + g[i - W + 1] + g[i + W - 1] + g[i + W + 1]) / 16;
+    }
+
+    const GX = new Float32Array(pw * ph), GY = new Float32Array(pw * ph);
+    for (let y = 1; y < ph - 1; y++) for (let x = 1; x < pw - 1; x++) {
+      const i = y * pw + x;
+      GX[i] = (B[i + 1] - B[i - 1]) / 2;
+      GY[i] = (B[i + pw] - B[i - pw]) / 2;
+    }
+    const inside = (lx, ly) => lx >= 1 && ly >= 1 && lx < pw - 1 && ly < ph - 1;
+
+    const sig2 = 2 * (R * 0.6) ** 2;
+    let best = null, bestScore = 0;
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+      if (dx * dx + dy * dy > R * R) continue;
+      const lx = cx + dx - x0, ly = cy + dy - y0;
+      let a = 0, b = 0, c = 0;
+      for (let wy = -2; wy <= 2; wy++) for (let wx = -2; wx <= 2; wx++) {
+        if (!inside(lx + wx, ly + wy)) continue;
+        const i = (ly + wy) * pw + lx + wx;
+        a += GX[i] * GX[i]; b += GX[i] * GY[i]; c += GY[i] * GY[i];
+      }
+      const lmin = (a + c) / 2 - Math.sqrt(((a - c) / 2) ** 2 + b * b);
+      const score = lmin * Math.exp(-(dx * dx + dy * dy) / sig2);
+      if (score > bestScore) { bestScore = score; best = { x: cx + dx, y: cy + dy }; }
+    }
+    if (!best) return { ok: false, why: 'no contrast' };
+
+    let px = best.x, py = best.y, A11 = 0, A12 = 0, A22 = 0;
+    const wsig2 = 2 * (ws * 0.5) ** 2;
+    for (let iter = 0; iter < 20; iter++) {
+      A11 = 0; A12 = 0; A22 = 0;
+      let bx = 0, by = 0;
+      const rx = Math.round(px), ry = Math.round(py);
+      for (let dy = -ws; dy <= ws; dy++) for (let dx = -ws; dx <= ws; dx++) {
+        const qx = rx + dx, qy = ry + dy;
+        const lx = qx - x0, ly = qy - y0;
+        if (!inside(lx, ly)) continue;
+        const i = ly * pw + lx, gx = GX[i], gy = GY[i];
+        const w = Math.exp(-((qx - px) ** 2 + (qy - py) ** 2) / wsig2);
+        A11 += w * gx * gx; A12 += w * gx * gy; A22 += w * gy * gy;
+        bx += w * (gx * gx * qx + gx * gy * qy);
+        by += w * (gx * gy * qx + gy * gy * qy);
+      }
+      const det = A11 * A22 - A12 * A12;
+      if (det <= 1e-9) return { ok: false, why: 'flat area' };
+      const nx = (A22 * bx - A12 * by) / det;
+      const ny = (A11 * by - A12 * bx) / det;
+      const move = Math.hypot(nx - px, ny - py);
+      px = nx; py = ny;
+      if (move < 0.01) break;
+    }
+
+    const tr = (A11 + A22) / 2;
+    const disc = Math.sqrt(((A11 - A22) / 2) ** 2 + A12 * A12);
+    const ratio = (tr - disc) / (tr + disc);
+    if (ratio < 0.05) return { ok: false, why: 'edge, not corner' };
+    const dist = Math.hypot(px - p.x, py - p.y);
+    if (dist > R + 1) return { ok: false, why: 'too far' };
+    return { ok: true, x: px, y: py, dist };
+  }
+
+  snapPin(i) {
+    if (!this.mapLayer.image || i < 0 || i >= this._pins.length) return null;
+    this._ensureImageData();
+    const res = this._snapPoint(this._pins[i], this._snapRadius);
+    if (res.ok) this._pins[i] = { x: res.x, y: res.y };
+    return res;
+  }
+
+  snapAllPins() {
+    if (!this.mapLayer.image) return [];
+    this._ensureImageData();
+    const failed = [];
+    for (let i = 0; i < this._pins.length; i++) {
+      if (!this._enabled[i]) continue;
+      const res = this._snapPoint(this._pins[i], this._snapRadius);
+      if (res.ok) {
+        this._pins[i] = { x: res.x, y: res.y };
+      } else {
+        failed.push(i + 1);
+      }
+    }
+    this.bus.emit('render:request');
+    return failed;
   }
 
   // --- Grid preview correction interpolation ---
@@ -353,9 +531,23 @@ export class CalibrationTool {
       return;
     }
     if (this._dragging) {
+      const idx = this._dragIndex;
       this._dragging = false;
       this._dragType = null;
       this._dragIndex = -1;
+
+      if (this._mode === 'local' && idx >= 0 && this._snapEnabled) {
+        const res = this.snapPin(idx);
+        if (res) {
+          this.bus.emit('calibration:snapResult', {
+            pin: idx + 1,
+            ok: res.ok,
+            dist: res.dist,
+            why: res.why,
+          });
+        }
+      }
+
       this.bus.emit('render:request');
     }
   }
@@ -424,6 +616,31 @@ export class CalibrationTool {
     }
   }
 
+  // Double-click to toggle pin enabled/disabled
+  onDblClick(pos) {
+    if (this._previewActive || this._mode !== 'local') return;
+    const map = this.viewport.screenToMap(pos.x, pos.y);
+    const idx = this._hitTestLocal(map.x, map.y);
+    if (idx < 0) return;
+
+    const enabledCount = this._enabled.filter(Boolean).length;
+    if (this._enabled[idx] && enabledCount <= 4) {
+      this.bus.emit('calibration:snapResult', {
+        pin: idx + 1,
+        ok: false,
+        why: 'at least 4 pins must stay enabled',
+      });
+      return;
+    }
+    this._enabled[idx] = !this._enabled[idx];
+    this.bus.emit('calibration:snapResult', {
+      pin: idx + 1,
+      ok: true,
+      why: this._enabled[idx] ? 'included' : 'excluded',
+    });
+    this.bus.emit('render:request');
+  }
+
   // --- Rendering ---
 
   renderOverlay(ctx, viewport) {
@@ -460,7 +677,6 @@ export class CalibrationTool {
     ctx.translate(viewport.panX, viewport.panY);
     ctx.scale(zoom, zoom);
 
-    // Minor grid (1m) - only if big enough on screen
     const minorCell = 1 / mpp;
     const minorScreen = minorCell * zoom;
     if (minorScreen >= 8) {
@@ -480,7 +696,6 @@ export class CalibrationTool {
       ctx.stroke();
     }
 
-    // Major grid (4m)
     const majorCell = 4 / mpp;
     const majorScreen = majorCell * zoom;
     if (majorScreen >= 8) {
@@ -500,7 +715,6 @@ export class CalibrationTool {
       ctx.stroke();
     }
 
-    // Anchor crosshair
     const chSize = 12 / zoom;
     ctx.strokeStyle = 'rgba(255, 200, 50, 0.8)';
     ctx.lineWidth = 2 / zoom;
@@ -513,7 +727,6 @@ export class CalibrationTool {
 
     ctx.restore();
 
-    // Draw interactive handles at grid intersections (in screen space)
     const { intersections } = this._getVisibleIntersections(viewport);
     if (intersections.length > 0) {
       const handleRadius = 5;
@@ -552,7 +765,6 @@ export class CalibrationTool {
       }
     }
 
-    // Info HUD in screen space
     const hovNonAnchor = this._pvHoveredIntersection &&
       !(Math.abs(this._pvHoveredIntersection.gridX) < 0.01 && Math.abs(this._pvHoveredIntersection.gridY) < 0.01);
     const showDetail = this._pvDragging || hovNonAnchor;
@@ -565,12 +777,12 @@ export class CalibrationTool {
     ctx.font = '11px monospace';
     ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
     const n = this._localCorrections.size;
-    ctx.fillText(`Base: ${mpp.toFixed(4)} m/px  |  ${n} correction${n !== 1 ? 's' : ''}`, 14, 42);
+    ctx.fillText(`Base: ${this._previewMpp.toFixed(4)} m/px  |  ${n} correction${n !== 1 ? 's' : ''}`, 14, 42);
     if (this._pvDragging && this._pvDragGridKey) {
       const corr = this._localCorrections.get(this._pvDragGridKey);
       if (corr) {
         ctx.fillStyle = 'rgba(255, 200, 50, 0.8)';
-        ctx.fillText(`correction: X ×${corr.corrX.toFixed(3)}  Y ×${corr.corrY.toFixed(3)}`, 14, 58);
+        ctx.fillText(`correction: X x${corr.corrX.toFixed(3)}  Y x${corr.corrY.toFixed(3)}`, 14, 58);
       }
     } else if (hovNonAnchor) {
       const hGx = this._pvHoveredIntersection.gridX;
@@ -578,7 +790,7 @@ export class CalibrationTool {
       const corr = this.getCorrectionAt(hGx, hGy);
       const stored = this._localCorrections.has(`${hGx},${hGy}`);
       ctx.fillStyle = stored ? 'rgba(255, 160, 50, 0.8)' : 'rgba(200, 200, 200, 0.7)';
-      ctx.fillText(`(${hGx}, ${hGy}): X ×${corr.corrX.toFixed(3)}  Y ×${corr.corrY.toFixed(3)}`, 14, 58);
+      ctx.fillText(`(${hGx}, ${hGy}): X x${corr.corrX.toFixed(3)}  Y x${corr.corrY.toFixed(3)}`, 14, 58);
     }
     ctx.restore();
   }
@@ -627,7 +839,7 @@ export class CalibrationTool {
     const diamPx = Math.round(this._radius * 2);
     const mpp = this.mapScale.metresPerPixel;
     ctx.fillText(
-      `⌀ ${diamPx}px  |  ${mpp.toFixed(2)} m/px`,
+      `D ${diamPx}px  |  ${mpp.toFixed(2)} m/px`,
       screenCenter.x - 70,
       screenBottom.y + 20
     );
@@ -635,76 +847,125 @@ export class CalibrationTool {
   }
 
   _renderLocalOverlay(ctx, viewport) {
-    if (!this._localInitialized) return;
+    if (!this._localInitialized || this._pins.length === 0) return;
+
+    const cols = this.mapScale.cbCols;
+    const rows = this.mapScale.cbRows;
+    const zoom = viewport.zoom;
 
     ctx.save();
     ctx.translate(viewport.panX, viewport.panY);
-    ctx.scale(viewport.zoom, viewport.zoom);
+    ctx.scale(zoom, zoom);
 
-    // Quad outline
-    ctx.strokeStyle = 'rgba(255, 200, 50, 0.8)';
-    ctx.lineWidth = 2 / viewport.zoom;
-    ctx.setLineDash([8 / viewport.zoom, 5 / viewport.zoom]);
-    ctx.beginPath();
-    ctx.moveTo(this._pins[0].x, this._pins[0].y);
-    for (let i = 1; i < 4; i++) {
-      ctx.lineTo(this._pins[i].x, this._pins[i].y);
+    // Grid lines between pins
+    ctx.strokeStyle = 'rgba(255, 200, 50, 0.25)';
+    ctx.lineWidth = 1 / zoom;
+    ctx.setLineDash([6 / zoom, 4 / zoom]);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        if (c < cols - 1) {
+          const next = idx + 1;
+          ctx.beginPath();
+          ctx.moveTo(this._pins[idx].x, this._pins[idx].y);
+          ctx.lineTo(this._pins[next].x, this._pins[next].y);
+          ctx.stroke();
+        }
+        if (r < rows - 1) {
+          const below = (r + 1) * cols + c;
+          ctx.beginPath();
+          ctx.moveTo(this._pins[idx].x, this._pins[idx].y);
+          ctx.lineTo(this._pins[below].x, this._pins[below].y);
+          ctx.stroke();
+        }
+      }
     }
-    ctx.closePath();
-    ctx.stroke();
     ctx.setLineDash([]);
 
-    // Crosshair lines between opposite midpoints
-    ctx.strokeStyle = 'rgba(255, 200, 50, 0.3)';
-    ctx.lineWidth = 1 / viewport.zoom;
-    const midTop = { x: (this._pins[0].x + this._pins[1].x) / 2, y: (this._pins[0].y + this._pins[1].y) / 2 };
-    const midBot = { x: (this._pins[3].x + this._pins[2].x) / 2, y: (this._pins[3].y + this._pins[2].y) / 2 };
-    const midLeft = { x: (this._pins[0].x + this._pins[3].x) / 2, y: (this._pins[0].y + this._pins[3].y) / 2 };
-    const midRight = { x: (this._pins[1].x + this._pins[2].x) / 2, y: (this._pins[1].y + this._pins[2].y) / 2 };
-    ctx.beginPath();
-    ctx.moveTo(midTop.x, midTop.y);
-    ctx.lineTo(midBot.x, midBot.y);
-    ctx.moveTo(midLeft.x, midLeft.y);
-    ctx.lineTo(midRight.x, midRight.y);
-    ctx.stroke();
-
-    // Pin handles
-    const pinRadius = 8 / viewport.zoom;
-    const labels = ['1', '2', '3', '4'];
-    for (let i = 0; i < 4; i++) {
+    // Checkerboard indicator and pin at each position
+    const pinR = 8 / zoom;
+    const cbHalf = 7 / zoom;
+    for (let i = 0; i < this._pins.length; i++) {
       const pin = this._pins[i];
+      const isOrigin = i === 0;
       const active = this._dragging && this._dragIndex === i;
+      const enabled = this._enabled[i];
 
-      ctx.fillStyle = active ? 'rgba(255, 220, 80, 1)' : 'rgba(255, 200, 50, 0.85)';
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
-      ctx.lineWidth = 2 / viewport.zoom;
+      // 2x2 checkerboard icon at pin center
+      if (enabled) {
+        ctx.globalAlpha = active ? 0.85 : 0.55;
+        ctx.fillStyle = isOrigin ? '#8B9A6B' : '#5A5650';
+        ctx.fillRect(pin.x - cbHalf, pin.y - cbHalf, cbHalf, cbHalf);
+        ctx.fillStyle = '#1C1C1E';
+        ctx.fillRect(pin.x, pin.y - cbHalf, cbHalf, cbHalf);
+        ctx.fillStyle = '#1C1C1E';
+        ctx.fillRect(pin.x - cbHalf, pin.y, cbHalf, cbHalf);
+        ctx.fillStyle = '#5A5650';
+        ctx.fillRect(pin.x, pin.y, cbHalf, cbHalf);
+        ctx.globalAlpha = 1;
+      }
+
+      // Pin ring
+      const colour = !enabled ? 'rgba(150,150,150,.6)'
+        : active ? 'rgba(255, 220, 80, 1)' : 'rgba(255, 200, 50, 0.85)';
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.lineWidth = 3 / zoom;
       ctx.beginPath();
-      ctx.arc(pin.x, pin.y, pinRadius, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.arc(pin.x, pin.y, pinR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = 1.5 / zoom;
+      if (!enabled) ctx.setLineDash([3 / zoom, 3 / zoom]);
+      ctx.beginPath();
+      ctx.arc(pin.x, pin.y, pinR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Crosshair
+      const ch = 4 / zoom;
+      ctx.strokeStyle = colour;
+      ctx.lineWidth = 1 / zoom;
+      ctx.beginPath();
+      ctx.moveTo(pin.x - ch, pin.y); ctx.lineTo(pin.x + ch, pin.y);
+      ctx.moveTo(pin.x, pin.y - ch); ctx.lineTo(pin.x, pin.y + ch);
       ctx.stroke();
 
-      const fontSize = Math.max(1, Math.round(10 / viewport.zoom));
-      ctx.fillStyle = '#000';
-      ctx.font = `bold ${fontSize}px sans-serif`;
+      // Label
+      const fontSize = Math.max(1, Math.round(10 / zoom));
+      ctx.font = `bold ${fontSize}px monospace`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(labels[i], pin.x, pin.y);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3 / zoom;
+      ctx.fillStyle = enabled ? '#fff' : '#888';
+      const labelY = pin.y - pinR - fontSize * 0.7;
+      ctx.strokeText(String(i + 1), pin.x, labelY);
+      ctx.fillText(String(i + 1), pin.x, labelY);
+
+      // Origin marker
+      if (isOrigin && enabled) {
+        ctx.fillStyle = 'rgba(139, 154, 107, 0.9)';
+        ctx.font = `bold ${Math.max(1, Math.round(8 / zoom))}px monospace`;
+        ctx.fillText('ORIGIN', pin.x, pin.y + pinR + fontSize * 0.8);
+      }
     }
 
     ctx.restore();
 
     // Info text in screen space
-    const cx = (this._pins[0].x + this._pins[1].x + this._pins[2].x + this._pins[3].x) / 4;
-    const cy = (this._pins[0].y + this._pins[1].y + this._pins[2].y + this._pins[3].y) / 4;
-    const maxPinY = Math.max(this._pins[0].y, this._pins[1].y, this._pins[2].y, this._pins[3].y);
-    const screenPos = viewport.mapToScreen(cx, maxPinY + 20 / viewport.zoom);
+    const spacing = this.mapScale.cbSpacing;
+    const enabledCount = this._enabled.filter(Boolean).length;
+    const maxPinY = Math.max(...this._pins.map(p => p.y));
+    const avgX = this._pins.reduce((s, p) => s + p.x, 0) / this._pins.length;
+    const screenPos = viewport.mapToScreen(avgX, maxPinY + 30 / zoom);
     ctx.save();
     ctx.fillStyle = 'rgba(255, 200, 50, 0.9)';
     ctx.font = '12px monospace';
     ctx.textAlign = 'center';
-    const tileW = this.mapScale.tileW;
-    const tileH = this.mapScale.tileH;
-    ctx.fillText(`${tileW}×${tileH} tiles  |  drag pins to reference corners`, screenPos.x, screenPos.y);
+    ctx.fillText(
+      `${cols}x${rows} targets @ ${spacing}m  |  ${enabledCount} active  |  dbl-click to toggle`,
+      screenPos.x, screenPos.y
+    );
     ctx.restore();
   }
 
@@ -745,25 +1006,15 @@ export class CalibrationTool {
       ctx.restore();
     }
 
+    // Draw pins inside magnifier
     ctx.save();
     ctx.translate(ipx, ipy);
     ctx.scale(innerZoom, innerZoom);
-
-    ctx.strokeStyle = 'rgba(255, 200, 50, 0.6)';
-    ctx.lineWidth = 1.5 / innerZoom;
-    ctx.setLineDash([4 / innerZoom, 3 / innerZoom]);
-    ctx.beginPath();
-    ctx.moveTo(this._pins[0].x, this._pins[0].y);
-    for (let i = 1; i < 4; i++) ctx.lineTo(this._pins[i].x, this._pins[i].y);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < this._pins.length; i++) {
       const p = this._pins[i];
       const r = (i === this._dragIndex ? 5 : 3) / innerZoom;
-      ctx.fillStyle = i === this._dragIndex ? 'rgba(255, 220, 80, 1)' : 'rgba(255, 200, 50, 0.5)';
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillStyle = i === this._dragIndex ? 'rgba(255, 220, 80, 1)' : 'rgba(255, 200, 50, 0.4)';
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
       ctx.lineWidth = 1 / innerZoom;
       ctx.beginPath();
       ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
@@ -772,6 +1023,7 @@ export class CalibrationTool {
     }
     ctx.restore();
 
+    // Magnifier crosshair
     ctx.strokeStyle = 'rgba(255, 200, 50, 0.9)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -783,6 +1035,7 @@ export class CalibrationTool {
 
     ctx.restore();
 
+    // Magnifier border
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 200, 50, 0.9)';
     ctx.lineWidth = 2.5;
@@ -793,6 +1046,7 @@ export class CalibrationTool {
     ctx.stroke();
     ctx.restore();
 
+    // Tether line
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 200, 50, 0.25)';
     ctx.lineWidth = 1;

@@ -16,6 +16,7 @@ export class ToolManager {
     canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
     canvas.addEventListener('mouseup', (e) => this._onMouseUp(e));
     canvas.addEventListener('wheel', (e) => this._onWheel(e), { passive: false });
+    canvas.addEventListener('dblclick', (e) => this._onDblClick(e));
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', (e) => this._onKeyDown(e));
     window.addEventListener('keyup', (e) => this._onKeyUp(e));
@@ -100,6 +101,13 @@ export class ToolManager {
     if (this.currentTool && this.currentTool.onMouseUp) {
       const pos = this._getPos(e);
       this.currentTool.onMouseUp(pos, e);
+    }
+  }
+
+  _onDblClick(e) {
+    const pos = this._getPos(e);
+    if (this.currentTool && this.currentTool.onDblClick) {
+      this.currentTool.onDblClick(pos, e);
     }
   }
 

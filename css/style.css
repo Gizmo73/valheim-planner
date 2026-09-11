@@ -193,6 +193,10 @@ html, body {
   color: var(--text-dim);
 }
 
+.calibration-spacing-input {
+  width: 48px;
+}
+
 .calibration-apply {
   padding: 3px 10px;
   background: var(--accent-dim);
