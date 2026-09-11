@@ -40,7 +40,9 @@ export class CalibrationTool {
     this._previewAnchorX = 0;
     this._previewAnchorY = 0;
     this._previewMpp = 1;
-    this._localCorrections = new Map();
+    this._radialObservations = new Map();
+    this._radialK1x = 0;
+    this._radialK1y = 0;
     this._pvDragging = false;
     this._pvDragStartScreen = null;
     this._pvDragGridKey = null;
@@ -76,7 +78,7 @@ export class CalibrationTool {
   }
 
   get localCorrections() {
-    return this._localCorrections;
+    return this._radialObservations;
   }
 
   activate() {
@@ -99,13 +101,15 @@ export class CalibrationTool {
     this._previewAnchorX = anchorX;
     this._previewAnchorY = anchorY;
     this._previewMpp = mpp;
-    this._localCorrections = new Map();
+    this._radialObservations = new Map();
+    this._radialK1x = 0;
+    this._radialK1y = 0;
     this._pvDragging = false;
     this._pvHoveredIntersection = null;
     this.mapLayer.setPreviewCorrectionField(
       anchorX, anchorY, mpp,
       (gx, gy) => this.getCorrectionAt(gx, gy),
-      () => this._localCorrections.size > 0
+      () => this._radialObservations.size > 0
     );
     this.bus.emit('calibration:previewChanged', true);
     this.bus.emit('render:request');
@@ -115,7 +119,9 @@ export class CalibrationTool {
     this._previewActive = false;
     this._pvDragging = false;
     this._pvHoveredIntersection = null;
-    this._localCorrections.clear();
+    this._radialObservations.clear();
+    this._radialK1x = 0;
+    this._radialK1y = 0;
     this.mapLayer.clearPreviewCorrection();
     this.bus.emit('calibration:previewChanged', false);
     this.bus.emit('render:request');
@@ -194,35 +200,28 @@ export class CalibrationTool {
     return -1;
   }
 
-  // --- Grid preview correction interpolation ---
+  // --- Radial distortion model ---
 
   getCorrectionAt(gx, gy) {
-    if (this._localCorrections.size === 0) return { corrX: 1, corrY: 1 };
-    const key = `${gx},${gy}`;
-    if (this._localCorrections.has(key)) return this._localCorrections.get(key);
+    const r2 = gx * gx + gy * gy;
+    const cx = Math.max(0.5, Math.min(2.0, 1 + this._radialK1x * r2));
+    const cy = Math.max(0.5, Math.min(2.0, 1 + this._radialK1y * r2));
+    return { corrX: cx, corrY: cy };
+  }
 
-    let sumWx = 0, sumWy = 0, sumW = 0;
-    const dA = Math.hypot(gx, gy);
-    if (dA > 0.001) {
-      const wA = 1 / (dA * dA);
-      sumWx += wA;
-      sumWy += wA;
-      sumW += wA;
-    } else {
-      return { corrX: 1, corrY: 1 };
+  _fitRadialModel() {
+    let numX = 0, denX = 0, numY = 0, denY = 0;
+    for (const [key, obs] of this._radialObservations) {
+      const sep = key.indexOf(',');
+      const gx = parseFloat(key.slice(0, sep));
+      const gy = parseFloat(key.slice(sep + 1));
+      const r2 = gx * gx + gy * gy;
+      const r4 = r2 * r2;
+      if (obs.corrX !== null) { numX += (obs.corrX - 1) * r2; denX += r4; }
+      if (obs.corrY !== null) { numY += (obs.corrY - 1) * r2; denY += r4; }
     }
-    for (const [k, corr] of this._localCorrections) {
-      const sep = k.indexOf(',');
-      const cx = parseFloat(k.slice(0, sep));
-      const cy = parseFloat(k.slice(sep + 1));
-      const d = Math.hypot(gx - cx, gy - cy);
-      if (d < 0.001) return { corrX: corr.corrX, corrY: corr.corrY };
-      const w = 1 / (d * d);
-      sumWx += w * corr.corrX;
-      sumWy += w * corr.corrY;
-      sumW += w;
-    }
-    return { corrX: sumWx / sumW, corrY: sumWy / sumW };
+    this._radialK1x = denX > 1e-10 ? numX / denX : 0;
+    this._radialK1y = denY > 1e-10 ? numY / denY : 0;
   }
 
   // --- Grid preview intersection detection ---
@@ -371,12 +370,12 @@ export class CalibrationTool {
     if (Math.abs(hit.mapX - ax) < 1 && Math.abs(hit.mapY - ay) < 1) return;
 
     const key = `${hit.gridX},${hit.gridY}`;
-    const existing = this._localCorrections.get(key) || { corrX: 1, corrY: 1 };
+    const modelPred = this.getCorrectionAt(hit.gridX, hit.gridY);
 
     this._pvDragging = true;
     this._pvDragStartScreen = { x: pos.x, y: pos.y };
     this._pvDragGridKey = key;
-    this._pvDragStartCorr = { ...existing };
+    this._pvDragStartCorr = { corrX: modelPred.corrX, corrY: modelPred.corrY };
 
     const screenAnchor = this.viewport.mapToScreen(ax, ay);
     this._pvDragDistX = pos.x - screenAnchor.x;
@@ -396,17 +395,24 @@ export class CalibrationTool {
     const distX = this._pvDragDistX;
     const distY = this._pvDragDistY;
 
-    const corr = { ...this._pvDragStartCorr };
+    let corrX = null, corrY = null;
     if (Math.abs(distX) > 10) {
-      corr.corrX = this._pvDragStartCorr.corrX * distX / (distX + dx);
-      corr.corrX = Math.max(0.5, Math.min(2.0, corr.corrX));
+      corrX = this._pvDragStartCorr.corrX * distX / (distX + dx);
+      corrX = Math.max(0.5, Math.min(2.0, corrX));
     }
     if (Math.abs(distY) > 10) {
-      corr.corrY = this._pvDragStartCorr.corrY * distY / (distY + dy);
-      corr.corrY = Math.max(0.5, Math.min(2.0, corr.corrY));
+      corrY = this._pvDragStartCorr.corrY * distY / (distY + dy);
+      corrY = Math.max(0.5, Math.min(2.0, corrY));
     }
 
-    this._localCorrections.set(this._pvDragGridKey, corr);
+    const existing = this._radialObservations.get(this._pvDragGridKey);
+    if (existing) {
+      if (corrX !== null) existing.corrX = corrX;
+      if (corrY !== null) existing.corrY = corrY;
+    } else {
+      this._radialObservations.set(this._pvDragGridKey, { corrX, corrY });
+    }
+    this._fitRadialModel();
     this.bus.emit('render:request');
   }
 
@@ -523,7 +529,7 @@ export class CalibrationTool {
 
         const screen = viewport.mapToScreen(ix.mapX, ix.mapY);
         const key = `${ix.gridX},${ix.gridY}`;
-        const hasCorrHere = this._localCorrections.has(key);
+        const hasCorrHere = this._radialObservations.has(key);
         const isHovered = this._pvHoveredIntersection &&
           Math.abs(this._pvHoveredIntersection.mapX - ix.mapX) < 0.01 &&
           Math.abs(this._pvHoveredIntersection.mapY - ix.mapY) < 0.01;
@@ -555,30 +561,35 @@ export class CalibrationTool {
     // Info HUD in screen space
     const hovNonAnchor = this._pvHoveredIntersection &&
       !(Math.abs(this._pvHoveredIntersection.gridX) < 0.01 && Math.abs(this._pvHoveredIntersection.gridY) < 0.01);
-    const showDetail = this._pvDragging || hovNonAnchor;
+    const hasModel = this._radialObservations.size > 0;
+    const showDetail = this._pvDragging || hovNonAnchor || hasModel;
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-    ctx.fillRect(8, 8, 300, showDetail ? 62 : 44);
+    ctx.fillRect(8, 8, 340, showDetail ? 78 : 44);
     ctx.fillStyle = 'rgba(0, 200, 255, 0.9)';
     ctx.font = 'bold 12px monospace';
-    ctx.fillText('Grid Preview  —  drag intersections to fine-tune', 14, 24);
+    ctx.fillText('Radial Correction  —  drag intersections to fit', 14, 24);
     ctx.font = '11px monospace';
     ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
-    const n = this._localCorrections.size;
-    ctx.fillText(`Base: ${mpp.toFixed(4)} m/px  |  ${n} correction${n !== 1 ? 's' : ''}`, 14, 42);
+    const n = this._radialObservations.size;
+    ctx.fillText(`Base: ${mpp.toFixed(4)} m/px  |  ${n} sample${n !== 1 ? 's' : ''}`, 14, 42);
+    if (hasModel) {
+      ctx.fillStyle = 'rgba(180, 140, 255, 0.9)';
+      ctx.fillText(`k1x: ${this._radialK1x.toExponential(3)}  k1y: ${this._radialK1y.toExponential(3)}`, 14, 58);
+    }
     if (this._pvDragging && this._pvDragGridKey) {
-      const corr = this._localCorrections.get(this._pvDragGridKey);
-      if (corr) {
-        ctx.fillStyle = 'rgba(255, 200, 50, 0.8)';
-        ctx.fillText(`correction: X ×${corr.corrX.toFixed(3)}  Y ×${corr.corrY.toFixed(3)}`, 14, 58);
-      }
+      const corr = this.getCorrectionAt(
+        ...this._pvDragGridKey.split(',').map(Number)
+      );
+      ctx.fillStyle = 'rgba(255, 200, 50, 0.8)';
+      ctx.fillText(`model at drag: X ×${corr.corrX.toFixed(3)}  Y ×${corr.corrY.toFixed(3)}`, 14, 74);
     } else if (hovNonAnchor) {
       const hGx = this._pvHoveredIntersection.gridX;
       const hGy = this._pvHoveredIntersection.gridY;
       const corr = this.getCorrectionAt(hGx, hGy);
-      const stored = this._localCorrections.has(`${hGx},${hGy}`);
-      ctx.fillStyle = stored ? 'rgba(255, 160, 50, 0.8)' : 'rgba(200, 200, 200, 0.7)';
-      ctx.fillText(`(${hGx}, ${hGy}): X ×${corr.corrX.toFixed(3)}  Y ×${corr.corrY.toFixed(3)}`, 14, 58);
+      const r = Math.hypot(hGx, hGy).toFixed(1);
+      ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
+      ctx.fillText(`(${hGx},${hGy}) r=${r}: X ×${corr.corrX.toFixed(3)}  Y ×${corr.corrY.toFixed(3)}`, 14, 74);
     }
     ctx.restore();
   }
