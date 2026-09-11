@@ -7,9 +7,11 @@ export class CalibrationPanel {
     this._mppInput = null;
     this._lockBtn = null;
     this._calBtn = null;
-    this._tileGroup = null;
-    this._tileWInput = null;
-    this._tileHInput = null;
+    this._gridGroup = null;
+    this._colsInput = null;
+    this._rowsInput = null;
+    this._spacingInput = null;
+    this._snapBtn = null;
     this._applyBtn = null;
     this._previewGroup = null;
     this._confirmBtn = null;
@@ -71,49 +73,85 @@ export class CalibrationPanel {
     this._calBtn.addEventListener('click', () => this.bus.emit('tool:activate', 'calibrate'));
     this._container.appendChild(this._calBtn);
 
-    // Tile size group (local mode only)
-    this._tileGroup = document.createElement('div');
-    this._tileGroup.className = 'calibration-tile-group';
+    // Grid config group (local mode only)
+    this._gridGroup = document.createElement('div');
+    this._gridGroup.className = 'calibration-tile-group';
 
-    const tileLabel = document.createElement('span');
-    tileLabel.className = 'calibration-label';
-    tileLabel.textContent = 'Tiles:';
-    this._tileGroup.appendChild(tileLabel);
+    const gridLabel = document.createElement('span');
+    gridLabel.className = 'calibration-label';
+    gridLabel.textContent = 'Grid:';
+    this._gridGroup.appendChild(gridLabel);
 
-    this._tileWInput = document.createElement('input');
-    this._tileWInput.type = 'number';
-    this._tileWInput.className = 'calibration-tile-input';
-    this._tileWInput.min = '1';
-    this._tileWInput.step = '1';
-    this._tileWInput.value = this.mapScale.tileW;
-    this._tileWInput.title = 'Reference width (tiles)';
-    this._tileWInput.addEventListener('change', () => {
-      const val = parseInt(this._tileWInput.value, 10);
-      if (val > 0) this.mapScale.tileW = val;
+    this._colsInput = document.createElement('input');
+    this._colsInput.type = 'number';
+    this._colsInput.className = 'calibration-tile-input';
+    this._colsInput.min = '2';
+    this._colsInput.max = '10';
+    this._colsInput.step = '1';
+    this._colsInput.value = this.mapScale.cbCols;
+    this._colsInput.title = 'Columns of checkerboard targets';
+    this._colsInput.addEventListener('change', () => {
+      const val = parseInt(this._colsInput.value, 10);
+      if (val >= 2 && val <= 10) this.mapScale.cbCols = val;
     });
-    this._tileWInput.addEventListener('keydown', (e) => e.stopPropagation());
-    this._tileGroup.appendChild(this._tileWInput);
+    this._colsInput.addEventListener('keydown', (e) => e.stopPropagation());
+    this._gridGroup.appendChild(this._colsInput);
 
-    const tileSep = document.createElement('span');
-    tileSep.className = 'calibration-tile-sep';
-    tileSep.textContent = '×';
-    this._tileGroup.appendChild(tileSep);
+    const sep1 = document.createElement('span');
+    sep1.className = 'calibration-tile-sep';
+    sep1.textContent = '×';
+    this._gridGroup.appendChild(sep1);
 
-    this._tileHInput = document.createElement('input');
-    this._tileHInput.type = 'number';
-    this._tileHInput.className = 'calibration-tile-input';
-    this._tileHInput.min = '1';
-    this._tileHInput.step = '1';
-    this._tileHInput.value = this.mapScale.tileH;
-    this._tileHInput.title = 'Reference height (tiles)';
-    this._tileHInput.addEventListener('change', () => {
-      const val = parseInt(this._tileHInput.value, 10);
-      if (val > 0) this.mapScale.tileH = val;
+    this._rowsInput = document.createElement('input');
+    this._rowsInput.type = 'number';
+    this._rowsInput.className = 'calibration-tile-input';
+    this._rowsInput.min = '2';
+    this._rowsInput.max = '10';
+    this._rowsInput.step = '1';
+    this._rowsInput.value = this.mapScale.cbRows;
+    this._rowsInput.title = 'Rows of checkerboard targets';
+    this._rowsInput.addEventListener('change', () => {
+      const val = parseInt(this._rowsInput.value, 10);
+      if (val >= 2 && val <= 10) this.mapScale.cbRows = val;
     });
-    this._tileHInput.addEventListener('keydown', (e) => e.stopPropagation());
-    this._tileGroup.appendChild(this._tileHInput);
+    this._rowsInput.addEventListener('keydown', (e) => e.stopPropagation());
+    this._gridGroup.appendChild(this._rowsInput);
 
-    this._container.appendChild(this._tileGroup);
+    const sep2 = document.createElement('span');
+    sep2.className = 'calibration-tile-sep';
+    sep2.textContent = '@';
+    this._gridGroup.appendChild(sep2);
+
+    this._spacingInput = document.createElement('input');
+    this._spacingInput.type = 'number';
+    this._spacingInput.className = 'calibration-tile-input calibration-spacing-input';
+    this._spacingInput.min = '2';
+    this._spacingInput.step = '1';
+    this._spacingInput.value = this.mapScale.cbSpacing;
+    this._spacingInput.title = 'Spacing between targets (metres)';
+    this._spacingInput.addEventListener('change', () => {
+      const val = parseFloat(this._spacingInput.value);
+      if (val >= 2 && isFinite(val)) this.mapScale.cbSpacing = val;
+    });
+    this._spacingInput.addEventListener('keydown', (e) => e.stopPropagation());
+    this._gridGroup.appendChild(this._spacingInput);
+
+    const mLabel = document.createElement('span');
+    mLabel.className = 'calibration-tile-sep';
+    mLabel.textContent = 'm';
+    this._gridGroup.appendChild(mLabel);
+
+    this._container.appendChild(this._gridGroup);
+
+    // Snap All button
+    this._snapBtn = document.createElement('button');
+    this._snapBtn.className = 'calibration-apply';
+    this._snapBtn.textContent = 'Snap All';
+    this._snapBtn.title = 'Auto-snap all enabled pins to nearest X-corner';
+    this._snapBtn.addEventListener('click', () => {
+      this.bus.emit('calibration:snapAll');
+    });
+    this._container.appendChild(this._snapBtn);
 
     // m/px label and input
     const mppLabel = document.createElement('span');
@@ -204,7 +242,8 @@ export class CalibrationPanel {
     const isLocal = this.mapScale.mapMode === 'local';
     const previewing = this._isPreviewing;
 
-    this._tileGroup.style.display = (isLocal && !previewing) ? 'flex' : 'none';
+    this._gridGroup.style.display = (isLocal && !previewing) ? 'flex' : 'none';
+    this._snapBtn.style.display = (isLocal && this._isCalibrating && !previewing) ? 'inline-block' : 'none';
     this._applyBtn.style.display = (isLocal && this._isCalibrating && !previewing) ? 'inline-block' : 'none';
     this._previewGroup.style.display = previewing ? 'flex' : 'none';
     this._calBtn.style.display = previewing ? 'none' : '';

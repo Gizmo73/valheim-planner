@@ -136,13 +136,24 @@ bus.on('sidebar:toggle', () => {
 // State preserved across the preview step
 let _preCalibrationState = null;
 
+bus.on('calibration:snapAll', () => {
+  const failed = calibrationTool.snapAllPins();
+  if (failed.length > 0) {
+    bus.emit('calibration:snapResult', {
+      ok: false,
+      why: 'no corner found for pin(s) ' + failed.join(', '),
+    });
+  } else {
+    bus.emit('calibration:snapResult', { ok: true, why: 'all pins snapped' });
+  }
+});
+
 bus.on('calibration:apply', () => {
   if (!mapLayer.image) return;
-  const pins = calibrationTool.pins;
-  const tileW = mapScale.tileW;
-  const tileH = mapScale.tileH;
+  const srcPins = calibrationTool.pins;
+  const worldPins = calibrationTool.pinWorldCoords();
+  const enabled = calibrationTool.enabled;
 
-  // Save state for cancel
   const oldImage = mapLayer.image;
   const oldWidth = mapLayer.width;
   const oldHeight = mapLayer.height;
@@ -162,7 +173,9 @@ bus.on('calibration:apply', () => {
 
   _preCalibrationState = { oldImage, oldWidth, oldHeight, oldMpp, oldLayers, oldAssets };
 
-  const result = PerspectiveTransform.correctImage(mapLayer.image, pins, tileW, tileH);
+  const result = PerspectiveTransform.correctImageCheckerboard(
+    mapLayer.image, srcPins, worldPins, enabled
+  );
   if (!result) return;
 
   mapLayer.applyCorrectedImage(result.canvas);
