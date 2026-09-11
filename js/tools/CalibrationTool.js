@@ -35,6 +35,20 @@ export class CalibrationTool {
     this._startPin = null;
     this._pinDampening = 1 / 4;
 
+    // Grid preview state
+    this._previewActive = false;
+    this._previewAnchorX = 0;
+    this._previewAnchorY = 0;
+    this._previewMpp = 1;
+    this._correctionX = 1;
+    this._correctionY = 1;
+    this._pvDragging = false;
+    this._pvDragStartScreen = null;
+    this._pvDragGridCoord = null;
+    this._pvDragStartCorrX = 1;
+    this._pvDragStartCorrY = 1;
+    this._pvHoveredIntersection = null;
+
     bus.on('scale:changed', () => {
       if (!this._updatingFromCircle && this._worldInitialized && this._mode === 'world') {
         this._radius = this.mapScale.circleDiameterPx() / 2;
@@ -57,7 +71,16 @@ export class CalibrationTool {
     return this._pins.map(p => ({ ...p }));
   }
 
+  get previewActive() {
+    return this._previewActive;
+  }
+
+  get corrections() {
+    return { x: this._correctionX, y: this._correctionY };
+  }
+
   activate() {
+    if (this._previewActive) return;
     if (this._mode === 'world') {
       this._activateWorld();
     } else {
@@ -65,9 +88,39 @@ export class CalibrationTool {
     }
   }
 
-  deactivate() {}
+  deactivate() {
+    if (this._previewActive) {
+      this.exitPreview();
+    }
+  }
+
+  enterPreview(anchorX, anchorY, mpp) {
+    this._previewActive = true;
+    this._previewAnchorX = anchorX;
+    this._previewAnchorY = anchorY;
+    this._previewMpp = mpp;
+    this._correctionX = 1;
+    this._correctionY = 1;
+    this._pvDragging = false;
+    this._pvHoveredIntersection = null;
+    this.mapLayer.setPreviewCorrection(anchorX, anchorY, 1, 1);
+    this.bus.emit('calibration:previewChanged', true);
+    this.bus.emit('render:request');
+  }
+
+  exitPreview() {
+    this._previewActive = false;
+    this._pvDragging = false;
+    this._pvHoveredIntersection = null;
+    this.mapLayer.clearPreviewCorrection();
+    this.bus.emit('calibration:previewChanged', false);
+    this.bus.emit('render:request');
+  }
 
   hitTest(pos) {
+    if (this._previewActive) {
+      return this._hitTestPreview(pos) !== null;
+    }
     if (this.mapScale.locked) return false;
     const map = this.viewport.screenToMap(pos.x, pos.y);
     if (this._mode === 'world') {
@@ -137,7 +190,80 @@ export class CalibrationTool {
     return -1;
   }
 
+  // --- Grid preview intersection detection ---
+
+  _getVisibleIntersections(viewport) {
+    const mpp = this._previewMpp;
+    const ax = this._previewAnchorX;
+    const ay = this._previewAnchorY;
+    const zoom = viewport.zoom;
+
+    const canvas = document.getElementById('main-canvas');
+    const dpr = window.devicePixelRatio || 1;
+    const cw = canvas ? canvas.width / dpr : window.innerWidth;
+    const ch = canvas ? canvas.height / dpr : window.innerHeight;
+    const visBounds = viewport.getVisibleMapBounds(cw, ch);
+
+    const majorCell = 4 / mpp;
+    const minorCell = 1 / mpp;
+    const majorScreen = majorCell * zoom;
+    const minorScreen = minorCell * zoom;
+    const viewportSize = Math.min(cw, ch);
+
+    let cellMap;
+    let gridSpacing;
+    if (majorScreen >= 20 && majorScreen < viewportSize * 0.8) {
+      cellMap = majorCell;
+      gridSpacing = 4;
+    } else if (minorScreen >= 8) {
+      cellMap = minorCell;
+      gridSpacing = 1;
+    } else {
+      return { intersections: [], gridSpacing: 4 };
+    }
+
+    const intersections = [];
+    const startX = ax + Math.ceil((visBounds.x - ax) / cellMap) * cellMap;
+    const startY = ay + Math.ceil((visBounds.y - ay) / cellMap) * cellMap;
+    const endX = visBounds.x + visBounds.w;
+    const endY = visBounds.y + visBounds.h;
+
+    const maxCount = 400;
+    let count = 0;
+    for (let x = startX; x <= endX && count < maxCount; x += cellMap) {
+      for (let y = startY; y <= endY && count < maxCount; y += cellMap) {
+        const gx = (x - ax) * mpp;
+        const gy = (y - ay) * mpp;
+        intersections.push({ mapX: x, mapY: y, gridX: gx, gridY: gy });
+        count++;
+      }
+    }
+    return { intersections, gridSpacing };
+  }
+
+  _hitTestPreview(pos) {
+    const threshold = 14;
+    const { intersections } = this._getVisibleIntersections(this.viewport);
+    let best = null;
+    let bestDist = Infinity;
+    for (const ix of intersections) {
+      const screen = this.viewport.mapToScreen(ix.mapX, ix.mapY);
+      const dist = Math.hypot(screen.x - pos.x, screen.y - pos.y);
+      if (dist < threshold && dist < bestDist) {
+        bestDist = dist;
+        best = ix;
+      }
+    }
+    return best;
+  }
+
+  // --- Mouse handlers ---
+
   onMouseDown(pos) {
+    if (this._previewActive) {
+      this._onPreviewMouseDown(pos);
+      return;
+    }
     if (this.mapScale.locked) return;
     const map = this.viewport.screenToMap(pos.x, pos.y);
 
@@ -160,6 +286,10 @@ export class CalibrationTool {
   }
 
   onMouseMove(pos) {
+    if (this._previewActive) {
+      this._onPreviewMouseMove(pos);
+      return;
+    }
     if (!this._dragging) return;
     const map = this.viewport.screenToMap(pos.x, pos.y);
 
@@ -182,7 +312,11 @@ export class CalibrationTool {
     }
   }
 
-  onMouseUp() {
+  onMouseUp(pos) {
+    if (this._previewActive) {
+      this._onPreviewMouseUp();
+      return;
+    }
     if (this._dragging) {
       this._dragging = false;
       this._dragType = null;
@@ -191,19 +325,216 @@ export class CalibrationTool {
     }
   }
 
+  // --- Preview mouse handlers ---
+
+  _onPreviewMouseDown(pos) {
+    const hit = this._hitTestPreview(pos);
+    if (!hit) return;
+
+    const ax = this._previewAnchorX;
+    const ay = this._previewAnchorY;
+    const dxMap = hit.mapX - ax;
+    const dyMap = hit.mapY - ay;
+
+    if (Math.abs(dxMap) < 1 && Math.abs(dyMap) < 1) return;
+
+    this._pvDragging = true;
+    this._pvDragStartScreen = { x: pos.x, y: pos.y };
+    this._pvDragGridCoord = { gx: hit.gridX, gy: hit.gridY };
+    this._pvDragStartCorrX = this._correctionX;
+    this._pvDragStartCorrY = this._correctionY;
+
+    const screenAnchor = this.viewport.mapToScreen(ax, ay);
+    this._pvDragDistX = pos.x - screenAnchor.x;
+    this._pvDragDistY = pos.y - screenAnchor.y;
+  }
+
+  _onPreviewMouseMove(pos) {
+    if (!this._pvDragging) {
+      const hit = this._hitTestPreview(pos);
+      this._pvHoveredIntersection = hit;
+      this.bus.emit('render:request');
+      return;
+    }
+
+    const dx = (pos.x - this._pvDragStartScreen.x) * this._pinDampening;
+    const dy = (pos.y - this._pvDragStartScreen.y) * this._pinDampening;
+
+    const distX = this._pvDragDistX;
+    const distY = this._pvDragDistY;
+
+    if (Math.abs(distX) > 10) {
+      this._correctionX = this._pvDragStartCorrX * distX / (distX + dx);
+      this._correctionX = Math.max(0.5, Math.min(2.0, this._correctionX));
+    }
+    if (Math.abs(distY) > 10) {
+      this._correctionY = this._pvDragStartCorrY * distY / (distY + dy);
+      this._correctionY = Math.max(0.5, Math.min(2.0, this._correctionY));
+    }
+
+    this.mapLayer.setPreviewCorrection(
+      this._previewAnchorX, this._previewAnchorY,
+      this._correctionX, this._correctionY
+    );
+    this.bus.emit('render:request');
+  }
+
+  _onPreviewMouseUp() {
+    this._pvDragging = false;
+  }
+
   onKeyDown(e) {
     if (e.code === 'Escape') {
-      this.bus.emit('tool:activate', 'select');
+      if (this._previewActive) {
+        this.bus.emit('calibration:previewCancel');
+      } else {
+        this.bus.emit('tool:activate', 'select');
+      }
     }
   }
 
+  // --- Rendering ---
+
   renderOverlay(ctx, viewport) {
+    if (this._previewActive) {
+      this._renderPreviewOverlay(ctx, viewport);
+      return;
+    }
     if (this._mode === 'world') {
       this._renderWorldOverlay(ctx, viewport);
     } else {
       this._renderLocalOverlay(ctx, viewport);
       this._renderMagnifier(ctx, viewport);
     }
+  }
+
+  _renderPreviewOverlay(ctx, viewport) {
+    const mpp = this._previewMpp;
+    const ax = this._previewAnchorX;
+    const ay = this._previewAnchorY;
+    const zoom = viewport.zoom;
+
+    const canvasEl = ctx.canvas;
+    const dpr = window.devicePixelRatio || 1;
+    const cw = canvasEl.width / dpr;
+    const ch = canvasEl.height / dpr;
+
+    const visBounds = viewport.getVisibleMapBounds(cw, ch);
+    const visLeft = visBounds.x;
+    const visTop = visBounds.y;
+    const visRight = visBounds.x + visBounds.w;
+    const visBottom = visBounds.y + visBounds.h;
+
+    ctx.save();
+    ctx.translate(viewport.panX, viewport.panY);
+    ctx.scale(zoom, zoom);
+
+    // Minor grid (1m) - only if big enough on screen
+    const minorCell = 1 / mpp;
+    const minorScreen = minorCell * zoom;
+    if (minorScreen >= 8) {
+      ctx.strokeStyle = 'rgba(0, 200, 255, 0.15)';
+      ctx.lineWidth = 0.5 / zoom;
+      ctx.beginPath();
+      const startX = ax + Math.ceil((visLeft - ax) / minorCell) * minorCell;
+      for (let x = startX; x <= visRight; x += minorCell) {
+        ctx.moveTo(x, visTop);
+        ctx.lineTo(x, visBottom);
+      }
+      const startY = ay + Math.ceil((visTop - ay) / minorCell) * minorCell;
+      for (let y = startY; y <= visBottom; y += minorCell) {
+        ctx.moveTo(visLeft, y);
+        ctx.lineTo(visRight, y);
+      }
+      ctx.stroke();
+    }
+
+    // Major grid (4m)
+    const majorCell = 4 / mpp;
+    const majorScreen = majorCell * zoom;
+    if (majorScreen >= 8) {
+      ctx.strokeStyle = 'rgba(0, 200, 255, 0.4)';
+      ctx.lineWidth = 1 / zoom;
+      ctx.beginPath();
+      const startX = ax + Math.ceil((visLeft - ax) / majorCell) * majorCell;
+      for (let x = startX; x <= visRight; x += majorCell) {
+        ctx.moveTo(x, visTop);
+        ctx.lineTo(x, visBottom);
+      }
+      const startY = ay + Math.ceil((visTop - ay) / majorCell) * majorCell;
+      for (let y = startY; y <= visBottom; y += majorCell) {
+        ctx.moveTo(visLeft, y);
+        ctx.lineTo(visRight, y);
+      }
+      ctx.stroke();
+    }
+
+    // Anchor crosshair
+    const chSize = 12 / zoom;
+    ctx.strokeStyle = 'rgba(255, 200, 50, 0.8)';
+    ctx.lineWidth = 2 / zoom;
+    ctx.beginPath();
+    ctx.moveTo(ax - chSize, ay);
+    ctx.lineTo(ax + chSize, ay);
+    ctx.moveTo(ax, ay - chSize);
+    ctx.lineTo(ax, ay + chSize);
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Draw interactive handles at grid intersections (in screen space)
+    const { intersections } = this._getVisibleIntersections(viewport);
+    if (intersections.length > 0) {
+      const handleRadius = 5;
+
+      for (const ix of intersections) {
+        if (Math.abs(ix.gridX) < 0.01 && Math.abs(ix.gridY) < 0.01) continue;
+
+        const screen = viewport.mapToScreen(ix.mapX, ix.mapY);
+        const isHovered = this._pvHoveredIntersection &&
+          Math.abs(this._pvHoveredIntersection.mapX - ix.mapX) < 0.01 &&
+          Math.abs(this._pvHoveredIntersection.mapY - ix.mapY) < 0.01;
+        const isDragged = this._pvDragging && this._pvDragGridCoord &&
+          Math.abs(this._pvDragGridCoord.gx - ix.gridX) < 0.01 &&
+          Math.abs(this._pvDragGridCoord.gy - ix.gridY) < 0.01;
+
+        if (isDragged) {
+          ctx.fillStyle = 'rgba(255, 220, 80, 0.9)';
+          ctx.strokeStyle = 'rgba(255, 200, 50, 1)';
+        } else if (isHovered) {
+          ctx.fillStyle = 'rgba(0, 200, 255, 0.6)';
+          ctx.strokeStyle = 'rgba(0, 200, 255, 1)';
+        } else {
+          ctx.fillStyle = 'rgba(0, 200, 255, 0.15)';
+          ctx.strokeStyle = 'rgba(0, 200, 255, 0.4)';
+        }
+
+        const r = (isHovered || isDragged) ? handleRadius + 2 : handleRadius;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(screen.x, screen.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+    // Info HUD in screen space
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(8, 8, 260, this._pvDragging ? 62 : 44);
+    ctx.fillStyle = 'rgba(0, 200, 255, 0.9)';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText('Grid Preview  —  drag intersections to fine-tune', 14, 24);
+    ctx.font = '11px monospace';
+    ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
+    const effMppX = (mpp / this._correctionX).toFixed(4);
+    const effMppY = (mpp / this._correctionY).toFixed(4);
+    ctx.fillText(`X: ${effMppX} m/px  Y: ${effMppY} m/px`, 14, 42);
+    if (this._pvDragging) {
+      ctx.fillStyle = 'rgba(255, 200, 50, 0.8)';
+      ctx.fillText(`correction: X ×${this._correctionX.toFixed(3)}  Y ×${this._correctionY.toFixed(3)}`, 14, 58);
+    }
+    ctx.restore();
   }
 
   _renderWorldOverlay(ctx, viewport) {

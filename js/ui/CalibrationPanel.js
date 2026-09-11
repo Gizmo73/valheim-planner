@@ -11,7 +11,11 @@ export class CalibrationPanel {
     this._tileWInput = null;
     this._tileHInput = null;
     this._applyBtn = null;
+    this._previewGroup = null;
+    this._confirmBtn = null;
+    this._cancelBtn = null;
     this._isCalibrating = false;
+    this._isPreviewing = false;
     this._init();
 
     bus.on('map:loaded', () => this._show());
@@ -23,6 +27,10 @@ export class CalibrationPanel {
       this._updateVisibility();
     });
     bus.on('calibration:modeChanged', () => this._updateVisibility());
+    bus.on('calibration:previewChanged', (active) => {
+      this._isPreviewing = active;
+      this._updateVisibility();
+    });
   }
 
   _init() {
@@ -148,6 +156,30 @@ export class CalibrationPanel {
     });
     this._container.appendChild(this._applyBtn);
 
+    // Preview confirm/cancel group
+    this._previewGroup = document.createElement('div');
+    this._previewGroup.className = 'calibration-preview-group';
+
+    this._confirmBtn = document.createElement('button');
+    this._confirmBtn.className = 'calibration-confirm';
+    this._confirmBtn.textContent = 'Confirm';
+    this._confirmBtn.title = 'Accept grid alignment and finalize';
+    this._confirmBtn.addEventListener('click', () => {
+      this.bus.emit('calibration:previewConfirm');
+    });
+    this._previewGroup.appendChild(this._confirmBtn);
+
+    this._cancelBtn = document.createElement('button');
+    this._cancelBtn.className = 'calibration-cancel';
+    this._cancelBtn.textContent = 'Cancel';
+    this._cancelBtn.title = 'Discard corrections and go back';
+    this._cancelBtn.addEventListener('click', () => {
+      this.bus.emit('calibration:previewCancel');
+    });
+    this._previewGroup.appendChild(this._cancelBtn);
+
+    this._container.appendChild(this._previewGroup);
+
     const zoomLabel = document.getElementById('zoom-label');
     toolbar.insertBefore(this._container, zoomLabel);
 
@@ -170,8 +202,15 @@ export class CalibrationPanel {
 
   _updateVisibility() {
     const isLocal = this.mapScale.mapMode === 'local';
-    this._tileGroup.style.display = isLocal ? 'flex' : 'none';
-    this._applyBtn.style.display = (isLocal && this._isCalibrating) ? 'inline-block' : 'none';
+    const previewing = this._isPreviewing;
+
+    this._tileGroup.style.display = (isLocal && !previewing) ? 'flex' : 'none';
+    this._applyBtn.style.display = (isLocal && this._isCalibrating && !previewing) ? 'inline-block' : 'none';
+    this._previewGroup.style.display = previewing ? 'flex' : 'none';
+    this._calBtn.style.display = previewing ? 'none' : '';
+    this._modeSelect.style.display = previewing ? 'none' : '';
+    this._modeSelect.disabled = previewing;
+
     if (this._modeSelect) this._modeSelect.value = this.mapScale.mapMode;
   }
 }
