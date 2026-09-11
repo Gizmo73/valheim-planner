@@ -113,10 +113,18 @@ export class CalibrationTool {
     const cols = this.mapScale.cbCols;
     const rows = this.mapScale.cbRows;
     const spacing = this.mapScale.cbSpacing;
+    const tileSize = 2;
+    const gcx = (cols - 1) * spacing / 2;
+    const gcy = (rows - 1) * spacing / 2;
     const coords = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        coords.push({ x: c * spacing, y: r * spacing });
+        const tx = c * spacing;
+        const ty = r * spacing;
+        coords.push({ x: tx, y: ty });
+        const dx = Math.sign(gcx - tx) || 1;
+        const dy = Math.sign(gcy - ty) || 1;
+        coords.push({ x: tx + dx * tileSize, y: ty + dy * tileSize });
       }
     }
     return coords;
@@ -187,7 +195,7 @@ export class CalibrationTool {
   }
 
   _activateLocal() {
-    const pinCount = this.mapScale.cbCols * this.mapScale.cbRows;
+    const pinCount = this.mapScale.cbCols * this.mapScale.cbRows * 2;
     if (this._localInitialized && this._pins.length === pinCount) return;
     if (!this.mapLayer.image) return;
 
@@ -196,6 +204,7 @@ export class CalibrationTool {
     const cols = this.mapScale.cbCols;
     const rows = this.mapScale.cbRows;
     const spacing = this.mapScale.cbSpacing;
+    const tileSize = 2;
 
     const gridWorldW = (cols - 1) * spacing;
     const gridWorldH = (rows - 1) * spacing;
@@ -208,13 +217,25 @@ export class CalibrationTool {
     const originX = cx - (gridWorldW * scale) / 2;
     const originY = cy - (gridWorldH * scale) / 2;
 
+    const gcx = (cols - 1) * spacing / 2;
+    const gcy = (rows - 1) * spacing / 2;
+
     this._pins = [];
     this._enabled = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
+        const tx = c * spacing;
+        const ty = r * spacing;
         this._pins.push({
-          x: originX + c * spacing * scale,
-          y: originY + r * spacing * scale,
+          x: originX + tx * scale,
+          y: originY + ty * scale,
+        });
+        this._enabled.push(true);
+        const dx = Math.sign(gcx - tx) || 1;
+        const dy = Math.sign(gcy - ty) || 1;
+        this._pins.push({
+          x: originX + (tx + dx * tileSize) * scale,
+          y: originY + (ty + dy * tileSize) * scale,
         });
         this._enabled.push(true);
       }
@@ -857,96 +878,145 @@ export class CalibrationTool {
     ctx.translate(viewport.panX, viewport.panY);
     ctx.scale(zoom, zoom);
 
-    // Grid lines between pins
-    ctx.strokeStyle = 'rgba(255, 200, 50, 0.25)';
+    // Grid lines between center pins and links to corner pins
     ctx.lineWidth = 1 / zoom;
-    ctx.setLineDash([6 / zoom, 4 / zoom]);
+    const pinsPerTarget = 2;
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const idx = r * cols + c;
+        const ci = (r * cols + c) * pinsPerTarget;
+        const ki = ci + 1;
+        // Dashed line between center pins
+        ctx.strokeStyle = 'rgba(255, 200, 50, 0.25)';
+        ctx.setLineDash([6 / zoom, 4 / zoom]);
         if (c < cols - 1) {
-          const next = idx + 1;
+          const nextCi = ci + pinsPerTarget;
           ctx.beginPath();
-          ctx.moveTo(this._pins[idx].x, this._pins[idx].y);
-          ctx.lineTo(this._pins[next].x, this._pins[next].y);
+          ctx.moveTo(this._pins[ci].x, this._pins[ci].y);
+          ctx.lineTo(this._pins[nextCi].x, this._pins[nextCi].y);
           ctx.stroke();
         }
         if (r < rows - 1) {
-          const below = (r + 1) * cols + c;
+          const belowCi = ((r + 1) * cols + c) * pinsPerTarget;
           ctx.beginPath();
-          ctx.moveTo(this._pins[idx].x, this._pins[idx].y);
-          ctx.lineTo(this._pins[below].x, this._pins[below].y);
+          ctx.moveTo(this._pins[ci].x, this._pins[ci].y);
+          ctx.lineTo(this._pins[belowCi].x, this._pins[belowCi].y);
           ctx.stroke();
         }
+        // Dotted line from center to its corner pin
+        ctx.strokeStyle = 'rgba(255, 200, 50, 0.15)';
+        ctx.setLineDash([2 / zoom, 3 / zoom]);
+        ctx.beginPath();
+        ctx.moveTo(this._pins[ci].x, this._pins[ci].y);
+        ctx.lineTo(this._pins[ki].x, this._pins[ki].y);
+        ctx.stroke();
       }
     }
     ctx.setLineDash([]);
 
-    // Checkerboard indicator and pin at each position
+    // Pin markers — center pins get checkerboard icons, corner pins get smaller dots
     const pinR = 8 / zoom;
+    const cornerR = 5 / zoom;
     const cbHalf = 7 / zoom;
     for (let i = 0; i < this._pins.length; i++) {
       const pin = this._pins[i];
-      const isOrigin = i === 0;
+      const isCenter = i % 2 === 0;
+      const targetIdx = Math.floor(i / 2);
+      const isOrigin = targetIdx === 0 && isCenter;
       const active = this._dragging && this._dragIndex === i;
       const enabled = this._enabled[i];
 
-      // 2x2 checkerboard icon at pin center
-      if (enabled) {
-        ctx.globalAlpha = active ? 0.85 : 0.55;
-        ctx.fillStyle = isOrigin ? '#8B9A6B' : '#5A5650';
-        ctx.fillRect(pin.x - cbHalf, pin.y - cbHalf, cbHalf, cbHalf);
-        ctx.fillStyle = '#1C1C1E';
-        ctx.fillRect(pin.x, pin.y - cbHalf, cbHalf, cbHalf);
-        ctx.fillStyle = '#1C1C1E';
-        ctx.fillRect(pin.x - cbHalf, pin.y, cbHalf, cbHalf);
-        ctx.fillStyle = '#5A5650';
-        ctx.fillRect(pin.x, pin.y, cbHalf, cbHalf);
-        ctx.globalAlpha = 1;
-      }
+      if (isCenter) {
+        // 2x2 checkerboard icon at center pin
+        if (enabled) {
+          ctx.globalAlpha = active ? 0.85 : 0.55;
+          ctx.fillStyle = isOrigin ? '#8B9A6B' : '#5A5650';
+          ctx.fillRect(pin.x - cbHalf, pin.y - cbHalf, cbHalf, cbHalf);
+          ctx.fillStyle = '#1C1C1E';
+          ctx.fillRect(pin.x, pin.y - cbHalf, cbHalf, cbHalf);
+          ctx.fillStyle = '#1C1C1E';
+          ctx.fillRect(pin.x - cbHalf, pin.y, cbHalf, cbHalf);
+          ctx.fillStyle = '#5A5650';
+          ctx.fillRect(pin.x, pin.y, cbHalf, cbHalf);
+          ctx.globalAlpha = 1;
+        }
 
-      // Pin ring
-      const colour = !enabled ? 'rgba(150,150,150,.6)'
-        : active ? 'rgba(255, 220, 80, 1)' : 'rgba(255, 200, 50, 0.85)';
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.lineWidth = 3 / zoom;
-      ctx.beginPath();
-      ctx.arc(pin.x, pin.y, pinR, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = colour;
-      ctx.lineWidth = 1.5 / zoom;
-      if (!enabled) ctx.setLineDash([3 / zoom, 3 / zoom]);
-      ctx.beginPath();
-      ctx.arc(pin.x, pin.y, pinR, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+        // Center pin ring
+        const colour = !enabled ? 'rgba(150,150,150,.6)'
+          : active ? 'rgba(255, 220, 80, 1)' : 'rgba(255, 200, 50, 0.85)';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.lineWidth = 3 / zoom;
+        ctx.beginPath();
+        ctx.arc(pin.x, pin.y, pinR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = colour;
+        ctx.lineWidth = 1.5 / zoom;
+        if (!enabled) ctx.setLineDash([3 / zoom, 3 / zoom]);
+        ctx.beginPath();
+        ctx.arc(pin.x, pin.y, pinR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-      // Crosshair
-      const ch = 4 / zoom;
-      ctx.strokeStyle = colour;
-      ctx.lineWidth = 1 / zoom;
-      ctx.beginPath();
-      ctx.moveTo(pin.x - ch, pin.y); ctx.lineTo(pin.x + ch, pin.y);
-      ctx.moveTo(pin.x, pin.y - ch); ctx.lineTo(pin.x, pin.y + ch);
-      ctx.stroke();
+        // Crosshair
+        const ch = 4 / zoom;
+        ctx.strokeStyle = colour;
+        ctx.lineWidth = 1 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(pin.x - ch, pin.y); ctx.lineTo(pin.x + ch, pin.y);
+        ctx.moveTo(pin.x, pin.y - ch); ctx.lineTo(pin.x, pin.y + ch);
+        ctx.stroke();
 
-      // Label
-      const fontSize = Math.max(1, Math.round(10 / zoom));
-      ctx.font = `bold ${fontSize}px monospace`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 3 / zoom;
-      ctx.fillStyle = enabled ? '#fff' : '#888';
-      const labelY = pin.y - pinR - fontSize * 0.7;
-      ctx.strokeText(String(i + 1), pin.x, labelY);
-      ctx.fillText(String(i + 1), pin.x, labelY);
+        // Label
+        const fontSize = Math.max(1, Math.round(10 / zoom));
+        ctx.font = `bold ${fontSize}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3 / zoom;
+        ctx.fillStyle = enabled ? '#fff' : '#888';
+        const labelY = pin.y - pinR - fontSize * 0.7;
+        ctx.strokeText(String(targetIdx + 1), pin.x, labelY);
+        ctx.fillText(String(targetIdx + 1), pin.x, labelY);
 
-      // Origin marker
-      if (isOrigin && enabled) {
-        ctx.fillStyle = 'rgba(139, 154, 107, 0.9)';
-        ctx.font = `bold ${Math.max(1, Math.round(8 / zoom))}px monospace`;
-        ctx.fillText('ORIGIN', pin.x, pin.y + pinR + fontSize * 0.8);
+        // Origin marker
+        if (isOrigin && enabled) {
+          ctx.fillStyle = 'rgba(139, 154, 107, 0.9)';
+          ctx.font = `bold ${Math.max(1, Math.round(8 / zoom))}px monospace`;
+          ctx.fillText('ORIGIN', pin.x, pin.y + pinR + fontSize * 0.8);
+        }
+      } else {
+        // Corner pin — smaller filled dot
+        const colour = !enabled ? 'rgba(150,150,150,.4)'
+          : active ? 'rgba(255, 220, 80, 1)' : 'rgba(255, 180, 50, 0.7)';
+        ctx.fillStyle = colour;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.lineWidth = 1.5 / zoom;
+        if (!enabled) ctx.setLineDash([2 / zoom, 2 / zoom]);
+        ctx.beginPath();
+        ctx.arc(pin.x, pin.y, cornerR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Small crosshair
+        const ch = 3 / zoom;
+        ctx.strokeStyle = colour;
+        ctx.lineWidth = 0.8 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(pin.x - ch, pin.y); ctx.lineTo(pin.x + ch, pin.y);
+        ctx.moveTo(pin.x, pin.y - ch); ctx.lineTo(pin.x, pin.y + ch);
+        ctx.stroke();
+
+        // Corner label
+        const fontSize = Math.max(1, Math.round(8 / zoom));
+        ctx.font = `${fontSize}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2 / zoom;
+        ctx.fillStyle = enabled ? 'rgba(255,255,255,0.7)' : '#666';
+        const labelY = pin.y - cornerR - fontSize * 0.6;
+        ctx.strokeText(`${targetIdx + 1}c`, pin.x, labelY);
+        ctx.fillText(`${targetIdx + 1}c`, pin.x, labelY);
       }
     }
 
@@ -963,7 +1033,7 @@ export class CalibrationTool {
     ctx.font = '12px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(
-      `${cols}x${rows} targets @ ${spacing}m  |  ${enabledCount} active  |  dbl-click to toggle`,
+      `${cols}x${rows} targets (${this._pins.length} pins) @ ${spacing}m  |  ${enabledCount} active  |  dbl-click to toggle`,
       screenPos.x, screenPos.y
     );
     ctx.restore();
