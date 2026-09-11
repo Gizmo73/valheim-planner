@@ -5,3 +5,5 @@ test-screenshot.png
 test-touch-debug.mjs
 test-recalibration.mjs
 test-mobile-recal.mjs
+test-rotation-snap.mjs
+test-snap-cycle.mjs

@@ -47,6 +47,17 @@ export class Asset {
     return { x: 0, y: 0 };
   }
 
+  getGridSnapPoints() {
+    const hw = this.widthM / 2;
+    const hh = this.heightM / 2;
+    return [
+      { x: -hw, y: -hh },
+      { x: hw, y: -hh },
+      { x: hw, y: hh },
+      { x: -hw, y: hh },
+    ];
+  }
+
   getLocalSnapOffsets() {
     const hw = this.mapWidth / 2;
     const hh = this.mapHeight / 2;

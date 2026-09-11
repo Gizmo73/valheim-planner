@@ -177,6 +177,10 @@ export class MarbleColumn1x1 extends Asset {
     this._texture = generateColumnTexture(1);
   }
 
+  getGridSnapPoints() {
+    return [{ x: 0, y: 0 }];
+  }
+
   getLocalSnapOffsets() {
     return [[0, 0]];
   }
@@ -200,6 +204,10 @@ export class MarbleColumn2x2 extends Asset {
     super('marble-column-2x2', 2, 2);
     this._shape = 'octagon';
     this._texture = generateColumnTexture(2);
+  }
+
+  getGridSnapPoints() {
+    return [{ x: 0, y: 0 }];
   }
 
   getLocalSnapOffsets() {

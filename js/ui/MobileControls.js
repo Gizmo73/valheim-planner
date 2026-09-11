@@ -37,8 +37,9 @@ export class MobileControls {
 
   _init() {
     const actions = [
-      { id: 'rotate-ccw', label: '↺', title: 'Rotate left', group: 'rotate' },
-      { id: 'rotate-cw', label: '↻', title: 'Rotate right', group: 'rotate' },
+      { id: 'snap-prev', label: '◀', title: 'Prev snap point', group: 'rotate' },
+      { id: 'rotate-cw', label: '↻', title: 'Rotate', group: 'rotate' },
+      { id: 'snap-next', label: '▶', title: 'Next snap point', group: 'rotate' },
       { id: 'sep1', sep: true },
       { id: 'snap-grid', label: 'Grid', title: 'Grid snap', group: 'snap', toggle: true },
       { id: 'snap-asset', label: 'Snap', title: 'Asset snap', group: 'snap', toggle: true },
@@ -88,11 +89,14 @@ export class MobileControls {
 
   _onAction(action) {
     switch (action) {
-      case 'rotate-ccw':
-        this.bus.emit('mobile:rotate', -22.5);
+      case 'snap-prev':
+        this.bus.emit('mobile:snapPrev');
         break;
       case 'rotate-cw':
         this.bus.emit('mobile:rotate', 22.5);
+        break;
+      case 'snap-next':
+        this.bus.emit('mobile:snapNext');
         break;
       case 'snap-grid':
         this.toolManager.setSnapMode('grid');

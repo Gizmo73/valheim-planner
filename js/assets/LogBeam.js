@@ -102,6 +102,11 @@ export class LogBeam2m extends Asset {
     this._snapAlignment = 'center';
   }
 
+  getGridSnapPoints() {
+    const hw = this.widthM / 2;
+    return [{ x: -hw, y: 0 }, { x: hw, y: 0 }];
+  }
+
   getLocalSnapOffsets() {
     const hw = this.mapWidth / 2;
     return [[-hw, 0], [hw, 0]];
@@ -120,6 +125,11 @@ export class LogBeam4m extends Asset {
   constructor() {
     super('log-beam-4m', 4, BEAM_WIDTH_M);
     this._snapAlignment = 'center';
+  }
+
+  getGridSnapPoints() {
+    const hw = this.widthM / 2;
+    return [{ x: -hw, y: 0 }, { x: hw, y: 0 }];
   }
 
   getLocalSnapOffsets() {
@@ -141,6 +151,10 @@ export class LogPole extends Asset {
     super('log-pole', BEAM_WIDTH_M, BEAM_WIDTH_M);
     this._shape = 'circle';
     this._snapAlignment = 'center';
+  }
+
+  getGridSnapPoints() {
+    return [{ x: 0, y: 0 }];
   }
 
   getLocalSnapOffsets() {

@@ -62,6 +62,11 @@ function wallAsset(type, lengthM, thickM) {
       this._snapAlignment = 'center';
     }
 
+    getGridSnapPoints() {
+      const hw = this.widthM / 2;
+      return [{ x: -hw, y: 0 }, { x: hw, y: 0 }];
+    }
+
     getLocalSnapOffsets() {
       const hw = this.mapWidth / 2;
       return [[-hw, 0], [hw, 0]];

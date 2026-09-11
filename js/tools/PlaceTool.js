@@ -18,6 +18,7 @@ export class PlaceTool {
     this._fillStart = null;
     this._fillEnd = null;
     this._filling = false;
+    this._activeSnapIndex = 0;
 
     this.bus.on('snap:changed', (mode) => {
       this._snapMode = mode;
@@ -38,6 +39,12 @@ export class PlaceTool {
       this.bus.emit('fill:changed', this._fillMode);
       this.bus.emit('render:request');
     });
+    this.bus.on('mobile:snapPrev', () => {
+      this._cycleSnapPoint(-1);
+    });
+    this.bus.on('mobile:snapNext', () => {
+      this._cycleSnapPoint(1);
+    });
   }
 
   hitTest(pos) {
@@ -47,6 +54,7 @@ export class PlaceTool {
   setAssetType(type) {
     this.assetType = type;
     this.rotation = 0;
+    this._activeSnapIndex = 0;
     this._fillMode = false;
     this._filling = false;
     this._previewAsset = createAsset(type);
@@ -66,6 +74,18 @@ export class PlaceTool {
     this._snappedPos = null;
     this._fillMode = false;
     this._filling = false;
+    this._activeSnapIndex = 0;
+  }
+
+  _cycleSnapPoint(dir) {
+    if (!this._previewAsset) return;
+    const pts = this._previewAsset.getGridSnapPoints();
+    if (pts.length <= 1) return;
+    this._activeSnapIndex = (this._activeSnapIndex + dir + pts.length) % pts.length;
+    if (this._cursorMap) {
+      this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
+    }
+    this.bus.emit('render:request');
   }
 
   _findWorkingLayer(mapX, mapY) {
@@ -90,11 +110,24 @@ export class PlaceTool {
 
     const mpp = this.mapScale.metresPerPixel;
     const grid = mapToGrid(mapX, mapY, layer, mpp);
+    const asset = this._previewAsset;
+    if (!asset) return null;
 
-    const offset = this._previewAsset ? this._previewAsset.getGridSnapOffset() : { x: 0, y: 0 };
-    const snapped = snapToGrid(grid.x - offset.x, grid.y - offset.y);
-    const adjustedX = snapped.x + offset.x;
-    const adjustedY = snapped.y + offset.y;
+    const hw = asset.widthM / 2;
+    const hh = asset.heightM / 2;
+    const rad = this.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    const snapPoints = asset.getGridSnapPoints();
+    const anchor = snapPoints[this._activeSnapIndex % snapPoints.length];
+
+    const snapPtX = grid.x + hw + anchor.x * cos - anchor.y * sin;
+    const snapPtY = grid.y + hh + anchor.x * sin + anchor.y * cos;
+    const snapped = snapToGrid(snapPtX, snapPtY);
+
+    const adjustedX = snapped.x - hw - anchor.x * cos + anchor.y * sin;
+    const adjustedY = snapped.y - hh - anchor.x * sin - anchor.y * cos;
 
     const mapPos = gridToMap(adjustedX, adjustedY, layer, mpp);
     return { mapX: mapPos.x, mapY: mapPos.y, gridX: adjustedX, gridY: adjustedY, layer, mode: 'grid' };
@@ -252,19 +285,18 @@ export class PlaceTool {
   }
 
   onKeyDown(e) {
-    if (e.code === 'KeyQ' || e.code === 'ArrowLeft' || e.code === 'ArrowDown') {
-      this.rotation = (this.rotation - 22.5 + 360) % 360;
-      if (this._cursorMap) {
-        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
-      }
-      this.bus.emit('render:request');
-      e.preventDefault();
-    } else if (e.code === 'KeyE' || e.code === 'ArrowRight' || e.code === 'ArrowUp') {
+    if (e.code === 'KeyR') {
       this.rotation = (this.rotation + 22.5) % 360;
       if (this._cursorMap) {
         this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
       }
       this.bus.emit('render:request');
+      e.preventDefault();
+    } else if (e.code === 'KeyQ') {
+      this._cycleSnapPoint(-1);
+      e.preventDefault();
+    } else if (e.code === 'KeyE') {
+      this._cycleSnapPoint(1);
       e.preventDefault();
     } else if (e.code === 'KeyF') {
       this._fillMode = !this._fillMode;
@@ -295,21 +327,46 @@ export class PlaceTool {
 
     const snapped = this._snappedPos;
 
+    const asset = this._previewAsset;
+
     ctx.save();
     ctx.translate(viewport.panX, viewport.panY);
     ctx.scale(viewport.zoom, viewport.zoom);
-    this._previewAsset.renderPreview(ctx, snapped.mapX, snapped.mapY, this.rotation, 0.6, viewport);
+    asset.renderPreview(ctx, snapped.mapX, snapped.mapY, this.rotation, 0.6, viewport);
     ctx.restore();
 
-    const screenPos = viewport.mapToScreen(snapped.mapX, snapped.mapY);
+    const snapPoints = asset.getGridSnapPoints();
+    const snapIdx = this._activeSnapIndex % snapPoints.length;
+    const anchor = snapPoints[snapIdx];
+    const mpp = this.mapScale.metresPerPixel;
+    const rad = this.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const cx = snapped.mapX + asset.mapWidth / 2;
+    const cy = snapped.mapY + asset.mapHeight / 2;
+    const dotMapX = cx + (anchor.x / mpp) * cos - (anchor.y / mpp) * sin;
+    const dotMapY = cy + (anchor.x / mpp) * sin + (anchor.y / mpp) * cos;
+    const dotScreen = viewport.mapToScreen(dotMapX, dotMapY);
+
+    ctx.save();
+    ctx.fillStyle = '#ff0000';
+    ctx.beginPath();
+    ctx.arc(dotScreen.x, dotScreen.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+
     ctx.save();
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.font = '11px monospace';
     let label = `${this.rotation}°`;
-    if (this._fillMode) label += ' [FILL]';
-    else if (this._snapMode === 'asset') label += ' [snap]';
-    else if (this._snapMode === 'free') label += ' [free]';
-    ctx.fillText(label, screenPos.x + 4, screenPos.y - 6);
+    if (snapPoints.length > 1) label += ` [${snapIdx + 1}/${snapPoints.length}]`;
+    if (this._fillMode) label += ' FILL';
+    else if (this._snapMode === 'asset') label += ' snap';
+    else if (this._snapMode === 'free') label += ' free';
+    ctx.fillText(label, dotScreen.x + 8, dotScreen.y - 8);
     ctx.restore();
   }
 

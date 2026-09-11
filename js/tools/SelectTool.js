@@ -17,6 +17,7 @@ export class SelectTool {
     this._dragOffsets = [];
     this._snapMode = 'grid';
     this._shiftDown = false;
+    this._activeSnapIndex = 0;
 
     this.bus.on('snap:changed', (mode) => { this._snapMode = mode; });
     this.bus.on('mobile:rotate', (deg) => {
@@ -25,6 +26,8 @@ export class SelectTool {
         this.bus.emit('render:request');
       }
     });
+    this.bus.on('mobile:snapPrev', () => { this._cycleSnapPoint(-1); });
+    this.bus.on('mobile:snapNext', () => { this._cycleSnapPoint(1); });
     this.bus.on('mobile:duplicate', () => {
       if (this.selected) this.bus.emit('asset:startPlace', this.selected.type);
     });
@@ -59,6 +62,15 @@ export class SelectTool {
     this.selection = [];
     this._dragging = false;
     this._boxSelecting = false;
+    this._activeSnapIndex = 0;
+  }
+
+  _cycleSnapPoint(dir) {
+    if (!this.selected) return;
+    const pts = this.selected.getGridSnapPoints();
+    if (pts.length <= 1) return;
+    this._activeSnapIndex = (this._activeSnapIndex + dir + pts.length) % pts.length;
+    this.bus.emit('render:request');
   }
 
   _isSelected(asset) {
@@ -68,6 +80,7 @@ export class SelectTool {
   _setSelection(assets) {
     this.selection = assets;
     this.selected = assets.length > 0 ? assets[0] : null;
+    this._activeSnapIndex = 0;
     this.bus.emit('asset:selected', this.selected);
   }
 
@@ -144,10 +157,18 @@ export class SelectTool {
       finalGridY = result.gridY;
     } else {
       const grid = mapToGrid(targetMapX, targetMapY, layer, mpp);
-      const offset = primary.getGridSnapOffset();
-      const snapped = snapToGrid(grid.x - offset.x, grid.y - offset.y);
-      finalGridX = snapped.x + offset.x;
-      finalGridY = snapped.y + offset.y;
+      const hw = primary.widthM / 2;
+      const hh = primary.heightM / 2;
+      const rad = primary.rotation * Math.PI / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const snapPoints = primary.getGridSnapPoints();
+      const anchor = snapPoints[this._activeSnapIndex % snapPoints.length];
+      const snapPtX = grid.x + hw + anchor.x * cos - anchor.y * sin;
+      const snapPtY = grid.y + hh + anchor.x * sin + anchor.y * cos;
+      const snapped = snapToGrid(snapPtX, snapPtY);
+      finalGridX = snapped.x - hw - anchor.x * cos + anchor.y * sin;
+      finalGridY = snapped.y - hh - anchor.x * sin - anchor.y * cos;
     }
 
     const deltaGridX = finalGridX - primary.gridX;
@@ -165,9 +186,20 @@ export class SelectTool {
     const existingPoints = this.assetLayer.getSnapPoints(this.selection);
     if (existingPoints.length === 0) {
       const grid = mapToGrid(targetMapX, targetMapY, layer, mpp);
-      const offset = asset.getGridSnapOffset();
-      const snapped = snapToGrid(grid.x - offset.x, grid.y - offset.y);
-      return { gridX: snapped.x + offset.x, gridY: snapped.y + offset.y };
+      const hw = asset.widthM / 2;
+      const hh = asset.heightM / 2;
+      const rad = asset.rotation * Math.PI / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const snapPoints = asset.getGridSnapPoints();
+      const anchor = snapPoints[this._activeSnapIndex % snapPoints.length];
+      const snapPtX = grid.x + hw + anchor.x * cos - anchor.y * sin;
+      const snapPtY = grid.y + hh + anchor.x * sin + anchor.y * cos;
+      const snapped = snapToGrid(snapPtX, snapPtY);
+      return {
+        gridX: snapped.x - hw - anchor.x * cos + anchor.y * sin,
+        gridY: snapped.y - hh - anchor.x * sin - anchor.y * cos,
+      };
     }
 
     const hw = asset.mapWidth / 2;
@@ -239,18 +271,18 @@ export class SelectTool {
   }
 
   onKeyDown(e) {
-    if (e.code === 'KeyQ' || e.code === 'ArrowLeft' || e.code === 'ArrowDown') {
-      if (this.selection.length > 0) {
-        for (const a of this.selection) a.rotate(-22.5);
-        this.bus.emit('render:request');
-        e.preventDefault();
-      }
-    } else if (e.code === 'KeyE' || e.code === 'ArrowRight' || e.code === 'ArrowUp') {
+    if (e.code === 'KeyR') {
       if (this.selection.length > 0) {
         for (const a of this.selection) a.rotate(22.5);
         this.bus.emit('render:request');
         e.preventDefault();
       }
+    } else if (e.code === 'KeyQ') {
+      this._cycleSnapPoint(-1);
+      e.preventDefault();
+    } else if (e.code === 'KeyE') {
+      this._cycleSnapPoint(1);
+      e.preventDefault();
     } else if (e.code === 'KeyD') {
       if (this.selected) {
         this.bus.emit('asset:startPlace', this.selected.type);
@@ -312,22 +344,38 @@ export class SelectTool {
     }
 
     if (this.selection.length > 0 && this.selected) {
-      ctx.save();
       const asset = this.selected;
       const cx = asset.mapX + asset.mapWidth / 2;
       const cy = asset.mapY + asset.mapHeight / 2;
-      const hw = asset.mapWidth / 2;
-      const hh = asset.mapHeight / 2;
       const rad = asset.rotation * Math.PI / 180;
-      const corner = viewport.mapToScreen(
-        cx + (-hw) * Math.cos(rad) - (-hh) * Math.sin(rad),
-        cy + (-hw) * Math.sin(rad) + (-hh) * Math.cos(rad)
-      );
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      const snapPoints = asset.getGridSnapPoints();
+      const snapIdx = this._activeSnapIndex % snapPoints.length;
+      const anchor = snapPoints[snapIdx];
+      const mpp = this.mapScale.metresPerPixel;
+      const dotMapX = cx + (anchor.x / mpp) * cos - (anchor.y / mpp) * sin;
+      const dotMapY = cy + (anchor.x / mpp) * sin + (anchor.y / mpp) * cos;
+      const dotScreen = viewport.mapToScreen(dotMapX, dotMapY);
+
+      ctx.save();
+      ctx.fillStyle = '#ff0000';
+      ctx.beginPath();
+      ctx.arc(dotScreen.x, dotScreen.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
       ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
       ctx.font = '11px monospace';
       let label = `${asset.rotation}°`;
-      if (this.selection.length > 1) label += ` [${this.selection.length}]`;
-      ctx.fillText(label, corner.x + 8, corner.y - 8);
+      if (snapPoints.length > 1) label += ` [${snapIdx + 1}/${snapPoints.length}]`;
+      if (this.selection.length > 1) label += ` (${this.selection.length})`;
+      ctx.fillText(label, dotScreen.x + 8, dotScreen.y - 8);
       ctx.restore();
     }
   }
