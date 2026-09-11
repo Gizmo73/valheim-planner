@@ -65,6 +65,11 @@ export class WoodBeam1m extends Asset {
     this._snapAlignment = 'center';
   }
 
+  getGridSnapPoints() {
+    const hw = this.widthM / 2;
+    return [{ x: -hw, y: 0 }, { x: hw, y: 0 }];
+  }
+
   getLocalSnapOffsets() {
     const hw = this.mapWidth / 2;
     return [[-hw, 0], [hw, 0]];
@@ -85,6 +90,11 @@ export class WoodBeam2m extends Asset {
     this._snapAlignment = 'center';
   }
 
+  getGridSnapPoints() {
+    const hw = this.widthM / 2;
+    return [{ x: -hw, y: 0 }, { x: hw, y: 0 }];
+  }
+
   getLocalSnapOffsets() {
     const hw = this.mapWidth / 2;
     return [[-hw, 0], [hw, 0]];
@@ -103,6 +113,10 @@ export class WoodBeamVertical extends Asset {
   constructor() {
     super('wood-beam-vertical', BEAM_WIDTH_M, BEAM_WIDTH_M);
     this._snapAlignment = 'center';
+  }
+
+  getGridSnapPoints() {
+    return [{ x: 0, y: 0 }];
   }
 
   getLocalSnapOffsets() {

@@ -106,6 +106,9 @@ bus.on('tool:changed', (name) => {
 
 toolManager.activate('select');
 
+// Test hook
+window._app = { bus, viewport, mapScale, mapLayer, assetLayer, layerManager, toolManager, renderer };
+
 document.getElementById('help-close').addEventListener('click', () => {
   document.getElementById('help-panel').style.display = 'none';
 });
