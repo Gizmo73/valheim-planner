@@ -9,6 +9,7 @@ export class MapLayer {
     this.width = 0;
     this.height = 0;
     this._dataURL = null;
+    this._previewCorrection = null;
   }
 
   loadFromFile(file) {
@@ -66,8 +67,43 @@ export class MapLayer {
     return this._dataURL;
   }
 
+  setPreviewCorrection(anchorX, anchorY, scaleX, scaleY) {
+    this._previewCorrection = { anchorX, anchorY, scaleX, scaleY };
+    this.bus.emit('render:request');
+  }
+
+  clearPreviewCorrection() {
+    this._previewCorrection = null;
+    this.bus.emit('render:request');
+  }
+
+  applyScaleCorrection(anchorX, anchorY, scaleX, scaleY) {
+    const src = this.image;
+    const w = this.width;
+    const h = this.height;
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    const ctx = out.getContext('2d');
+    ctx.translate(anchorX, anchorY);
+    ctx.scale(scaleX, scaleY);
+    ctx.translate(-anchorX, -anchorY);
+    ctx.drawImage(src, 0, 0, w, h);
+    return out;
+  }
+
   render(ctx, viewport, canvasWidth, canvasHeight) {
     if (!this.image) return;
-    ctx.drawImage(this.image, 0, 0, this.width, this.height);
+    if (this._previewCorrection) {
+      const { anchorX, anchorY, scaleX, scaleY } = this._previewCorrection;
+      ctx.save();
+      ctx.translate(anchorX, anchorY);
+      ctx.scale(scaleX, scaleY);
+      ctx.translate(-anchorX, -anchorY);
+      ctx.drawImage(this.image, 0, 0, this.width, this.height);
+      ctx.restore();
+    } else {
+      ctx.drawImage(this.image, 0, 0, this.width, this.height);
+    }
   }
 }

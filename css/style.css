@@ -210,6 +210,46 @@ html, body {
   color: var(--bg);
 }
 
+.calibration-preview-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.calibration-confirm {
+  padding: 3px 10px;
+  background: #1a6b3a;
+  border: 1px solid #2ecc71;
+  border-radius: 4px;
+  color: #2ecc71;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.calibration-confirm:hover {
+  background: #2ecc71;
+  color: #000;
+}
+
+.calibration-cancel {
+  padding: 3px 10px;
+  background: rgba(200, 60, 60, 0.15);
+  border: 1px solid rgba(200, 60, 60, 0.5);
+  border-radius: 4px;
+  color: rgba(200, 60, 60, 0.9);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.calibration-cancel:hover {
+  background: rgba(200, 60, 60, 0.8);
+  color: #fff;
+}
+
 /* Main content */
 #content {
   display: flex;
@@ -677,6 +717,12 @@ kbd {
   }
 
   .calibration-apply {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .calibration-confirm,
+  .calibration-cancel {
     padding: 4px 8px;
     font-size: 12px;
   }

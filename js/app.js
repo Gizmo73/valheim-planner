@@ -133,48 +133,172 @@ bus.on('sidebar:toggle', () => {
   backdrop.classList.toggle('hidden', !isOpen);
 });
 
+// State preserved across the preview step
+let _preCalibrationState = null;
+
 bus.on('calibration:apply', () => {
   if (!mapLayer.image) return;
   const pins = calibrationTool.pins;
   const tileW = mapScale.tileW;
   const tileH = mapScale.tileH;
+
+  // Save state for cancel
+  const oldImage = mapLayer.image;
+  const oldWidth = mapLayer.width;
+  const oldHeight = mapLayer.height;
+  const oldMpp = mapScale.metresPerPixel;
+  const oldLayers = layerManager.getByType('working').map(wl => ({
+    id: wl.id, name: wl.name,
+    originX: wl.originX, originY: wl.originY,
+    width: wl.width, height: wl.height,
+    gridAnchorX: wl.gridAnchorX, gridAnchorY: wl.gridAnchorY,
+    visible: wl.visible,
+  }));
+  const oldAssets = assetLayer.assets.map(a => ({
+    asset: a,
+    gridX: a.gridX, gridY: a.gridY,
+    workingLayer: a.workingLayer,
+  }));
+
+  _preCalibrationState = { oldImage, oldWidth, oldHeight, oldMpp, oldLayers, oldAssets };
+
   const result = PerspectiveTransform.correctImage(mapLayer.image, pins, tileW, tileH);
-  if (result) {
-    const oldMpp = mapScale.metresPerPixel;
-    mapLayer.applyCorrectedImage(result.canvas);
-    mapScale.locked = false;
-    mapScale.metresPerPixel = result.metresPerPixel;
-    viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
+  if (!result) return;
 
-    if (mapScale.mapMode === 'local') {
-      const existing = layerManager.getByType('working');
-      const oldLayer = existing[0] || null;
+  mapLayer.applyCorrectedImage(result.canvas);
+  mapScale.locked = false;
+  mapScale.metresPerPixel = result.metresPerPixel;
+  viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
 
-      for (const wl of existing) layerManager.removeLayer(wl.id);
-      const wl = new WorkingLayer(0, 0, mapLayer.width, mapLayer.height, bus, mapScale);
-      wl.name = 'Working Area 1';
-      if (result.refRect) {
-        wl.gridAnchorX = result.refRect.x;
-        wl.gridAnchorY = result.refRect.y;
+  if (mapScale.mapMode === 'local') {
+    const existing = layerManager.getByType('working');
+    const oldLayer = existing[0] || null;
+    for (const wl of existing) layerManager.removeLayer(wl.id);
+
+    const wl = new WorkingLayer(0, 0, mapLayer.width, mapLayer.height, bus, mapScale);
+    wl.name = 'Working Area 1';
+    if (result.refRect) {
+      wl.gridAnchorX = result.refRect.x;
+      wl.gridAnchorY = result.refRect.y;
+    }
+    layerManager.addLayer(wl);
+
+    const newMpp = result.metresPerPixel;
+    const newAx = wl.gridAnchorX != null ? wl.gridAnchorX : wl.originX;
+    const newAy = wl.gridAnchorY != null ? wl.gridAnchorY : wl.originY;
+    for (const asset of assetLayer.assets) {
+      if (asset.workingLayer && oldLayer) {
+        const oldAx = oldLayer.gridAnchorX != null ? oldLayer.gridAnchorX : oldLayer.originX;
+        const oldAy = oldLayer.gridAnchorY != null ? oldLayer.gridAnchorY : oldLayer.originY;
+        const mapPx = oldAx + asset.gridX / oldMpp;
+        const mapPy = oldAy + asset.gridY / oldMpp;
+        asset.gridX = (mapPx - newAx) * newMpp;
+        asset.gridY = (mapPy - newAy) * newMpp;
       }
-      layerManager.addLayer(wl);
+      asset.workingLayer = wl;
+    }
 
-      const newMpp = result.metresPerPixel;
+    // Hide the working layer grid during preview (the tool draws its own)
+    wl.visible = false;
+
+    const anchorX = result.refRect ? result.refRect.x : 0;
+    const anchorY = result.refRect ? result.refRect.y : 0;
+    calibrationTool.enterPreview(anchorX, anchorY, result.metresPerPixel);
+  } else {
+    _preCalibrationState = null;
+    toolManager.activate('select');
+  }
+});
+
+bus.on('calibration:previewConfirm', () => {
+  const { x: corrX, y: corrY } = calibrationTool.corrections;
+  const mpp = calibrationTool._previewMpp;
+  const ax = calibrationTool._previewAnchorX;
+  const ay = calibrationTool._previewAnchorY;
+
+  const needsResample = Math.abs(corrX - 1) > 0.001 || Math.abs(corrY - 1) > 0.001;
+
+  if (needsResample) {
+    const corrected = mapLayer.applyScaleCorrection(ax, ay, corrX, corrY);
+    mapLayer.applyCorrectedImage(corrected);
+
+    const newMpp = mpp / Math.sqrt(corrX * corrY);
+    mapScale.metresPerPixel = newMpp;
+
+    // Update working layer and asset positions
+    const layers = layerManager.getByType('working');
+    const wl = layers[0];
+    if (wl) {
+      wl.width = mapLayer.width;
+      wl.height = mapLayer.height;
+      // Anchor stays at same pixel position since we scaled around it
+    }
+
+    // Re-map assets from old mpp to new mpp
+    if (wl) {
+      const oldMpp = mpp;
       const newAx = wl.gridAnchorX != null ? wl.gridAnchorX : wl.originX;
       const newAy = wl.gridAnchorY != null ? wl.gridAnchorY : wl.originY;
       for (const asset of assetLayer.assets) {
-        if (asset.workingLayer && oldLayer) {
-          const oldAx = oldLayer.gridAnchorX != null ? oldLayer.gridAnchorX : oldLayer.originX;
-          const oldAy = oldLayer.gridAnchorY != null ? oldLayer.gridAnchorY : oldLayer.originY;
-          const mapPx = oldAx + asset.gridX / oldMpp;
-          const mapPy = oldAy + asset.gridY / oldMpp;
-          asset.gridX = (mapPx - newAx) * newMpp;
-          asset.gridY = (mapPy - newAy) * newMpp;
-        }
-        asset.workingLayer = wl;
+        const mapPx = newAx + asset.gridX / oldMpp;
+        const mapPy = newAy + asset.gridY / oldMpp;
+        // Apply the same correction transform to the asset's map position
+        const corrMapX = ax + (mapPx - ax) * corrX;
+        const corrMapY = ay + (mapPy - ay) * corrY;
+        asset.gridX = (corrMapX - newAx) * newMpp;
+        asset.gridY = (corrMapY - newAy) * newMpp;
       }
     }
-
-    toolManager.activate('select');
   }
+
+  // Show the working layer grid again
+  const layers = layerManager.getByType('working');
+  if (layers[0]) layers[0].visible = true;
+
+  calibrationTool.exitPreview();
+  _preCalibrationState = null;
+  toolManager.activate('select');
+  bus.emit('render:request');
+});
+
+bus.on('calibration:previewCancel', () => {
+  calibrationTool.exitPreview();
+
+  if (_preCalibrationState) {
+    const s = _preCalibrationState;
+
+    // Restore original image
+    mapLayer.image = s.oldImage;
+    mapLayer.width = s.oldWidth;
+    mapLayer.height = s.oldHeight;
+    mapLayer._dataURL = null;
+
+    mapScale.locked = false;
+    mapScale.metresPerPixel = s.oldMpp;
+
+    // Restore working layers
+    const existing = layerManager.getByType('working');
+    for (const wl of existing) layerManager.removeLayer(wl.id);
+    for (const saved of s.oldLayers) {
+      const wl = new WorkingLayer(saved.originX, saved.originY, saved.width, saved.height, bus, mapScale);
+      wl.name = saved.name;
+      wl.gridAnchorX = saved.gridAnchorX;
+      wl.gridAnchorY = saved.gridAnchorY;
+      wl.visible = saved.visible;
+      layerManager.addLayer(wl);
+    }
+
+    // Restore asset positions
+    for (const saved of s.oldAssets) {
+      saved.asset.gridX = saved.gridX;
+      saved.asset.gridY = saved.gridY;
+      saved.asset.workingLayer = saved.workingLayer;
+    }
+
+    viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
+    _preCalibrationState = null;
+  }
+
+  toolManager.activate('select');
+  bus.emit('render:request');
 });
