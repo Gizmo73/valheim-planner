@@ -137,6 +137,7 @@ bus.on('calibration:apply', () => {
   const tileH = mapScale.tileH;
   const result = PerspectiveTransform.correctImage(mapLayer.image, pins, tileW, tileH);
   if (result) {
+    const oldMpp = mapScale.metresPerPixel;
     mapLayer.applyCorrectedImage(result.canvas);
     mapScale.locked = false;
     mapScale.metresPerPixel = result.metresPerPixel;
@@ -144,6 +145,8 @@ bus.on('calibration:apply', () => {
 
     if (mapScale.mapMode === 'local') {
       const existing = layerManager.getByType('working');
+      const oldLayer = existing[0] || null;
+
       for (const wl of existing) layerManager.removeLayer(wl.id);
       const wl = new WorkingLayer(0, 0, mapLayer.width, mapLayer.height, bus, mapScale);
       wl.name = 'Working Area 1';
@@ -152,6 +155,21 @@ bus.on('calibration:apply', () => {
         wl.gridAnchorY = result.refRect.y;
       }
       layerManager.addLayer(wl);
+
+      const newMpp = result.metresPerPixel;
+      const newAx = wl.gridAnchorX != null ? wl.gridAnchorX : wl.originX;
+      const newAy = wl.gridAnchorY != null ? wl.gridAnchorY : wl.originY;
+      for (const asset of assetLayer.assets) {
+        if (asset.workingLayer && oldLayer) {
+          const oldAx = oldLayer.gridAnchorX != null ? oldLayer.gridAnchorX : oldLayer.originX;
+          const oldAy = oldLayer.gridAnchorY != null ? oldLayer.gridAnchorY : oldLayer.originY;
+          const mapPx = oldAx + asset.gridX / oldMpp;
+          const mapPy = oldAy + asset.gridY / oldMpp;
+          asset.gridX = (mapPx - newAx) * newMpp;
+          asset.gridY = (mapPy - newAy) * newMpp;
+        }
+        asset.workingLayer = wl;
+      }
     }
 
     toolManager.activate('select');

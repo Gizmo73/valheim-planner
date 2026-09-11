@@ -22,12 +22,14 @@ export class Asset {
 
   get mapX() {
     if (!this.workingLayer) return 0;
-    return this.workingLayer.originX + this.gridX / this._mpp;
+    const ax = this.workingLayer.gridAnchorX != null ? this.workingLayer.gridAnchorX : this.workingLayer.originX;
+    return ax + this.gridX / this._mpp;
   }
 
   get mapY() {
     if (!this.workingLayer) return 0;
-    return this.workingLayer.originY + this.gridY / this._mpp;
+    const ay = this.workingLayer.gridAnchorY != null ? this.workingLayer.gridAnchorY : this.workingLayer.originY;
+    return ay + this.gridY / this._mpp;
   }
 
   get mapWidth() {
