@@ -1,175 +1,110 @@
-export class MobileControls {
-  constructor(toolManager, bus) {
-    this.toolManager = toolManager;
-    this.bus = bus;
-    this._currentTool = null;
-    this._hasSelection = false;
-    this._fillActive = false;
-    this._mapMode = 'local';
-    this._el = document.getElementById('mobile-controls');
-    if (!this._el) return;
+import { refreshIcons } from './icons.js';
 
-    this._init();
+const TABS = [
+  { name: 'select', label: 'Select', icon: 'mouse-pointer-2' },
+  { name: 'pieces', label: 'Pieces', icon: 'blocks' },
+  { name: 'layers', label: 'Layers', icon: 'layers' },
+  { name: 'plan', label: 'Plan', icon: 'sliders-horizontal' },
+];
+
+export class MobileControls {
+  constructor(toolManager, selectTool, mapScale, bus) {
+    this.toolManager = toolManager;
+    this.selectTool = selectTool;
+    this.mapScale = mapScale;
+    this.bus = bus;
+    this._tabbar = document.getElementById('mobile-tabbar');
+    this._context = document.getElementById('mobile-context');
+    this._currentTool = null;
+    this._activePanelTab = null;
+
+    this._initTabbar();
 
     bus.on('tool:changed', (name) => {
       this._currentTool = name;
-      this._fillActive = false;
-      this._updateVisibility();
+      this._updateTabbarActive();
+      this._renderContext();
     });
-    bus.on('asset:selected', (asset) => {
-      this._hasSelection = !!asset;
-      this._updateVisibility();
+    bus.on('asset:selected', () => this._renderContext());
+    bus.on('panel:tabChanged', (name) => {
+      this._activePanelTab = name;
+      this._updateTabbarActive();
     });
-    bus.on('snap:changed', (mode) => {
-      this._updateSnapButtons(mode);
-    });
-    bus.on('fill:changed', (active) => {
-      this._fillActive = active;
-      if (this._buttons['fill']) {
-        this._buttons['fill'].classList.toggle('active', active);
-      }
-    });
-    bus.on('calibration:modeChanged', (mode) => {
-      this._mapMode = mode;
-      this._updateVisibility();
-    });
+    bus.on('sidebar:changed', () => this._updateTabbarActive());
+    bus.on('calibration:modeChanged', () => this._renderContext());
+
+    this._renderContext();
   }
 
-  _init() {
-    const actions = [
-      { id: 'snap-prev', label: '◀', title: 'Prev snap point', group: 'rotate' },
-      { id: 'rotate-cw', label: '↻', title: 'Rotate', group: 'rotate' },
-      { id: 'snap-next', label: '▶', title: 'Next snap point', group: 'rotate' },
-      { id: 'sep1', sep: true },
-      { id: 'snap-grid', label: 'Grid', title: 'Grid snap', group: 'snap', toggle: true },
-      { id: 'snap-asset', label: 'Snap', title: 'Asset snap', group: 'snap', toggle: true },
-      { id: 'snap-free', label: 'Free', title: 'Free place', group: 'snap', toggle: true },
-      { id: 'sep2', sep: true },
-      { id: 'fill', label: 'Fill', title: 'Grid fill', group: 'place-only', toggle: true },
-      { id: 'select-all', label: 'All', title: 'Select all', group: 'select-any' },
-      { id: 'duplicate', label: 'Dup', title: 'Duplicate', group: 'select-only' },
-      { id: 'delete', label: 'Del', title: 'Delete', group: 'select-only' },
-      { id: 'group', label: 'Grp', title: 'Group selected', group: 'select-only' },
-      { id: 'sep3', sep: true, group: 'world-select' },
-      { id: 'region', label: '⬚', title: 'New working area', group: 'world-select' },
-    ];
-
-    this._buttons = {};
-    this._seps = [];
-
-    for (const a of actions) {
-      if (a.sep) {
-        const sep = document.createElement('div');
-        sep.className = 'mobile-sep';
-        if (a.group) sep.dataset.group = a.group;
-        this._el.appendChild(sep);
-        this._seps.push(sep);
-        continue;
-      }
-
+  _initTabbar() {
+    this._tabbar.innerHTML = '';
+    for (const t of TABS) {
       const btn = document.createElement('button');
-      btn.className = 'mobile-btn';
-      if (a.toggle) btn.classList.add('toggle');
-      btn.textContent = a.label;
-      btn.title = a.title;
-      btn.dataset.action = a.id;
-      btn.dataset.group = a.group;
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this._onAction(a.id);
-      });
-      this._buttons[a.id] = btn;
-      this._el.appendChild(btn);
+      btn.className = 'mobile-tab';
+      btn.dataset.tab = t.name;
+      btn.innerHTML = `<span class="icon"><i data-lucide="${t.icon}"></i></span>${t.label}`;
+      btn.addEventListener('click', () => this._onTabClick(t.name));
+      this._tabbar.appendChild(btn);
     }
-
-    this._updateSnapButtons('grid');
-    this._updateVisibility();
+    refreshIcons();
   }
 
-  _onAction(action) {
-    switch (action) {
-      case 'snap-prev':
-        this.bus.emit('mobile:snapPrev');
-        break;
-      case 'rotate-cw':
-        this.bus.emit('mobile:rotate', 22.5);
-        break;
-      case 'snap-next':
-        this.bus.emit('mobile:snapNext');
-        break;
-      case 'snap-grid':
-        this.toolManager.setSnapMode('grid');
-        break;
-      case 'snap-asset':
-        this.toolManager.setSnapMode('asset');
-        break;
-      case 'snap-free':
-        this.toolManager.setSnapMode('free');
-        break;
-      case 'fill':
-        this.bus.emit('mobile:fill');
-        break;
-      case 'select-all':
-        this.bus.emit('mobile:selectAll');
-        break;
-      case 'duplicate':
-        this.bus.emit('mobile:duplicate');
-        break;
-      case 'delete':
-        this.bus.emit('mobile:delete');
-        break;
-      case 'group':
-        this.bus.emit('mobile:group');
-        break;
-      case 'region':
-        this.toolManager.activate('region');
-        break;
+  _onTabClick(name) {
+    if (name === 'select') {
+      this.bus.emit('sidebar:close');
+      this.bus.emit('tool:activate', 'select');
+      return;
     }
+    this.bus.emit('panel:showTab', name);
+    this.bus.emit('sidebar:open');
   }
 
-  _updateSnapButtons(mode) {
-    for (const [id, btn] of Object.entries(this._buttons)) {
-      if (id.startsWith('snap-')) {
-        btn.classList.toggle('active', id === 'snap-' + mode);
+  _updateTabbarActive() {
+    const isSelectTool = this._currentTool === 'select' || this._currentTool === 'place';
+    const sheetOpen = document.getElementById('sidebar').classList.contains('open');
+    for (const btn of this._tabbar.children) {
+      const name = btn.dataset.tab;
+      if (name === 'select') {
+        btn.classList.toggle('active', !sheetOpen);
+      } else {
+        btn.classList.toggle('active', sheetOpen && this._activePanelTab === name);
       }
     }
   }
 
-  _updateVisibility() {
-    if (!this._el) return;
-    const isPlace = this._currentTool === 'place';
+  _renderContext() {
+    this._context.innerHTML = '';
     const isSelect = this._currentTool === 'select';
-    const show = isPlace || isSelect;
+    const hasSelection = this.selectTool.selection.length > 0;
 
-    this._el.classList.toggle('hidden', !show);
+    if (!isSelect || !hasSelection) {
+      this._context.classList.add('hidden');
+      return;
+    }
+    this._context.classList.remove('hidden');
 
-    const isWorld = this._mapMode === 'world';
+    const inner = document.createElement('div');
+    inner.className = 'mobile-context-inner';
 
-    for (const [id, btn] of Object.entries(this._buttons)) {
-      const group = btn.dataset.group;
-      let visible = show;
-      if (group === 'select-only') {
-        visible = isSelect && this._hasSelection;
-      } else if (group === 'place-only') {
-        visible = isPlace;
-      } else if (group === 'select-any') {
-        visible = isSelect;
-      } else if (group === 'world-select') {
-        visible = isSelect && isWorld;
-      }
-      btn.classList.toggle('hidden', !visible);
+    inner.appendChild(this._btn('rotate-cw', 'Rotate', () => this.bus.emit('mobile:rotate', 22.5)));
+    inner.appendChild(this._btn('copy', 'Duplicate', () => this.bus.emit('mobile:duplicate')));
+    inner.appendChild(this._btn('boxes', 'Group', () => this.bus.emit('mobile:group')));
+    inner.appendChild(this._btn('trash-2', 'Delete', () => this.bus.emit('mobile:delete')));
+    inner.appendChild(this._btn('check-check', 'Select all', () => this.bus.emit('mobile:selectAll')));
+
+    if (this.mapScale.mapMode === 'world') {
+      inner.appendChild(this._btn('square-dashed', 'Build area', () => this.toolManager.activate('region')));
     }
 
-    for (const sep of this._seps) {
-      const group = sep.dataset.group;
-      if (group === 'select-any') {
-        sep.classList.toggle('hidden', !isSelect);
-      } else if (group === 'place-only') {
-        sep.classList.toggle('hidden', !isPlace);
-      } else if (group === 'world-select') {
-        sep.classList.toggle('hidden', !(isSelect && isWorld));
-      }
-    }
+    this._context.appendChild(inner);
+    refreshIcons();
+  }
+
+  _btn(icon, label, onClick) {
+    const btn = document.createElement('button');
+    btn.className = 'mobile-action-btn';
+    btn.innerHTML = `<span class="icon"><i data-lucide="${icon}"></i></span>${label}`;
+    btn.addEventListener('click', onClick);
+    return btn;
   }
 }

@@ -31,12 +31,14 @@ export class PlaceTool {
       if (this._cursorMap) {
         this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
       }
+      this.bus.emit('place:changed');
       this.bus.emit('render:request');
     });
     this.bus.on('mobile:fill', () => {
       this._fillMode = !this._fillMode;
       this._filling = false;
       this.bus.emit('fill:changed', this._fillMode);
+      this.bus.emit('place:changed');
       this.bus.emit('render:request');
     });
     this.bus.on('mobile:snapPrev', () => {
@@ -59,6 +61,19 @@ export class PlaceTool {
     this._filling = false;
     this._previewAsset = createAsset(type);
     if (this._previewAsset) this._previewAsset.mapScale = this.mapScale;
+    this.bus.emit('place:changed');
+  }
+
+  getState() {
+    const pts = this._previewAsset ? this._previewAsset.getGridSnapPoints() : [];
+    return {
+      assetType: this.assetType,
+      rotation: this.rotation,
+      snapMode: this._snapMode,
+      fillMode: this._fillMode,
+      snapIndex: this._activeSnapIndex,
+      snapCount: pts.length,
+    };
   }
 
   activate() {
@@ -85,6 +100,7 @@ export class PlaceTool {
     if (this._cursorMap) {
       this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
     }
+    this.bus.emit('place:changed');
     this.bus.emit('render:request');
   }
 
@@ -290,6 +306,7 @@ export class PlaceTool {
       if (this._cursorMap) {
         this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
       }
+      this.bus.emit('place:changed');
       this.bus.emit('render:request');
       e.preventDefault();
     } else if (e.code === 'KeyQ') {
@@ -302,12 +319,14 @@ export class PlaceTool {
       this._fillMode = !this._fillMode;
       this._filling = false;
       this.bus.emit('fill:changed', this._fillMode);
+      this.bus.emit('place:changed');
       this.bus.emit('render:request');
       e.preventDefault();
     } else if (e.code === 'Escape') {
       if (this._fillMode) {
         this._fillMode = false;
         this._filling = false;
+        this.bus.emit('place:changed');
         this.bus.emit('render:request');
       } else {
         this.bus.emit('tool:activate', 'select');
