@@ -9,7 +9,6 @@ export class MapLayer {
     this.width = 0;
     this.height = 0;
     this._dataURL = null;
-    this._previewCorrection = null;
   }
 
   loadFromFile(file) {
@@ -67,68 +66,8 @@ export class MapLayer {
     return this._dataURL;
   }
 
-  setPreviewCorrectionField(anchorX, anchorY, mpp, correctionFn, hasCorrections) {
-    this._previewCorrection = { anchorX, anchorY, mpp, correctionFn, hasCorrections };
-    this.bus.emit('render:request');
-  }
-
-  clearPreviewCorrection() {
-    this._previewCorrection = null;
-    this.bus.emit('render:request');
-  }
-
-  applyMeshWarpCorrection(anchorX, anchorY, mpp, correctionFn) {
-    const w = this.width;
-    const h = this.height;
-    const out = document.createElement('canvas');
-    out.width = w;
-    out.height = h;
-    const ctx = out.getContext('2d');
-    const cellSize = 16;
-    for (let sy = 0; sy < h; sy += cellSize) {
-      for (let sx = 0; sx < w; sx += cellSize) {
-        const sw = Math.min(cellSize, w - sx);
-        const sh = Math.min(cellSize, h - sy);
-        const gx = (sx + sw / 2 - anchorX) * mpp;
-        const gy = (sy + sh / 2 - anchorY) * mpp;
-        const corr = correctionFn(gx, gy);
-        const dx = anchorX + (sx - anchorX) * corr.corrX;
-        const dy = anchorY + (sy - anchorY) * corr.corrY;
-        const dw = sw * corr.corrX;
-        const dh = sh * corr.corrY;
-        ctx.drawImage(this.image, sx, sy, sw, sh, dx, dy, dw, dh);
-      }
-    }
-    return out;
-  }
-
   render(ctx, viewport, canvasWidth, canvasHeight) {
     if (!this.image) return;
-    if (this._previewCorrection && this._previewCorrection.hasCorrections && this._previewCorrection.hasCorrections()) {
-      this._renderMeshWarp(ctx);
-    } else {
-      ctx.drawImage(this.image, 0, 0, this.width, this.height);
-    }
-  }
-
-  _renderMeshWarp(ctx) {
-    const { anchorX, anchorY, mpp, correctionFn } = this._previewCorrection;
-    const w = this.width;
-    const h = this.height;
-    const cellSize = 32;
-    for (let sy = 0; sy < h; sy += cellSize) {
-      for (let sx = 0; sx < w; sx += cellSize) {
-        const sw = Math.min(cellSize, w - sx);
-        const sh = Math.min(cellSize, h - sy);
-        const gx = (sx + sw / 2 - anchorX) * mpp;
-        const gy = (sy + sh / 2 - anchorY) * mpp;
-        const corr = correctionFn(gx, gy);
-        const dx = anchorX + (sx - anchorX) * corr.corrX;
-        const dy = anchorY + (sy - anchorY) * corr.corrY;
-        const dw = sw * corr.corrX;
-        const dh = sh * corr.corrY;
-        ctx.drawImage(this.image, sx, sy, sw, sh, dx, dy, dw, dh);
-      }
-    }
+    ctx.drawImage(this.image, 0, 0, this.width, this.height);
   }
 }

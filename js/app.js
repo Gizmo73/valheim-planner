@@ -224,20 +224,19 @@ bus.on('calibration:apply', () => {
 });
 
 bus.on('calibration:previewConfirm', () => {
-  const corrections = calibrationTool.localCorrections;
   const mpp = calibrationTool._previewMpp;
   const ax = calibrationTool._previewAnchorX;
   const ay = calibrationTool._previewAnchorY;
 
-  if (corrections.size > 0) {
-    const getCorrAt = (gx, gy) => calibrationTool.getCorrectionAt(gx, gy);
-    const corrected = mapLayer.applyMeshWarpCorrection(ax, ay, mpp, getCorrAt);
-    mapLayer.applyCorrectedImage(corrected);
-  }
+  mapScale.locked = false;
+  mapScale.metresPerPixel = mpp;
 
-  // Show the working layer grid again
   const layers = layerManager.getByType('working');
-  if (layers[0]) layers[0].visible = true;
+  if (layers[0]) {
+    layers[0].gridAnchorX = ax;
+    layers[0].gridAnchorY = ay;
+    layers[0].visible = true;
+  }
 
   calibrationTool.exitPreview();
   _preCalibrationState = null;
