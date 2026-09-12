@@ -1,107 +1,129 @@
+import { refreshIcons } from './icons.js';
+
+const TOOLS = [
+  { name: 'select', label: 'Select', icon: 'mouse-pointer-2' },
+  { name: 'place', label: 'Place', icon: 'blocks' },
+  { name: 'region', label: 'Build area', icon: 'square-dashed' },
+  { name: 'pan', label: 'Pan', icon: 'hand' },
+];
+
 export class Toolbar {
-  constructor(toolManager, bus) {
+  constructor(toolManager, mapScale, bus) {
     this.toolManager = toolManager;
+    this.mapScale = mapScale;
     this.bus = bus;
     this._buttons = {};
-    this._el = document.getElementById('toolbar');
+    this._el = document.getElementById('topbar');
+    this._menuOpen = false;
     this._init();
 
     bus.on('tool:changed', (name) => this._updateActive(name));
+    bus.on('scale:changed', () => this._updateScaleChip());
+    bus.on('scale:lockChanged', () => this._updateScaleChip());
+    bus.on('map:loaded', () => this._updateScaleChip());
   }
 
   _init() {
-    const tools = [
-      { name: 'select', label: 'Select', icon: '↖' },
-      { name: 'region', label: 'Region', icon: '⬚' },
-      { name: 'pan', label: 'Pan', icon: '✋' },
-    ];
+    this._el.innerHTML = '';
 
-    const group = document.createElement('div');
-    group.className = 'toolbar-group';
+    const name = document.createElement('span');
+    name.className = 'plan-name';
+    name.textContent = 'Build Planner';
+    this._el.appendChild(name);
 
-    for (const t of tools) {
+    const sep = document.createElement('span');
+    sep.className = 'topbar-sep';
+    this._el.appendChild(sep);
+
+    const seg = document.createElement('div');
+    seg.className = 'seg';
+    for (const t of TOOLS) {
       const btn = document.createElement('button');
-      btn.className = 'toolbar-btn';
+      btn.className = 'seg-btn';
+      btn.innerHTML = `<span class="icon"><i data-lucide="${t.icon}"></i></span><span>${t.label}</span>`;
       btn.title = t.label;
-      btn.innerHTML = `<span class="toolbar-icon">${t.icon}</span><span class="toolbar-label">${t.label}</span>`;
-      btn.addEventListener('click', () => this.toolManager.activate(t.name));
+      btn.addEventListener('click', () => {
+        this.bus.emit('tool:activate', t.name);
+        if (t.name === 'place') {
+          this.bus.emit('panel:showTab', 'pieces');
+          this.bus.emit('sidebar:open');
+        }
+      });
       this._buttons[t.name] = btn;
-      group.appendChild(btn);
+      seg.appendChild(btn);
     }
+    this._el.appendChild(seg);
 
-    this._el.appendChild(group);
+    const right = document.createElement('div');
+    right.id = 'topbar-right';
 
-    const sep1 = document.createElement('div');
-    sep1.className = 'toolbar-sep';
-    this._el.appendChild(sep1);
+    this._scaleChip = document.createElement('button');
+    this._scaleChip.className = 'btn-chip';
+    this._scaleChip.addEventListener('click', () => this.bus.emit('scale:openModal'));
+    right.appendChild(this._scaleChip);
 
-    // File group: Upload, Save, Load
-    const fileGroup = document.createElement('div');
-    fileGroup.className = 'toolbar-group';
+    const sep2 = document.createElement('span');
+    sep2.className = 'topbar-sep';
+    right.appendChild(sep2);
 
-    const uploadBtn = document.createElement('button');
-    uploadBtn.className = 'toolbar-btn';
-    uploadBtn.title = 'Upload Map';
-    uploadBtn.innerHTML = '<span class="toolbar-icon">📁</span><span class="toolbar-label">Upload Map</span>';
+    const mapBtn = document.createElement('button');
+    mapBtn.className = 'btn-chip';
+    mapBtn.innerHTML = '<span class="icon"><i data-lucide="image-plus"></i></span><span class="label-text">Map image</span>';
+    mapBtn.title = 'Map image';
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
     fileInput.style.display = 'none';
-    uploadBtn.addEventListener('click', () => fileInput.click());
+    mapBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', () => {
       if (fileInput.files[0]) {
         this.bus.emit('file:selected', fileInput.files[0]);
         fileInput.value = '';
       }
     });
-    fileGroup.appendChild(uploadBtn);
-    fileGroup.appendChild(fileInput);
+    right.appendChild(mapBtn);
+    right.appendChild(fileInput);
 
     const saveBtn = document.createElement('button');
-    saveBtn.className = 'toolbar-btn';
-    saveBtn.title = 'Save Project';
-    saveBtn.innerHTML = '<span class="toolbar-icon">💾</span><span class="toolbar-label">Save</span>';
+    saveBtn.className = 'btn-chip';
+    saveBtn.innerHTML = '<span class="icon"><i data-lucide="save"></i></span><span class="label-text">Save</span>';
+    saveBtn.title = 'Save plan';
     saveBtn.addEventListener('click', () => this.bus.emit('project:save'));
-    fileGroup.appendChild(saveBtn);
+    right.appendChild(saveBtn);
 
-    const loadBtn = document.createElement('button');
-    loadBtn.className = 'toolbar-btn';
-    loadBtn.title = 'Load Project';
-    loadBtn.innerHTML = '<span class="toolbar-icon">📂</span><span class="toolbar-label">Load</span>';
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'btn-chip icon-only';
+    moreBtn.innerHTML = '<i data-lucide="ellipsis-vertical"></i>';
+    moreBtn.title = 'More';
     const loadInput = document.createElement('input');
     loadInput.type = 'file';
     loadInput.accept = '.json';
     loadInput.style.display = 'none';
-    loadBtn.addEventListener('click', () => loadInput.click());
+    moreBtn.addEventListener('click', () => loadInput.click());
     loadInput.addEventListener('change', () => {
       if (loadInput.files[0]) {
         this.bus.emit('project:load', loadInput.files[0]);
         loadInput.value = '';
       }
     });
-    fileGroup.appendChild(loadBtn);
-    fileGroup.appendChild(loadInput);
+    moreBtn.title = 'Open plan';
+    right.appendChild(moreBtn);
+    right.appendChild(loadInput);
 
-    this._el.appendChild(fileGroup);
+    this._el.appendChild(right);
 
-    // Sidebar toggle (visible on mobile)
-    const sidebarBtn = document.createElement('button');
-    sidebarBtn.className = 'toolbar-btn sidebar-toggle';
-    sidebarBtn.innerHTML = '<span class="toolbar-icon">☰</span>';
-    sidebarBtn.title = 'Toggle panels';
-    sidebarBtn.addEventListener('click', () => this.bus.emit('sidebar:toggle'));
-    this._el.appendChild(sidebarBtn);
+    this._updateScaleChip();
+    refreshIcons();
+  }
 
-    const zoomLabel = document.createElement('span');
-    zoomLabel.className = 'zoom-label';
-    zoomLabel.id = 'zoom-label';
-    zoomLabel.textContent = '100%';
-    this._el.appendChild(zoomLabel);
-
-    this.bus.on('viewport:changed', () => {
-      const vp = this.toolManager.viewport;
-      zoomLabel.textContent = Math.round(vp.zoom * 100) + '%';
-    });
+  _updateScaleChip() {
+    const mpp = this.mapScale.metresPerPixel;
+    if (this.mapScale.locked) {
+      this._scaleChip.innerHTML = `<span class="icon"><i data-lucide="lock"></i></span><span>Scale locked · ${mpp.toFixed(2)} m/px</span>`;
+    } else {
+      this._scaleChip.innerHTML = `<span class="icon"><i data-lucide="ruler"></i></span><span>Set map scale</span>`;
+    }
+    refreshIcons();
   }
 
   _updateActive(name) {

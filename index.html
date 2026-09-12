@@ -6,36 +6,88 @@
   <title>Valheim Build Planner</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/lucide@0.544.0/dist/umd/lucide.min.js"></script>
 </head>
 <body>
   <div id="app">
-    <div id="toolbar"></div>
+    <div id="topbar"></div>
+    <div id="context-bar" class="hidden"></div>
 
     <div id="content">
       <div id="canvas-container">
         <canvas id="main-canvas"></canvas>
+
         <div id="empty-state">
-          <h2>Valheim Build Planner</h2>
-          <p>Upload a map image to begin</p>
+          <div class="empty-inner">
+            <span class="empty-icon"><i data-lucide="image-plus"></i></span>
+            <div>
+              <div class="empty-title">Start with a screenshot of your map</div>
+              <div class="empty-desc">Drop an image here, or pick one. You'll set the scale next so pieces land on real metres.</div>
+            </div>
+            <div class="empty-actions">
+              <button id="empty-choose-map" class="btn-outline btn-outline-accent"><i data-lucide="image-plus"></i>Choose map image</button>
+              <button id="empty-open-plan" class="btn-outline">Open a saved plan</button>
+            </div>
+          </div>
         </div>
-        <div id="mobile-controls" class="hidden"></div>
+
+        <div id="selection-inspector" class="hidden"></div>
+
+        <div id="scale-backdrop" class="hidden"></div>
+        <div id="scale-modal" class="hidden"></div>
+        <div id="scale-hint" class="scale-hint hidden"><span class="icon"><i data-lucide="info"></i></span><span id="scale-hint-text"></span></div>
+        <div id="scale-preview-bar" class="hidden"></div>
+
       </div>
 
       <div id="sidebar">
-        <div id="layer-panel">
-          <div class="panel-header">Layers</div>
+        <div class="panel-tabs">
+          <button class="panel-tab" data-tab="pieces">Pieces</button>
+          <button class="panel-tab" data-tab="layers">Layers</button>
+          <button class="panel-tab" data-tab="plan">Plan</button>
+        </div>
+
+        <div id="tab-pieces" class="tab-panel">
+          <div class="panel-search">
+            <div class="search-box">
+              <span><i data-lucide="search"></i></span>
+              <input id="asset-search" type="text" placeholder="Search pieces">
+            </div>
+          </div>
+          <div id="asset-list"></div>
+        </div>
+
+        <div id="tab-layers" class="tab-panel hidden">
           <div id="layer-list"></div>
         </div>
 
-        <div id="asset-panel">
-          <div class="panel-header">Assets</div>
-          <div id="asset-list"></div>
+        <div id="tab-plan" class="tab-panel hidden">
+          <div id="plan-panel"></div>
         </div>
       </div>
       <div id="sidebar-backdrop" class="hidden"></div>
     </div>
 
-    <div id="help-panel">
+    <div id="mobile-context" class="hidden"></div>
+    <div id="mobile-tabbar"></div>
+
+    <div id="shortcuts-bar">
+      <span class="shortcut"><kbd>Space</kbd>drag to pan</span>
+      <span class="shortcut"><kbd>Scroll</kbd>zoom</span>
+      <span class="shortcut"><kbd>R</kbd>rotate</span>
+      <span class="shortcut"><kbd>Q</kbd><kbd>E</kbd>snap point</span>
+      <span class="shortcut"><kbd>D</kbd>duplicate</span>
+      <span class="shortcut"><kbd>Del</kbd>delete</span>
+      <span class="shortcut"><kbd>Shift</kbd>+click multi-select</span>
+      <span class="shortcut"><kbd>G</kbd>group selected</span>
+      <span class="shortcut"><kbd>F</kbd>fill area</span>
+      <span class="shortcut"><kbd>Ctrl</kbd><kbd>A</kbd>select all</span>
+      <span class="shortcut"><kbd>Ctrl</kbd>snap to piece</span>
+      <span class="shortcut"><kbd>Shift</kbd>free place</span>
+      <button id="all-shortcuts-btn"><i data-lucide="keyboard"></i>All shortcuts</button>
+    </div>
+
+    <div id="help-panel" class="hidden">
       <div class="help-shortcuts">
         <span><kbd>Space</kbd> + drag to pan</span>
         <span><kbd>Scroll</kbd> to zoom</span>
@@ -45,12 +97,12 @@
         <span><kbd>Del</kbd> delete</span>
         <span><kbd>Shift</kbd>+click multi-select</span>
         <span><kbd>G</kbd> group selected</span>
-        <span><kbd>F</kbd> flash fill</span>
+        <span><kbd>F</kbd> fill area</span>
         <span><kbd>Ctrl</kbd>+<kbd>A</kbd> select all</span>
         <span><kbd>Ctrl</kbd> asset snap</span>
         <span><kbd>Shift</kbd> free place</span>
       </div>
-      <button id="help-close">✕</button>
+      <button id="help-close">&#10005;</button>
     </div>
   </div>
 

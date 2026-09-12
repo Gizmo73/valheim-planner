@@ -1,9 +1,18 @@
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export class WorkingLayer {
-  constructor(originX, originY, width, height, bus, mapScale) {
+  constructor(originX, originY, width, height, bus, mapScale, gridSettings) {
     this.bus = bus;
     this.mapScale = mapScale;
+    this.gridSettings = gridSettings || null;
     this.id = null;
-    this.name = 'Working Area';
+    this.name = 'Build area';
     this.type = 'working';
     this.visible = true;
     this.originX = originX;
@@ -49,11 +58,15 @@ export class WorkingLayer {
   }
 
   _drawGrid(ctx, viewport, canvasWidth, canvasHeight) {
+    const gs = this.gridSettings;
+    if (gs && !gs.visible) return;
+
     const mpp = this._mpp;
     const cellMap = 1 / mpp;
     const cellScreen = cellMap * viewport.zoom;
 
-    const majorCellMap = 4 / mpp;
+    const majorEvery = gs ? gs.majorEvery : 4;
+    const majorCellMap = majorEvery / mpp;
     const majorCellScreen = majorCellMap * viewport.zoom;
 
     let drawMinor = cellScreen >= 8;
@@ -72,9 +85,13 @@ export class WorkingLayer {
     const anchorX = this.gridAnchorX != null ? this.gridAnchorX : this.originX;
     const anchorY = this.gridAnchorY != null ? this.gridAnchorY : this.originY;
 
+    const color = gs ? gs.color : '#ffffff';
+    const opacity = gs ? gs.opacity : 0.12;
+    const lineWidth = gs ? gs.lineWidth : 0.5;
+
     if (drawMinor) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-      ctx.lineWidth = 0.5 / viewport.zoom;
+      ctx.strokeStyle = hexToRgba(color, opacity);
+      ctx.lineWidth = lineWidth / viewport.zoom;
       ctx.beginPath();
 
       const startX = anchorX + Math.ceil((visLeft - anchorX) / cellMap) * cellMap;
@@ -93,8 +110,8 @@ export class WorkingLayer {
     }
 
     if (drawMajor) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-      ctx.lineWidth = 1 / viewport.zoom;
+      ctx.strokeStyle = hexToRgba(color, Math.min(1, opacity * 2.5));
+      ctx.lineWidth = (lineWidth * 2) / viewport.zoom;
       ctx.beginPath();
 
       const startX = anchorX + Math.ceil((visLeft - anchorX) / majorCellMap) * majorCellMap;
