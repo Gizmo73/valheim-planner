@@ -2,6 +2,7 @@ import { EventBus } from './core/EventBus.js';
 import { Viewport } from './core/Viewport.js';
 import { MapScale, TILE_METRES } from './core/MapScale.js';
 import { GridSettings } from './core/GridSettings.js';
+import { FineTuneState } from './core/FineTuneState.js';
 import { PerspectiveTransform } from './core/PerspectiveTransform.js';
 import { Renderer } from './core/Renderer.js';
 import { SaveLoad } from './core/SaveLoad.js';
@@ -30,6 +31,7 @@ const canvas = document.getElementById('main-canvas');
 const viewport = new Viewport(bus);
 const mapScale = new MapScale(bus);
 const gridSettings = new GridSettings(bus);
+const fineTuneState = new FineTuneState(mapScale, bus);
 
 const layerManager = new LayerManager(bus);
 const mapLayer = new MapLayer(bus);
@@ -40,7 +42,7 @@ layerManager.addLayer(assetLayer);
 
 const toolManager = new ToolManager(canvas, viewport, bus);
 const panTool = new PanTool(viewport, bus);
-const regionTool = new RegionSelectTool(viewport, layerManager, mapScale, bus, gridSettings);
+const regionTool = new RegionSelectTool(viewport, layerManager, mapScale, bus, gridSettings, fineTuneState);
 const placeTool = new PlaceTool(viewport, layerManager, assetLayer, mapScale, bus);
 const selectTool = new SelectTool(viewport, layerManager, assetLayer, mapScale, bus);
 const calibrationTool = new CalibrationTool(viewport, mapLayer, mapScale, bus);
@@ -51,18 +53,18 @@ toolManager.register('place', placeTool);
 toolManager.register('select', selectTool);
 toolManager.register('calibrate', calibrationTool);
 
-const renderer = new Renderer(canvas, viewport, layerManager, toolManager, bus);
+const renderer = new Renderer(canvas, viewport, layerManager, toolManager, bus, gridSettings);
 
 const toolbar = new Toolbar(toolManager, mapScale, bus);
 const placeContextBar = new PlaceContextBar(placeTool, toolManager, bus);
 const layerPanel = new LayerPanel(layerManager, assetLayer, bus);
 const assetPanel = new AssetPanel(bus);
-const planPanel = new PlanPanel(gridSettings, mapScale, assetLayer, bus);
+const planPanel = new PlanPanel(gridSettings, mapScale, assetLayer, layerManager, fineTuneState, bus);
 const selectionInspector = new SelectionInspector(selectTool, viewport, assetLayer, toolManager, bus);
 const calibrationPanel = new CalibrationPanel(mapScale, calibrationTool, bus);
 const mobileControls = new MobileControls(toolManager, selectTool, mapScale, bus);
 
-const saveLoad = new SaveLoad(layerManager, mapLayer, assetLayer, mapScale, viewport, renderer, bus);
+const saveLoad = new SaveLoad(layerManager, mapLayer, assetLayer, mapScale, viewport, renderer, bus, gridSettings, fineTuneState);
 
 bus.on('file:selected', async (file) => {
   await mapLayer.loadFromFile(file);
@@ -172,7 +174,7 @@ bus.on('tool:changed', (name) => {
 toolManager.activate('select');
 
 // Test hook
-window._app = { bus, viewport, mapScale, mapLayer, assetLayer, layerManager, toolManager, renderer, calibrationTool };
+window._app = { bus, viewport, mapScale, mapLayer, assetLayer, layerManager, toolManager, renderer, calibrationTool, gridSettings, fineTuneState };
 
 document.getElementById('help-close').addEventListener('click', () => {
   document.getElementById('help-panel').classList.add('hidden');
@@ -265,7 +267,7 @@ bus.on('calibration:apply', () => {
     const oldLayer = existing[0] || null;
     for (const wl of existing) layerManager.removeLayer(wl.id);
 
-    const wl = new WorkingLayer(0, 0, mapLayer.width, mapLayer.height, bus, mapScale, gridSettings);
+    const wl = new WorkingLayer(0, 0, mapLayer.width, mapLayer.height, bus, mapScale, gridSettings, fineTuneState);
     wl.name = 'Build area 1';
     wl.gridAnchorX = anchor.x;
     wl.gridAnchorY = anchor.y;
@@ -337,7 +339,7 @@ bus.on('calibration:previewCancel', () => {
     const existing = layerManager.getByType('working');
     for (const wl of existing) layerManager.removeLayer(wl.id);
     for (const saved of s.oldLayers) {
-      const wl = new WorkingLayer(saved.originX, saved.originY, saved.width, saved.height, bus, mapScale, gridSettings);
+      const wl = new WorkingLayer(saved.originX, saved.originY, saved.width, saved.height, bus, mapScale, gridSettings, fineTuneState);
       wl.name = saved.name;
       wl.gridAnchorX = saved.gridAnchorX;
       wl.gridAnchorY = saved.gridAnchorY;
@@ -358,4 +360,93 @@ bus.on('calibration:previewCancel', () => {
 
   toolManager.activate('select');
   bus.emit('render:request');
+});
+
+bus.on('finetune:lock', () => {
+  if (!mapLayer.image || !fineTuneState.hasPending) return;
+  const layers = layerManager.getByType('working');
+  const mainLayer = layers[0];
+  if (!mainLayer) return;
+
+  const mainBaseAnchor = {
+    x: mainLayer.gridAnchorX != null ? mainLayer.gridAnchorX : mainLayer.originX,
+    y: mainLayer.gridAnchorY != null ? mainLayer.gridAnchorY : mainLayer.originY,
+  };
+  const nudgedAnchor = { x: mainBaseAnchor.x + fineTuneState.dxPx, y: mainBaseAnchor.y + fineTuneState.dyPx };
+
+  const solve = {
+    mode: 'affine',
+    pxPerTileX: fineTuneState.across,
+    pxPerTileY: fineTuneState.down,
+    rotationDeg: fineTuneState.rotationDeg,
+    shearDeg: 0,
+  };
+  const outPxPerTile = (fineTuneState.across + fineTuneState.down) / 2;
+  const H = MapScale.buildStraightenMatrix(solve, nudgedAnchor, outPxPerTile);
+  if (!H) return;
+
+  const oldMpp = mapScale.metresPerPixel;
+  const outCanvas = PerspectiveTransform.correctImageFromMatrix(mapLayer.image, H);
+  if (!outCanvas) return;
+
+  // Snapshot old anchors/asset positions before mutating anything, then
+  // carry every one of them through the same matrix H so multiple working
+  // areas (and their assets) all shift consistently.
+  const oldLayerAnchors = layers.map(w => ({
+    layer: w,
+    x: w.gridAnchorX != null ? w.gridAnchorX : w.originX,
+    y: w.gridAnchorY != null ? w.gridAnchorY : w.originY,
+  }));
+  const oldAssetMapPx = assetLayer.assets.map(a => {
+    if (!a.workingLayer) return { asset: a, mapPx: null };
+    const ax = a.workingLayer.gridAnchorX != null ? a.workingLayer.gridAnchorX : a.workingLayer.originX;
+    const ay = a.workingLayer.gridAnchorY != null ? a.workingLayer.gridAnchorY : a.workingLayer.originY;
+    return { asset: a, mapPx: { x: ax + a.gridX / oldMpp, y: ay + a.gridY / oldMpp } };
+  });
+
+  mapLayer.applyCorrectedImage(outCanvas);
+  mapScale.locked = false;
+  mapScale.metresPerPixel = TILE_METRES / outPxPerTile;
+  const newMpp = mapScale.metresPerPixel;
+
+  for (const { layer, x, y } of oldLayerAnchors) {
+    const newAnchor = PerspectiveTransform.transformPoint(H, x, y);
+    layer.gridAnchorX = newAnchor.x;
+    layer.gridAnchorY = newAnchor.y;
+  }
+
+  for (const { asset, mapPx } of oldAssetMapPx) {
+    if (!mapPx) continue;
+    const newMapPx = PerspectiveTransform.transformPoint(H, mapPx.x, mapPx.y);
+    const wl = asset.workingLayer;
+    asset.gridX = (newMapPx.x - wl.gridAnchorX) * newMpp;
+    asset.gridY = (newMapPx.y - wl.gridAnchorY) * newMpp;
+  }
+
+  viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
+  fineTuneState.reset();
+  bus.emit('render:request');
+});
+
+// --- Fine tune keyboard shortcuts (arrow keys nudge, X/Y hold scales one
+// axis only, Escape clears a latch) ---
+function isTypingTarget(el) {
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+}
+
+window.addEventListener('keydown', (e) => {
+  if (isTypingTarget(document.activeElement)) return;
+  if (e.code === 'Escape') { fineTuneState.clearLatch(); return; }
+  if (!layerManager.getByType('working')[0]) return;
+
+  if (e.code === 'ArrowUp') { fineTuneState.nudge(0, -1); e.preventDefault(); }
+  else if (e.code === 'ArrowDown') { fineTuneState.nudge(0, 1); e.preventDefault(); }
+  else if (e.code === 'ArrowLeft') { fineTuneState.nudge(-1, 0); e.preventDefault(); }
+  else if (e.code === 'ArrowRight') { fineTuneState.nudge(1, 0); e.preventDefault(); }
+  else if (e.code === 'KeyX') { fineTuneState.holdAxis('x'); }
+  else if (e.code === 'KeyY') { fineTuneState.holdAxis('y'); }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'KeyX' || e.code === 'KeyY') fineTuneState.holdAxis(null);
 });

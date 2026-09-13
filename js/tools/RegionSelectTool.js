@@ -1,12 +1,13 @@
 import { WorkingLayer } from '../layers/WorkingLayer.js';
 
 export class RegionSelectTool {
-  constructor(viewport, layerManager, mapScale, bus, gridSettings) {
+  constructor(viewport, layerManager, mapScale, bus, gridSettings, fineTuneState) {
     this.viewport = viewport;
     this.layerManager = layerManager;
     this.mapScale = mapScale;
     this.bus = bus;
     this.gridSettings = gridSettings;
+    this.fineTuneState = fineTuneState;
     this._dragging = false;
     this._startMap = null;
     this._currentMap = null;
@@ -42,7 +43,7 @@ export class RegionSelectTool {
 
     const rect = this._getRect();
     if (rect.w > 1 && rect.h > 1) {
-      const wl = new WorkingLayer(rect.x, rect.y, rect.w, rect.h, this.bus, this.mapScale, this.gridSettings);
+      const wl = new WorkingLayer(rect.x, rect.y, rect.w, rect.h, this.bus, this.mapScale, this.gridSettings, this.fineTuneState);
       wl.name = 'Build area ' + (this.layerManager.getByType('working').length + 1);
       this.layerManager.addLayer(wl);
       this.bus.emit('tool:activate', 'select');
