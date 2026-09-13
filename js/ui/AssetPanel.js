@@ -1,5 +1,21 @@
 import { getAssetTypes, getCategories, updateAssetSize } from '../assets/AssetRegistry.js';
 import { refreshIcons } from './icons.js';
+import { TILE_METRES } from '../core/MapScale.js';
+
+const THUMB_DISPLAY_SIZE = 64;
+
+function formatSize(widthM, heightM) {
+  const wTiles = widthM / TILE_METRES;
+  const hTiles = heightM / TILE_METRES;
+  const round = (n) => Math.round(n * 100) / 100;
+  let tileLabel;
+  if (wTiles === hTiles) {
+    tileLabel = wTiles === 1 ? '1 tile' : `${round(wTiles)} tiles`;
+  } else {
+    tileLabel = `${round(wTiles)} × ${round(hTiles)} tiles`;
+  }
+  return `${tileLabel} · ${widthM} × ${heightM} m`;
+}
 
 export class AssetPanel {
   constructor(bus) {
@@ -76,25 +92,37 @@ export class AssetPanel {
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'asset-thumb-wrap';
     const thumb = document.createElement('canvas');
-    thumb.width = 48;
-    thumb.height = 48;
+    const dpr = window.devicePixelRatio || 1;
+    const bufSize = Math.round(THUMB_DISPLAY_SIZE * dpr);
+    thumb.width = bufSize;
+    thumb.height = bufSize;
     thumb.className = 'asset-thumb';
     const tCtx = thumb.getContext('2d');
-    const tex = t.cls.getThumbnail();
-    tCtx.drawImage(tex, 0, 0, 48, 48);
+    const tex = t.cls.getThumbnail(bufSize);
+    tCtx.drawImage(tex, 0, 0, bufSize, bufSize);
     thumbWrap.appendChild(thumb);
+
+    const label = document.createElement('div');
+    label.className = 'asset-label';
+
+    const name = document.createElement('div');
+    name.className = 'asset-name';
+    name.textContent = t.name;
 
     const size = document.createElement('div');
     size.className = 'asset-size';
-    size.textContent = `${t.widthM}×${t.heightM}`;
+    size.textContent = formatSize(t.widthM, t.heightM);
     size.title = 'Click to edit size';
     size.addEventListener('click', (e) => {
       e.stopPropagation();
       this._editSize(t, size);
     });
 
+    label.appendChild(name);
+    label.appendChild(size);
+
     item.appendChild(thumbWrap);
-    item.appendChild(size);
+    item.appendChild(label);
 
     item.addEventListener('click', () => {
       this.bus.emit('asset:startPlace', t.type);

@@ -117,35 +117,37 @@ function generateColumnTexture(size) {
   return c;
 }
 
-function makeThumbnail(texFn, w, h, shape) {
+function makeThumbnail(texFn, w, h, shape, size = 48) {
   const tex = texFn();
   const c = document.createElement('canvas');
-  c.width = 48; c.height = 48;
+  c.width = size; c.height = size;
   const ctx = c.getContext('2d');
+  const k = size / 48;
   if (shape === 'circle') {
     ctx.beginPath();
-    ctx.arc(24, 24, 20, 0, Math.PI * 2);
+    ctx.arc(24 * k, 24 * k, 20 * k, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(tex, 4, 4, 40, 40);
+    ctx.drawImage(tex, 4 * k, 4 * k, 40 * k, 40 * k);
   } else if (shape === 'octagon') {
-    const d = 8;
+    const d = 8 * k;
     ctx.beginPath();
-    ctx.moveTo(2 + d, 2);
-    ctx.lineTo(46 - d, 2);
-    ctx.lineTo(46, 2 + d);
-    ctx.lineTo(46, 46 - d);
-    ctx.lineTo(46 - d, 46);
-    ctx.lineTo(2 + d, 46);
-    ctx.lineTo(2, 46 - d);
-    ctx.lineTo(2, 2 + d);
+    ctx.moveTo(2 * k + d, 2 * k);
+    ctx.lineTo(46 * k - d, 2 * k);
+    ctx.lineTo(46 * k, 2 * k + d);
+    ctx.lineTo(46 * k, 46 * k - d);
+    ctx.lineTo(46 * k - d, 46 * k);
+    ctx.lineTo(2 * k + d, 46 * k);
+    ctx.lineTo(2 * k, 46 * k - d);
+    ctx.lineTo(2 * k, 2 * k + d);
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(tex, 2, 2, 44, 44);
+    ctx.drawImage(tex, 2 * k, 2 * k, 44 * k, 44 * k);
   } else {
-    const scale = Math.min(44 / w, 44 / h);
+    const inner = size - size * (4 / 48);
+    const scale = Math.min(inner / w, inner / h);
     const dw = w * scale;
     const dh = h * scale;
-    ctx.drawImage(tex, (48 - dw) / 2, (48 - dh) / 2, dw, dh);
+    ctx.drawImage(tex, (size - dw) / 2, (size - dh) / 2, dw, dh);
   }
   return c;
 }
@@ -160,8 +162,8 @@ function marbleFloorAsset(type, wm, hm) {
     draw(ctx, x, y, w, h) {
       ctx.drawImage(this._texture, x, y, w, h);
     }
-    static getThumbnail() {
-      return makeThumbnail(() => generateMarbleTexture(tilesW, tilesH), tilesW * TILE_PX, tilesH * TILE_PX);
+    static getThumbnail(size) {
+      return makeThumbnail(() => generateMarbleTexture(tilesW, tilesH), tilesW * TILE_PX, tilesH * TILE_PX, undefined, size);
     }
   };
 }
@@ -194,8 +196,8 @@ export class MarbleColumn1x1 extends Asset {
     ctx.restore();
   }
 
-  static getThumbnail() {
-    return makeThumbnail(() => generateColumnTexture(1), TILE_PX, TILE_PX, 'circle');
+  static getThumbnail(size) {
+    return makeThumbnail(() => generateColumnTexture(1), TILE_PX, TILE_PX, 'circle', size);
   }
 }
 
@@ -232,8 +234,8 @@ export class MarbleColumn2x2 extends Asset {
     ctx.restore();
   }
 
-  static getThumbnail() {
-    return makeThumbnail(() => generateColumnTexture(2), 2 * TILE_PX, 2 * TILE_PX, 'octagon');
+  static getThumbnail(size) {
+    return makeThumbnail(() => generateColumnTexture(2), 2 * TILE_PX, 2 * TILE_PX, 'octagon', size);
   }
 }
 
@@ -247,7 +249,7 @@ export class MarbleStairs2x2 extends Asset {
     ctx.drawImage(this._texture, x, y, w, h);
   }
 
-  static getThumbnail() {
-    return makeThumbnail(() => generateMarbleStairsTexture(), 2 * TILE_PX, 2 * TILE_PX);
+  static getThumbnail(size) {
+    return makeThumbnail(() => generateMarbleStairsTexture(), 2 * TILE_PX, 2 * TILE_PX, undefined, size);
   }
 }

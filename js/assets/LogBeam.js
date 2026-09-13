@@ -83,16 +83,17 @@ function getTexturePole() {
   return cachedTexPole;
 }
 
-function makeThumbnail(texFn, srcW, srcH) {
+function makeThumbnail(texFn, srcW, srcH, size = 48) {
   const c = document.createElement('canvas');
-  c.width = 48;
-  c.height = 48;
+  c.width = size;
+  c.height = size;
   const ctx = c.getContext('2d');
   const tex = texFn();
-  const scale = Math.min(44 / srcW, 44 / srcH);
+  const inner = size - size * (4 / 48);
+  const scale = Math.min(inner / srcW, inner / srcH);
   const dw = srcW * scale;
   const dh = srcH * scale;
-  ctx.drawImage(tex, (48 - dw) / 2, (48 - dh) / 2, dw, dh);
+  ctx.drawImage(tex, (size - dw) / 2, (size - dh) / 2, dw, dh);
   return c;
 }
 
@@ -116,8 +117,8 @@ export class LogBeam2m extends Asset {
     ctx.drawImage(getTexture2m(), x, y, w, h);
   }
 
-  static getThumbnail() {
-    return makeThumbnail(getTexture2m, 64, 12);
+  static getThumbnail(size) {
+    return makeThumbnail(getTexture2m, 64, 12, size);
   }
 }
 
@@ -141,8 +142,8 @@ export class LogBeam4m extends Asset {
     ctx.drawImage(getTexture4m(), x, y, w, h);
   }
 
-  static getThumbnail() {
-    return makeThumbnail(getTexture4m, 128, 12);
+  static getThumbnail(size) {
+    return makeThumbnail(getTexture4m, 128, 12, size);
   }
 }
 
@@ -170,15 +171,16 @@ export class LogPole extends Asset {
     ctx.restore();
   }
 
-  static getThumbnail() {
+  static getThumbnail(size = 48) {
     const c = document.createElement('canvas');
-    c.width = 48; c.height = 48;
+    c.width = size; c.height = size;
     const ctx = c.getContext('2d');
     const tex = getTexturePole();
+    const k = size / 48;
     ctx.beginPath();
-    ctx.arc(24, 24, 11, 0, Math.PI * 2);
+    ctx.arc(24 * k, 24 * k, 11 * k, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(tex, 13, 13, 22, 22);
+    ctx.drawImage(tex, 13 * k, 13 * k, 22 * k, 22 * k);
     return c;
   }
 }

@@ -591,7 +591,7 @@ export class CalibrationPanel {
     lockBtn.innerHTML = this.mapScale.locked
       ? '<span><i data-lucide="lock"></i></span><span>Locked</span>'
       : '<span><i data-lucide="unlock"></i></span><span>Unlocked</span>';
-    lockBtn.style.border = '1px solid var(--color-neutral-800)';
+    lockBtn.style.border = '1px solid var(--color-control-border)';
     lockBtn.addEventListener('click', () => { this.mapScale.locked = !this.mapScale.locked; });
     scaleRow.appendChild(mppInput);
     scaleRow.appendChild(mppLabel);
