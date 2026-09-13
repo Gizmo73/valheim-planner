@@ -172,7 +172,7 @@ bus.on('tool:changed', (name) => {
 toolManager.activate('select');
 
 // Test hook
-window._app = { bus, viewport, mapScale, mapLayer, assetLayer, layerManager, toolManager, renderer };
+window._app = { bus, viewport, mapScale, mapLayer, assetLayer, layerManager, toolManager, renderer, calibrationTool };
 
 document.getElementById('help-close').addEventListener('click', () => {
   document.getElementById('help-panel').classList.add('hidden');
