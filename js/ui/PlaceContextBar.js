@@ -1,4 +1,5 @@
 import { getEntry } from '../assets/AssetRegistry.js';
+import { renderThumbnail } from '../assets/textureCache.js';
 import { refreshIcons } from './icons.js';
 
 const SNAP_MODES = [
@@ -33,11 +34,13 @@ export class PlaceContextBar {
     const piece = document.createElement('div');
     piece.className = 'ctx-piece';
     const swatch = document.createElement('canvas');
-    swatch.width = 28;
-    swatch.height = 28;
     swatch.className = 'ctx-piece-swatch';
+    const dpr = window.devicePixelRatio || 1;
+    const bufSize = Math.round(28 * dpr);
+    swatch.width = bufSize;
+    swatch.height = bufSize;
     const tctx = swatch.getContext('2d');
-    tctx.drawImage(entry.cls.getThumbnail(), 0, 0, 28, 28);
+    tctx.drawImage(renderThumbnail(entry.categoryId, entry.type, entry.widthM, entry.heightM, bufSize), 0, 0, bufSize, bufSize);
     const nameEl = document.createElement('span');
     nameEl.className = 'ctx-piece-name';
     nameEl.textContent = entry.name;

@@ -1,4 +1,5 @@
 import { getAssetTypes, getCategories, updateAssetSize } from '../assets/AssetRegistry.js';
+import { renderThumbnail } from '../assets/textureCache.js';
 import { refreshIcons } from './icons.js';
 import { TILE_METRES } from '../core/MapScale.js';
 
@@ -98,7 +99,7 @@ export class AssetPanel {
     thumb.height = bufSize;
     thumb.className = 'asset-thumb';
     const tCtx = thumb.getContext('2d');
-    const tex = t.cls.getThumbnail(bufSize);
+    const tex = renderThumbnail(t.categoryId, t.type, t.widthM, t.heightM, bufSize);
     tCtx.drawImage(tex, 0, 0, bufSize, bufSize);
     thumbWrap.appendChild(thumb);
 
