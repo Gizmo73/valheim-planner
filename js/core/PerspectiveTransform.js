@@ -28,6 +28,10 @@ export class PerspectiveTransform {
     return x;
   }
 
+  // Exact 4-point homography: solves the 3x3 projective matrix H (up to
+  // scale, with H[2][2]=1) mapping each src[i] -> dst[i]. This is the real
+  // perspective solve — unlike an affine fit, it can un-converge vanishing
+  // lines from an angled camera shot, given four known correspondences.
   static computeHomography(src, dst) {
     const A = [], b = [];
     for (let i = 0; i < 4; i++) {
@@ -43,58 +47,12 @@ export class PerspectiveTransform {
     return [[h[0], h[1], h[2]], [h[3], h[4], h[5]], [h[6], h[7], 1]];
   }
 
-  static _mul3(A, B) {
-    const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-    for (let i = 0; i < 3; i++)
-      for (let j = 0; j < 3; j++)
-        for (let k = 0; k < 3; k++) C[i][j] += A[i][k] * B[k][j];
-    return C;
-  }
-
-  static _normaliser(pts) {
-    let cx = 0, cy = 0;
-    for (const p of pts) { cx += p.x; cy += p.y; }
-    cx /= pts.length; cy /= pts.length;
-    let d = 0;
-    for (const p of pts) d += Math.hypot(p.x - cx, p.y - cy);
-    d /= pts.length;
-    const s = d > 0 ? Math.SQRT2 / d : 1;
-    return [[s, 0, -s * cx], [0, s, -s * cy], [0, 0, 1]];
-  }
-
-  static homographyLS(src, dst) {
-    if (src.length < 4) return null;
-    if (src.length === 4) return PerspectiveTransform.computeHomography(src, dst);
-
-    const Ts = PerspectiveTransform._normaliser(src);
-    const Td = PerspectiveTransform._normaliser(dst);
-    const s = src.map(p => PerspectiveTransform.transformPoint(Ts, p.x, p.y));
-    const d = dst.map(p => PerspectiveTransform.transformPoint(Td, p.x, p.y));
-
-    const N = Array.from({ length: 8 }, () => new Array(8).fill(0));
-    const r = new Array(8).fill(0);
-    for (let i = 0; i < s.length; i++) {
-      const x = s[i].x, y = s[i].y, u = d[i].x, v = d[i].y;
-      const rows = [
-        [x, y, 1, 0, 0, 0, -u * x, -u * y, u],
-        [0, 0, 0, x, y, 1, -v * x, -v * y, v],
-      ];
-      for (const row of rows)
-        for (let a = 0; a < 8; a++) {
-          r[a] += row[a] * row[8];
-          for (let b = 0; b < 8; b++) N[a][b] += row[a] * row[b];
-        }
-    }
-
-    const h = PerspectiveTransform._solveLinear(N, r);
-    if (!h) return null;
-    const Hn = [[h[0], h[1], h[2]], [h[3], h[4], h[5]], [h[6], h[7], 1]];
-    const TdInv = PerspectiveTransform.invert3x3(Td);
-    if (!TdInv) return null;
-    const H = PerspectiveTransform._mul3(TdInv, PerspectiveTransform._mul3(Hn, Ts));
-    const k = H[2][2];
-    if (Math.abs(k) < 1e-12) return null;
-    return H.map(row => row.map(v => v / k));
+  static transformPoint(H, x, y) {
+    const w = H[2][0] * x + H[2][1] * y + H[2][2];
+    return {
+      x: (H[0][0] * x + H[0][1] * y + H[0][2]) / w,
+      y: (H[1][0] * x + H[1][1] * y + H[1][2]) / w,
+    };
   }
 
   static invert3x3(M) {
@@ -107,14 +65,6 @@ export class PerspectiveTransform {
       [(f * g - d * i) * k, (a * i - c * g) * k, (c * d - a * f) * k],
       [(d * h - e * g) * k, (b * g - a * h) * k, (a * e - b * d) * k],
     ];
-  }
-
-  static transformPoint(H, x, y) {
-    const w = H[2][0] * x + H[2][1] * y + H[2][2];
-    return {
-      x: (H[0][0] * x + H[0][1] * y + H[0][2]) / w,
-      y: (H[1][0] * x + H[1][1] * y + H[1][2]) / w,
-    };
   }
 
   static _warpImage(sourceImg, Hinv) {
@@ -174,57 +124,11 @@ export class PerspectiveTransform {
     return outCanvas;
   }
 
-  static correctImageCheckerboard(sourceImg, srcPins, worldPins, enabled) {
-    const src = [], world = [];
-    for (let i = 0; i < srcPins.length; i++) {
-      if (enabled[i]) {
-        src.push(srcPins[i]);
-        world.push(worldPins[i]);
-      }
-    }
-    if (src.length < 4) return null;
-
-    let sumPpm = 0, ppmCount = 0;
-    for (let i = 0; i < src.length; i++) {
-      for (let j = i + 1; j < src.length; j++) {
-        const pxDist = Math.hypot(src[i].x - src[j].x, src[i].y - src[j].y);
-        const wDist = Math.hypot(world[i].x - world[j].x, world[i].y - world[j].y);
-        if (wDist > 1e-6) {
-          sumPpm += pxDist / wDist;
-          ppmCount++;
-        }
-      }
-    }
-    if (ppmCount === 0) return null;
-    const ppm = sumPpm / ppmCount;
-
-    let srcCx = 0, srcCy = 0, wCx = 0, wCy = 0;
-    for (let i = 0; i < src.length; i++) {
-      srcCx += src[i].x; srcCy += src[i].y;
-      wCx += world[i].x; wCy += world[i].y;
-    }
-    srcCx /= src.length; srcCy /= src.length;
-    wCx /= src.length; wCy /= src.length;
-
-    const dstPx = world.map(w => ({
-      x: srcCx + (w.x - wCx) * ppm,
-      y: srcCy + (w.y - wCy) * ppm,
-    }));
-
-    const H = PerspectiveTransform.homographyLS(src, dstPx);
-    if (!H) return null;
+  // Warp an image by a 3x3 matrix that maps source px -> destination px
+  // (an affine matrix, e.g. from MapScale.buildStraightenMatrix, is a valid H).
+  static correctImageFromMatrix(sourceImg, H) {
     const Hinv = PerspectiveTransform.invert3x3(H);
     if (!Hinv) return null;
-
-    const outCanvas = PerspectiveTransform._warpImage(sourceImg, Hinv);
-
-    const originX = srcCx - wCx * ppm;
-    const originY = srcCy - wCy * ppm;
-
-    return {
-      canvas: outCanvas,
-      metresPerPixel: 1 / ppm,
-      refRect: { x: originX, y: originY },
-    };
+    return PerspectiveTransform._warpImage(sourceImg, Hinv);
   }
 }

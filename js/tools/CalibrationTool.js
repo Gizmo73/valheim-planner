@@ -1,4 +1,5 @@
-import { WORLD_DIAMETER } from '../core/MapScale.js';
+export const PAIR_ROLES = ['across', 'down', 'check'];
+export const CALIB_METHODS = ['pairs', 'rectangle'];
 
 export class CalibrationTool {
   constructor(viewport, mapLayer, mapScale, bus) {
@@ -16,24 +17,32 @@ export class CalibrationTool {
     this._worldInitialized = false;
     this._updatingFromCircle = false;
 
-    // Checkerboard mode state
-    this._pins = [];
-    this._enabled = [];
-    this._localInitialized = false;
-    this._snapEnabled = true;
-    this._snapRadius = 15;
-    this._imageData = null;
-    this._gray = null;
+    // Local mode, method 'pairs': three fixed measurement-pair slots. `check`
+    // never carries a tile count — it's a cardinal-angle sanity edge.
+    this._calibMethod = 'pairs';
+    this._pairs = {
+      across: { a: null, b: null, tiles: null },
+      down: { a: null, b: null, tiles: null },
+      check: { a: null, b: null, tiles: null },
+    };
+    this._selectedRole = null;
 
-    // Shared drag state
+    // Local mode, method 'rectangle': four corners (in order around the
+    // rectangle, so edge 0->1 is the width and 1->2 is the height) plus a
+    // known width/height. The pairs above double as post-solve validators
+    // in this method — dropped anywhere, compared against what the solved
+    // homography implies there.
+    this._rectangle = { corners: [null, null, null, null], widthTiles: null, heightTiles: null };
+
+    // Shared drag state. `_dragTarget` is either { corner: 0..3 } or
+    // { role, key: 'a'|'b' }.
     this._dragging = false;
     this._dragType = null;
     this._dragStart = null;
     this._startRadius = 0;
     this._startCenter = null;
-    this._dragIndex = -1;
-    this._startPin = null;
-    this._pinDampening = 1 / 4;
+    this._dragTarget = null;
+    this._dragOffset = null;
 
     // Grid preview state
     this._previewActive = false;
@@ -60,84 +69,113 @@ export class CalibrationTool {
       this.bus.emit('render:request');
     });
 
-    bus.on('calibration:gridChanged', () => {
-      if (this._mode === 'local') {
-        this._localInitialized = false;
-        this._activateLocal();
-        this.bus.emit('render:request');
-      }
-    });
-
     bus.on('map:loaded', () => {
       this._worldInitialized = false;
-      this._localInitialized = false;
-      this._imageData = null;
-      this._gray = null;
+      this._resetCalibration();
     });
   }
 
-  get pins() {
-    return this._pins.map(p => ({ ...p }));
+  get pairs() {
+    return {
+      across: { ...this._pairs.across },
+      down: { ...this._pairs.down },
+      check: { ...this._pairs.check },
+    };
   }
 
-  get enabled() {
-    return [...this._enabled];
+  get rectangle() {
+    return {
+      corners: this._rectangle.corners.map(c => (c ? { ...c } : null)),
+      widthTiles: this._rectangle.widthTiles,
+      heightTiles: this._rectangle.heightTiles,
+    };
+  }
+
+  get calibMethod() {
+    return this._calibMethod;
+  }
+
+  set calibMethod(val) {
+    if (!CALIB_METHODS.includes(val)) return;
+    this._calibMethod = val;
+    this.bus.emit('calibration:methodChanged', val);
+    this.bus.emit('render:request');
   }
 
   get previewActive() {
     return this._previewActive;
   }
 
-  get snapEnabled() {
-    return this._snapEnabled;
+  get selectedRole() {
+    return this._selectedRole;
   }
 
-  set snapEnabled(val) {
-    this._snapEnabled = !!val;
+  set selectedRole(role) {
+    this._selectedRole = PAIR_ROLES.includes(role) ? role : null;
+    this.bus.emit('render:request');
   }
 
-  get snapRadius() {
-    return this._snapRadius;
+  _resetCalibration() {
+    this._pairs = {
+      across: { a: null, b: null, tiles: null },
+      down: { a: null, b: null, tiles: null },
+      check: { a: null, b: null, tiles: null },
+    };
+    this._rectangle = { corners: [null, null, null, null], widthTiles: null, heightTiles: null };
+    this._selectedRole = null;
+    this.bus.emit('calibration:pairsChanged');
   }
 
-  set snapRadius(val) {
-    this._snapRadius = Math.max(3, Math.min(40, Math.round(val)));
+  resetPairs() {
+    this._resetCalibration();
+    this.bus.emit('render:request');
   }
 
-  pinWorldCoords() {
-    const cols = this.mapScale.cbCols;
-    const rows = this.mapScale.cbRows;
-    const spacing = this.mapScale.cbSpacing;
-    const tileSize = 2;
-    const gcx = (cols - 1) * spacing / 2;
-    const gcy = (rows - 1) * spacing / 2;
-    const coords = [];
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const tx = c * spacing;
-        const ty = r * spacing;
-        coords.push({ x: tx, y: ty });
-        const dx = Math.sign(gcx - tx) || 1;
-        const dy = Math.sign(gcy - ty) || 1;
-        coords.push({ x: tx + dx * tileSize, y: ty + dy * tileSize });
-      }
+  setPairTiles(role, tiles) {
+    if (role !== 'across' && role !== 'down') return;
+    const n = parseFloat(tiles);
+    this._pairs[role].tiles = (n > 0 && isFinite(n)) ? n : null;
+    this.bus.emit('calibration:pairsChanged');
+    this.bus.emit('render:request');
+  }
+
+  clearPair(role) {
+    if (!PAIR_ROLES.includes(role)) return;
+    this._pairs[role] = { a: null, b: null, tiles: null };
+    this.bus.emit('calibration:pairsChanged');
+    this.bus.emit('render:request');
+  }
+
+  setRectangleSize(widthTiles, heightTiles) {
+    const w = parseFloat(widthTiles);
+    const h = parseFloat(heightTiles);
+    this._rectangle.widthTiles = (w > 0 && isFinite(w)) ? w : null;
+    this._rectangle.heightTiles = (h > 0 && isFinite(h)) ? h : null;
+    this.bus.emit('calibration:pairsChanged');
+    this.bus.emit('render:request');
+  }
+
+  clearRectangle() {
+    this._rectangle = { corners: [null, null, null, null], widthTiles: null, heightTiles: null };
+    this.bus.emit('calibration:pairsChanged');
+    this.bus.emit('render:request');
+  }
+
+  _nextIncompleteRole() {
+    for (const role of PAIR_ROLES) {
+      const p = this._pairs[role];
+      if (!p.a || !p.b) return role;
     }
-    return coords;
+    return null;
   }
 
   activate() {
     if (this._previewActive) return;
-    if (this._mode === 'world') {
-      this._activateWorld();
-    } else {
-      this._activateLocal();
-    }
+    if (this._mode === 'world') this._activateWorld();
   }
 
   deactivate() {
-    if (this._previewActive) {
-      this.exitPreview();
-    }
+    if (this._previewActive) this.exitPreview();
   }
 
   enterPreview(anchorX, anchorY, mpp) {
@@ -170,7 +208,7 @@ export class CalibrationTool {
     if (this._mode === 'world') {
       return this._hitTestWorld(map.x, map.y) !== null;
     }
-    return this._hitTestLocal(map.x, map.y) >= 0;
+    return true; // clicking anywhere in local mode either drags or places a pin
   }
 
   _activateWorld() {
@@ -181,56 +219,6 @@ export class CalibrationTool {
       this._updateScaleFromCircle();
       this._worldInitialized = true;
     }
-  }
-
-  _activateLocal() {
-    const pinCount = this.mapScale.cbCols * this.mapScale.cbRows * 2;
-    if (this._localInitialized && this._pins.length === pinCount) return;
-    if (!this.mapLayer.image) return;
-
-    const w = this.mapLayer.width;
-    const h = this.mapLayer.height;
-    const cols = this.mapScale.cbCols;
-    const rows = this.mapScale.cbRows;
-    const spacing = this.mapScale.cbSpacing;
-    const tileSize = 2;
-
-    const gridWorldW = (cols - 1) * spacing;
-    const gridWorldH = (rows - 1) * spacing;
-    const scaleX = gridWorldW > 0 ? (w * 0.6) / gridWorldW : 1;
-    const scaleY = gridWorldH > 0 ? (h * 0.6) / gridWorldH : 1;
-    const scale = Math.min(scaleX, scaleY);
-
-    const cx = w / 2;
-    const cy = h / 2;
-    const originX = cx - (gridWorldW * scale) / 2;
-    const originY = cy - (gridWorldH * scale) / 2;
-
-    const gcx = (cols - 1) * spacing / 2;
-    const gcy = (rows - 1) * spacing / 2;
-
-    this._pins = [];
-    this._enabled = [];
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const tx = c * spacing;
-        const ty = r * spacing;
-        this._pins.push({
-          x: originX + tx * scale,
-          y: originY + ty * scale,
-        });
-        this._enabled.push(true);
-        const dx = Math.sign(gcx - tx) || 1;
-        const dy = Math.sign(gcy - ty) || 1;
-        this._pins.push({
-          x: originX + (tx + dx * tileSize) * scale,
-          y: originY + (ty + dy * tileSize) * scale,
-        });
-        this._enabled.push(true);
-      }
-    }
-
-    this._localInitialized = true;
   }
 
   _updateScaleFromCircle() {
@@ -247,143 +235,154 @@ export class CalibrationTool {
     return null;
   }
 
+  // --- Generic point access for whatever the drag target is ---
+
+  _getPoint(target) {
+    if (!target) return null;
+    if ('corner' in target) return this._rectangle.corners[target.corner];
+    return this._pairs[target.role][target.key];
+  }
+
+  _setPoint(target, pt) {
+    if (!target) return;
+    if ('corner' in target) this._rectangle.corners[target.corner] = pt;
+    else this._pairs[target.role][target.key] = pt;
+  }
+
   _hitTestLocal(mapX, mapY) {
     const threshold = 15 / this.viewport.zoom;
-    for (let i = 0; i < this._pins.length; i++) {
-      const dist = Math.hypot(mapX - this._pins[i].x, mapY - this._pins[i].y);
-      if (dist < threshold) return i;
-    }
-    return -1;
-  }
-
-  // --- Corner snap detection (Shi-Tomasi + sub-pixel refinement) ---
-
-  _ensureImageData() {
-    if (!this._imageData) {
-      const tmp = document.createElement('canvas');
-      tmp.width = this.mapLayer.width;
-      tmp.height = this.mapLayer.height;
-      const t = tmp.getContext('2d');
-      t.drawImage(this.mapLayer.image, 0, 0, this.mapLayer.width, this.mapLayer.height);
-      this._imageData = t.getImageData(0, 0, this.mapLayer.width, this.mapLayer.height);
-      this._gray = null;
-    }
-    if (!this._gray) {
-      const d = this._imageData.data;
-      const n = this.mapLayer.width * this.mapLayer.height;
-      const g = new Float32Array(n);
-      for (let i = 0; i < n; i++) {
-        g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
-      }
-      this._gray = g;
-    }
-  }
-
-  _snapPoint(p, R) {
-    const g = this._gray;
-    const W = this.mapLayer.width;
-    const H = this.mapLayer.height;
-    const ws = 5;
-    const cx = Math.round(p.x), cy = Math.round(p.y);
-    const half = R + ws + 3;
-    const x0 = Math.max(1, cx - half), y0 = Math.max(1, cy - half);
-    const x1 = Math.min(W - 2, cx + half), y1 = Math.min(H - 2, cy + half);
-    const pw = x1 - x0 + 1, ph = y1 - y0 + 1;
-    if (pw < 2 * ws + 5 || ph < 2 * ws + 5) return { ok: false, why: 'too close to edge' };
-
-    const B = new Float32Array(pw * ph);
-    for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) {
-      const i = (y0 + y) * W + (x0 + x);
-      B[y * pw + x] = (4 * g[i] + 2 * (g[i - 1] + g[i + 1] + g[i - W] + g[i + W])
-        + g[i - W - 1] + g[i - W + 1] + g[i + W - 1] + g[i + W + 1]) / 16;
-    }
-
-    const GX = new Float32Array(pw * ph), GY = new Float32Array(pw * ph);
-    for (let y = 1; y < ph - 1; y++) for (let x = 1; x < pw - 1; x++) {
-      const i = y * pw + x;
-      GX[i] = (B[i + 1] - B[i - 1]) / 2;
-      GY[i] = (B[i + pw] - B[i - pw]) / 2;
-    }
-    const inside = (lx, ly) => lx >= 1 && ly >= 1 && lx < pw - 1 && ly < ph - 1;
-
-    const sig2 = 2 * (R * 0.6) ** 2;
-    let best = null, bestScore = 0;
-    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
-      if (dx * dx + dy * dy > R * R) continue;
-      const lx = cx + dx - x0, ly = cy + dy - y0;
-      let a = 0, b = 0, c = 0;
-      for (let wy = -2; wy <= 2; wy++) for (let wx = -2; wx <= 2; wx++) {
-        if (!inside(lx + wx, ly + wy)) continue;
-        const i = (ly + wy) * pw + lx + wx;
-        a += GX[i] * GX[i]; b += GX[i] * GY[i]; c += GY[i] * GY[i];
-      }
-      const lmin = (a + c) / 2 - Math.sqrt(((a - c) / 2) ** 2 + b * b);
-      const score = lmin * Math.exp(-(dx * dx + dy * dy) / sig2);
-      if (score > bestScore) { bestScore = score; best = { x: cx + dx, y: cy + dy }; }
-    }
-    if (!best) return { ok: false, why: 'no contrast' };
-
-    let px = best.x, py = best.y, A11 = 0, A12 = 0, A22 = 0;
-    const wsig2 = 2 * (ws * 0.5) ** 2;
-    for (let iter = 0; iter < 20; iter++) {
-      A11 = 0; A12 = 0; A22 = 0;
-      let bx = 0, by = 0;
-      const rx = Math.round(px), ry = Math.round(py);
-      for (let dy = -ws; dy <= ws; dy++) for (let dx = -ws; dx <= ws; dx++) {
-        const qx = rx + dx, qy = ry + dy;
-        const lx = qx - x0, ly = qy - y0;
-        if (!inside(lx, ly)) continue;
-        const i = ly * pw + lx, gx = GX[i], gy = GY[i];
-        const w = Math.exp(-((qx - px) ** 2 + (qy - py) ** 2) / wsig2);
-        A11 += w * gx * gx; A12 += w * gx * gy; A22 += w * gy * gy;
-        bx += w * (gx * gx * qx + gx * gy * qy);
-        by += w * (gx * gy * qx + gy * gy * qy);
-      }
-      const det = A11 * A22 - A12 * A12;
-      if (det <= 1e-9) return { ok: false, why: 'flat area' };
-      const nx = (A22 * bx - A12 * by) / det;
-      const ny = (A11 * by - A12 * bx) / det;
-      const move = Math.hypot(nx - px, ny - py);
-      px = nx; py = ny;
-      if (move < 0.01) break;
-    }
-
-    const tr = (A11 + A22) / 2;
-    const disc = Math.sqrt(((A11 - A22) / 2) ** 2 + A12 * A12);
-    const ratio = (tr - disc) / (tr + disc);
-    if (ratio < 0.05) return { ok: false, why: 'edge, not corner' };
-    const dist = Math.hypot(px - p.x, py - p.y);
-    if (dist > R + 1) return { ok: false, why: 'too far' };
-    return { ok: true, x: px, y: py, dist };
-  }
-
-  snapPin(i) {
-    if (!this.mapLayer.image || i < 0 || i >= this._pins.length) return null;
-    this._ensureImageData();
-    const res = this._snapPoint(this._pins[i], this._snapRadius);
-    if (res.ok) this._pins[i] = { x: res.x, y: res.y };
-    return res;
-  }
-
-  snapAllPins() {
-    if (!this.mapLayer.image) return [];
-    this._ensureImageData();
-    const failed = [];
-    for (let i = 0; i < this._pins.length; i++) {
-      if (!this._enabled[i]) continue;
-      const res = this._snapPoint(this._pins[i], this._snapRadius);
-      if (res.ok) {
-        this._pins[i] = { x: res.x, y: res.y };
-      } else {
-        failed.push(i + 1);
+    if (this._calibMethod === 'rectangle') {
+      for (let i = 0; i < 4; i++) {
+        const pt = this._rectangle.corners[i];
+        if (!pt) continue;
+        if (Math.hypot(mapX - pt.x, mapY - pt.y) < threshold) return { corner: i };
       }
     }
+    for (const role of PAIR_ROLES) {
+      const p = this._pairs[role];
+      for (const key of ['a', 'b']) {
+        const pt = p[key];
+        if (!pt) continue;
+        if (Math.hypot(mapX - pt.x, mapY - pt.y) < threshold) return { role, key };
+      }
+    }
+    return null;
+  }
+
+  // --- Mouse handlers ---
+
+  onMouseDown(pos) {
+    if (this._previewActive) {
+      this._onPreviewMouseDown(pos);
+      return;
+    }
+    if (this.mapScale.locked) return;
+    const map = this.viewport.screenToMap(pos.x, pos.y);
+
+    if (this._mode === 'world') {
+      const hit = this._hitTestWorld(map.x, map.y);
+      if (!hit) return;
+      this._dragging = true;
+      this._dragType = hit;
+      this._dragStart = map;
+      this._startRadius = this._radius;
+      this._startCenter = { x: this._centerX, y: this._centerY };
+      return;
+    }
+
+    // Local mode: pins are never snapped or nudged — they stay exactly
+    // where dropped or dragged.
+    const hit = this._hitTestLocal(map.x, map.y);
+    if (hit) {
+      const pt = this._getPoint(hit);
+      this._dragging = true;
+      this._dragTarget = hit;
+      this._dragOffset = { x: pt.x - map.x, y: pt.y - map.y };
+      if ('role' in hit) this._selectedRole = hit.role;
+      this.bus.emit('render:request');
+      return;
+    }
+
+    if (this._calibMethod === 'rectangle') {
+      const idx = this._rectangle.corners.findIndex(c => !c);
+      if (idx >= 0) {
+        this._rectangle.corners[idx] = { x: map.x, y: map.y };
+        this.bus.emit('calibration:pairsChanged');
+        if (idx === 3) this.bus.emit('calibration:rectangleCompleted');
+        this.bus.emit('render:request');
+        return;
+      }
+    }
+
+    const role = this._nextIncompleteRole();
+    if (!role) return;
+    const p = this._pairs[role];
+    if (!p.a) p.a = { x: map.x, y: map.y };
+    else p.b = { x: map.x, y: map.y };
+    this._selectedRole = role;
+    this.bus.emit('calibration:pairsChanged');
+    if (p.a && p.b) this.bus.emit('calibration:pairCompleted', role);
     this.bus.emit('render:request');
-    return failed;
   }
 
+  onMouseMove(pos) {
+    if (this._previewActive) {
+      this._onPreviewMouseMove(pos);
+      return;
+    }
+    if (!this._dragging) return;
+    const map = this.viewport.screenToMap(pos.x, pos.y);
 
-  // --- Grid preview intersection detection ---
+    if (this._mode === 'world') {
+      if (this._dragType === 'edge') {
+        this._radius = Math.max(10, Math.hypot(map.x - this._centerX, map.y - this._centerY));
+        this._updateScaleFromCircle();
+      } else if (this._dragType === 'center') {
+        this._centerX = this._startCenter.x + (map.x - this._dragStart.x);
+        this._centerY = this._startCenter.y + (map.y - this._dragStart.y);
+        this.bus.emit('render:request');
+      }
+      return;
+    }
+
+    this._setPoint(this._dragTarget, {
+      x: map.x + this._dragOffset.x,
+      y: map.y + this._dragOffset.y,
+    });
+    this.bus.emit('render:request');
+  }
+
+  onMouseUp() {
+    if (this._previewActive) {
+      this._onPreviewMouseUp();
+      return;
+    }
+    if (this._dragging) {
+      this._dragging = false;
+      this._dragType = null;
+      const draggedTarget = this._dragTarget;
+      this._dragTarget = null;
+      this._dragOffset = null;
+      if (draggedTarget) this.bus.emit('calibration:pairsChanged');
+      this.bus.emit('render:request');
+    }
+  }
+
+  onKeyDown(e) {
+    if (e.code === 'Escape') {
+      if (this._previewActive) {
+        this.bus.emit('calibration:previewCancel');
+      } else {
+        this.bus.emit('tool:activate', 'select');
+      }
+    }
+  }
+
+  onDblClick() {
+    // No-op: local-mode pins no longer toggle enabled/disabled.
+  }
+
+  // --- Grid preview intersection detection (straighten → keep/discard) ---
 
   _getVisibleIntersections(viewport) {
     const mpp = this._previewMpp;
@@ -450,90 +449,6 @@ export class CalibrationTool {
     return best;
   }
 
-  // --- Mouse handlers ---
-
-  onMouseDown(pos) {
-    if (this._previewActive) {
-      this._onPreviewMouseDown(pos);
-      return;
-    }
-    if (this.mapScale.locked) return;
-    const map = this.viewport.screenToMap(pos.x, pos.y);
-
-    if (this._mode === 'world') {
-      const hit = this._hitTestWorld(map.x, map.y);
-      if (!hit) return;
-      this._dragging = true;
-      this._dragType = hit;
-      this._dragStart = map;
-      this._startRadius = this._radius;
-      this._startCenter = { x: this._centerX, y: this._centerY };
-    } else {
-      const idx = this._hitTestLocal(map.x, map.y);
-      if (idx < 0) return;
-      this._dragging = true;
-      this._dragIndex = idx;
-      this._dragStart = map;
-      this._startPin = { ...this._pins[idx] };
-    }
-  }
-
-  onMouseMove(pos) {
-    if (this._previewActive) {
-      this._onPreviewMouseMove(pos);
-      return;
-    }
-    if (!this._dragging) return;
-    const map = this.viewport.screenToMap(pos.x, pos.y);
-
-    if (this._mode === 'world') {
-      if (this._dragType === 'edge') {
-        this._radius = Math.max(10, Math.hypot(map.x - this._centerX, map.y - this._centerY));
-        this._updateScaleFromCircle();
-      } else if (this._dragType === 'center') {
-        this._centerX = this._startCenter.x + (map.x - this._dragStart.x);
-        this._centerY = this._startCenter.y + (map.y - this._dragStart.y);
-        this.bus.emit('render:request');
-      }
-    } else {
-      const d = this._pinDampening;
-      this._pins[this._dragIndex] = {
-        x: this._startPin.x + (map.x - this._dragStart.x) * d,
-        y: this._startPin.y + (map.y - this._dragStart.y) * d,
-      };
-      this.bus.emit('render:request');
-    }
-  }
-
-  onMouseUp(pos) {
-    if (this._previewActive) {
-      this._onPreviewMouseUp();
-      return;
-    }
-    if (this._dragging) {
-      const idx = this._dragIndex;
-      this._dragging = false;
-      this._dragType = null;
-      this._dragIndex = -1;
-
-      if (this._mode === 'local' && idx >= 0 && this._snapEnabled) {
-        const res = this.snapPin(idx);
-        if (res) {
-          this.bus.emit('calibration:snapResult', {
-            pin: idx + 1,
-            ok: res.ok,
-            dist: res.dist,
-            why: res.why,
-          });
-        }
-      }
-
-      this.bus.emit('render:request');
-    }
-  }
-
-  // --- Preview mouse handlers ---
-
   _onPreviewMouseDown(pos) {
     const hit = this._hitTestPreview(pos);
 
@@ -541,14 +456,12 @@ export class CalibrationTool {
       const ax = this._previewAnchorX;
       const ay = this._previewAnchorY;
       if (Math.abs(hit.mapX - ax) < 1 && Math.abs(hit.mapY - ay) < 1) {
-        // Anchor point itself — start translate
         this._pvDragging = true;
         this._pvDragMode = 'translate';
         this._pvDragStartScreen = { x: pos.x, y: pos.y };
         this._pvDragStartAnchor = { x: ax, y: ay };
         return;
       }
-      // Non-anchor intersection — start scale
       const screenAnchor = this.viewport.mapToScreen(ax, ay);
       this._pvDragging = true;
       this._pvDragMode = 'scale';
@@ -558,7 +471,6 @@ export class CalibrationTool {
       return;
     }
 
-    // Click on empty space — start translate
     this._pvDragging = true;
     this._pvDragMode = 'translate';
     this._pvDragStartScreen = { x: pos.x, y: pos.y };
@@ -595,41 +507,6 @@ export class CalibrationTool {
     this._pvDragMode = null;
   }
 
-  onKeyDown(e) {
-    if (e.code === 'Escape') {
-      if (this._previewActive) {
-        this.bus.emit('calibration:previewCancel');
-      } else {
-        this.bus.emit('tool:activate', 'select');
-      }
-    }
-  }
-
-  // Double-click to toggle pin enabled/disabled
-  onDblClick(pos) {
-    if (this._previewActive || this._mode !== 'local') return;
-    const map = this.viewport.screenToMap(pos.x, pos.y);
-    const idx = this._hitTestLocal(map.x, map.y);
-    if (idx < 0) return;
-
-    const enabledCount = this._enabled.filter(Boolean).length;
-    if (this._enabled[idx] && enabledCount <= 4) {
-      this.bus.emit('calibration:snapResult', {
-        pin: idx + 1,
-        ok: false,
-        why: 'at least 4 pins must stay enabled',
-      });
-      return;
-    }
-    this._enabled[idx] = !this._enabled[idx];
-    this.bus.emit('calibration:snapResult', {
-      pin: idx + 1,
-      ok: true,
-      why: this._enabled[idx] ? 'included' : 'excluded',
-    });
-    this.bus.emit('render:request');
-  }
-
   // --- Rendering ---
 
   renderOverlay(ctx, viewport) {
@@ -643,6 +520,329 @@ export class CalibrationTool {
       this._renderLocalOverlay(ctx, viewport);
       this._renderMagnifier(ctx, viewport);
     }
+  }
+
+  _renderWorldOverlay(ctx, viewport) {
+    if (!this._worldInitialized) return;
+
+    ctx.save();
+    ctx.translate(viewport.panX, viewport.panY);
+    ctx.scale(viewport.zoom, viewport.zoom);
+
+    ctx.strokeStyle = 'rgba(255, 200, 50, 0.8)';
+    ctx.lineWidth = 2 / viewport.zoom;
+    ctx.setLineDash([8 / viewport.zoom, 5 / viewport.zoom]);
+    ctx.beginPath();
+    ctx.arc(this._centerX, this._centerY, this._radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const chSize = 12 / viewport.zoom;
+    ctx.strokeStyle = 'rgba(255, 200, 50, 0.6)';
+    ctx.lineWidth = 1 / viewport.zoom;
+    ctx.beginPath();
+    ctx.moveTo(this._centerX - chSize, this._centerY);
+    ctx.lineTo(this._centerX + chSize, this._centerY);
+    ctx.moveTo(this._centerX, this._centerY - chSize);
+    ctx.lineTo(this._centerX, this._centerY + chSize);
+    ctx.stroke();
+
+    const handleSize = 5 / viewport.zoom;
+    ctx.fillStyle = 'rgba(255, 200, 50, 0.9)';
+    const angles = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
+    for (const a of angles) {
+      const hx = this._centerX + this._radius * Math.cos(a);
+      const hy = this._centerY + this._radius * Math.sin(a);
+      ctx.fillRect(hx - handleSize, hy - handleSize, handleSize * 2, handleSize * 2);
+    }
+
+    ctx.restore();
+
+    const screenCenter = viewport.mapToScreen(this._centerX, this._centerY);
+    const screenBottom = viewport.mapToScreen(this._centerX, this._centerY + this._radius);
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 200, 50, 0.9)';
+    ctx.font = '12px monospace';
+    const diamPx = Math.round(this._radius * 2);
+    const mpp = this.mapScale.metresPerPixel;
+    ctx.fillText(
+      `D ${diamPx}px  |  ${mpp.toFixed(2)} m/px`,
+      screenCenter.x - 70,
+      screenBottom.y + 20
+    );
+    ctx.restore();
+  }
+
+  _drawSegment(ctx, zoom, a, b, colorStart, colorEnd, dashed) {
+    ctx.lineWidth = 4 / zoom;
+    ctx.strokeStyle = 'rgba(22, 24, 38, 0.7)';
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+
+    const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+    grad.addColorStop(0, colorStart);
+    grad.addColorStop(1, colorEnd);
+    ctx.lineWidth = 2 / zoom;
+    if (dashed) ctx.setLineDash([6 / zoom, 4 / zoom]);
+    ctx.strokeStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  _drawPin(ctx, zoom, pt, ringColor, active) {
+    const r = (active ? 9.5 : 8.5) / zoom;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(28, 30, 44, 0.95)';
+    ctx.fill();
+    ctx.lineWidth = 1 / zoom;
+    ctx.strokeStyle = 'rgba(22, 24, 38, 0.9)';
+    ctx.stroke();
+    ctx.lineWidth = 2.5 / zoom;
+    ctx.strokeStyle = ringColor;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  _drawChip(ctx, screenPt, label, ringColor) {
+    ctx.save();
+    ctx.font = '500 12px Inter, system-ui, sans-serif';
+    const textW = ctx.measureText(label).width;
+    const chipW = textW + 20;
+    const chipH = 24;
+    ctx.fillStyle = '#1c1e2c';
+    ctx.strokeStyle = ringColor;
+    ctx.lineWidth = 1;
+    _roundRect(ctx, screenPt.x - chipW / 2, screenPt.y - chipH / 2, chipW, chipH, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#ddd9fd';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, screenPt.x, screenPt.y + 0.5);
+    ctx.restore();
+  }
+
+  _renderLocalOverlay(ctx, viewport) {
+    const zoom = viewport.zoom;
+    const ROLE_COLOR = {
+      across: { line: '#b5abfc', lineEnd: '#ddd9fd' },
+      down: { line: '#b5abfc', lineEnd: '#ddd9fd' },
+      check: { line: '#f5d547', lineEnd: '#f5d547' },
+    };
+    const LETTER = { across: 'A', down: 'B', check: 'C' };
+    const inRectMethod = this._calibMethod === 'rectangle';
+
+    ctx.save();
+    ctx.translate(viewport.panX, viewport.panY);
+    ctx.scale(zoom, zoom);
+
+    if (inRectMethod) {
+      const corners = this._rectangle.corners;
+      for (let i = 0; i < 4; i++) {
+        const a = corners[i];
+        const b = corners[(i + 1) % 4];
+        if (!a || !b) continue;
+        this._drawSegment(ctx, zoom, a, b, '#b5abfc', '#ddd9fd', false);
+      }
+      for (let i = 0; i < 4; i++) {
+        const pt = corners[i];
+        if (!pt) continue;
+        const dragging = this._dragging && this._dragTarget && this._dragTarget.corner === i;
+        this._drawPin(ctx, zoom, pt, '#ddd9fd', dragging);
+      }
+    }
+
+    for (const role of PAIR_ROLES) {
+      const p = this._pairs[role];
+      if (!p.a) continue;
+      const colors = ROLE_COLOR[role];
+      const selected = this._selectedRole === role;
+
+      if (p.b) {
+        this._drawSegment(ctx, zoom, p.a, p.b, colors.line, colors.lineEnd, role === 'check');
+      }
+
+      for (const key of ['a', 'b']) {
+        const pt = p[key];
+        if (!pt) continue;
+        const dragging = this._dragging && this._dragTarget
+          && this._dragTarget.role === role && this._dragTarget.key === key;
+        const ringColor = selected ? '#ddd9fd' : colors.lineEnd;
+        this._drawPin(ctx, zoom, pt, ringColor, dragging);
+      }
+    }
+
+    ctx.restore();
+
+    // Mid-line/corner chips, drawn in screen space so text stays legible at any zoom.
+    if (inRectMethod) {
+      const corners = this._rectangle.corners;
+      for (let i = 0; i < 4; i++) {
+        const pt = corners[i];
+        if (!pt) continue;
+        const screen = viewport.mapToScreen(pt.x, pt.y);
+        this._drawChip(ctx, screen, String(i + 1), '#3f424d');
+      }
+      if (corners[0] && corners[1]) {
+        const mid = viewport.mapToScreen((corners[0].x + corners[1].x) / 2, (corners[0].y + corners[1].y) / 2);
+        const label = this._rectangle.widthTiles
+          ? `W  ${this._rectangle.widthTiles} tiles`
+          : 'W  · click to set width';
+        this._drawChip(ctx, mid, label, '#9184d9');
+      }
+      if (corners[1] && corners[2]) {
+        const mid = viewport.mapToScreen((corners[1].x + corners[2].x) / 2, (corners[1].y + corners[2].y) / 2);
+        const label = this._rectangle.heightTiles
+          ? `H  ${this._rectangle.heightTiles} tiles`
+          : 'H  · click to set height';
+        this._drawChip(ctx, mid, label, '#9184d9');
+      }
+    }
+
+    for (const role of PAIR_ROLES) {
+      const p = this._pairs[role];
+      if (!p.a || !p.b) continue;
+      const midMap = { x: (p.a.x + p.b.x) / 2, y: (p.a.y + p.b.y) / 2 };
+      const mid = viewport.mapToScreen(midMap.x, midMap.y);
+      const selected = this._selectedRole === role;
+
+      let label;
+      if (role === 'check') {
+        label = inRectMethod ? 'Check angle' : 'Check angle';
+      } else if (inRectMethod) {
+        label = `${LETTER[role]}  validate`;
+      } else {
+        const tiles = p.tiles;
+        label = tiles ? `${LETTER[role]}  ${tiles} tiles` : `${LETTER[role]}  · click to set tiles`;
+      }
+
+      const ringColor = selected ? '#9184d9' : (role === 'check' ? 'rgba(245,213,71,0.6)' : '#3f424d');
+      this._drawChip(ctx, mid, label, ringColor);
+    }
+  }
+
+  _renderMagnifier(ctx, viewport) {
+    if (!this._dragging || !this._dragTarget) return;
+    const pin = this._getPoint(this._dragTarget);
+    if (!pin) return;
+
+    const screenPin = viewport.mapToScreen(pin.x, pin.y);
+    const canvasW = ctx.canvas.width;
+    const canvasH = ctx.canvas.height;
+
+    const R = 70;
+    const MAG = 4;
+    const innerZoom = viewport.zoom * MAG;
+
+    let cx = screenPin.x;
+    let cy = screenPin.y - R - 35;
+    if (cy - R < 10) cy = screenPin.y + R + 35;
+    cx = Math.max(R + 5, Math.min(canvasW - R - 5, cx));
+    cy = Math.max(R + 5, Math.min(canvasH - R - 5, cy));
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.clip();
+
+    ctx.fillStyle = '#111';
+    ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+
+    const ipx = cx - pin.x * innerZoom;
+    const ipy = cy - pin.y * innerZoom;
+
+    if (this.mapLayer.image) {
+      ctx.save();
+      ctx.translate(ipx, ipy);
+      ctx.scale(innerZoom, innerZoom);
+      ctx.drawImage(this.mapLayer.image, 0, 0, this.mapLayer.width, this.mapLayer.height);
+      ctx.restore();
+    }
+
+    // Draw every placed pin inside the magnifier, dragged one highlighted.
+    ctx.save();
+    ctx.translate(ipx, ipy);
+    ctx.scale(innerZoom, innerZoom);
+    const isDraggedTarget = (target) => {
+      if (!target) return false;
+      if ('corner' in this._dragTarget) return 'corner' in target && target.corner === this._dragTarget.corner;
+      return 'role' in target && target.role === this._dragTarget.role && target.key === this._dragTarget.key;
+    };
+    if (this._calibMethod === 'rectangle') {
+      for (let i = 0; i < 4; i++) {
+        const pt = this._rectangle.corners[i];
+        if (!pt) continue;
+        const active = isDraggedTarget({ corner: i });
+        const r = (active ? 5 : 3) / innerZoom;
+        ctx.fillStyle = active ? 'rgba(255, 220, 80, 1)' : 'rgba(181, 171, 252, 0.5)';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.lineWidth = 1 / innerZoom;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+    for (const role of PAIR_ROLES) {
+      const p = this._pairs[role];
+      for (const key of ['a', 'b']) {
+        const pt = p[key];
+        if (!pt) continue;
+        const active = isDraggedTarget({ role, key });
+        const r = (active ? 5 : 3) / innerZoom;
+        ctx.fillStyle = active ? 'rgba(255, 220, 80, 1)' : 'rgba(181, 171, 252, 0.5)';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.lineWidth = 1 / innerZoom;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+
+    // Magnifier crosshair
+    ctx.strokeStyle = 'rgba(181, 171, 252, 0.9)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 14, cy); ctx.lineTo(cx - 5, cy);
+    ctx.moveTo(cx + 5, cy);  ctx.lineTo(cx + 14, cy);
+    ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy - 5);
+    ctx.moveTo(cx, cy + 5);  ctx.lineTo(cx, cy + 14);
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Magnifier border
+    ctx.save();
+    ctx.strokeStyle = 'rgba(181, 171, 252, 0.9)';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Tether line
+    ctx.save();
+    ctx.strokeStyle = 'rgba(181, 171, 252, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    const edgeY = cy < screenPin.y ? cy + R : cy - R;
+    ctx.beginPath();
+    ctx.moveTo(cx, edgeY);
+    ctx.lineTo(screenPin.x, screenPin.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
   }
 
   _renderPreviewOverlay(ctx, viewport) {
@@ -764,318 +964,14 @@ export class CalibrationTool {
     }
     ctx.restore();
   }
+}
 
-  _renderWorldOverlay(ctx, viewport) {
-    if (!this._worldInitialized) return;
-
-    ctx.save();
-    ctx.translate(viewport.panX, viewport.panY);
-    ctx.scale(viewport.zoom, viewport.zoom);
-
-    ctx.strokeStyle = 'rgba(255, 200, 50, 0.8)';
-    ctx.lineWidth = 2 / viewport.zoom;
-    ctx.setLineDash([8 / viewport.zoom, 5 / viewport.zoom]);
-    ctx.beginPath();
-    ctx.arc(this._centerX, this._centerY, this._radius, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    const chSize = 12 / viewport.zoom;
-    ctx.strokeStyle = 'rgba(255, 200, 50, 0.6)';
-    ctx.lineWidth = 1 / viewport.zoom;
-    ctx.beginPath();
-    ctx.moveTo(this._centerX - chSize, this._centerY);
-    ctx.lineTo(this._centerX + chSize, this._centerY);
-    ctx.moveTo(this._centerX, this._centerY - chSize);
-    ctx.lineTo(this._centerX, this._centerY + chSize);
-    ctx.stroke();
-
-    const handleSize = 5 / viewport.zoom;
-    ctx.fillStyle = 'rgba(255, 200, 50, 0.9)';
-    const angles = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
-    for (const a of angles) {
-      const hx = this._centerX + this._radius * Math.cos(a);
-      const hy = this._centerY + this._radius * Math.sin(a);
-      ctx.fillRect(hx - handleSize, hy - handleSize, handleSize * 2, handleSize * 2);
-    }
-
-    ctx.restore();
-
-    const screenCenter = viewport.mapToScreen(this._centerX, this._centerY);
-    const screenBottom = viewport.mapToScreen(this._centerX, this._centerY + this._radius);
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 200, 50, 0.9)';
-    ctx.font = '12px monospace';
-    const diamPx = Math.round(this._radius * 2);
-    const mpp = this.mapScale.metresPerPixel;
-    ctx.fillText(
-      `D ${diamPx}px  |  ${mpp.toFixed(2)} m/px`,
-      screenCenter.x - 70,
-      screenBottom.y + 20
-    );
-    ctx.restore();
-  }
-
-  _renderLocalOverlay(ctx, viewport) {
-    if (!this._localInitialized || this._pins.length === 0) return;
-
-    const cols = this.mapScale.cbCols;
-    const rows = this.mapScale.cbRows;
-    const zoom = viewport.zoom;
-
-    ctx.save();
-    ctx.translate(viewport.panX, viewport.panY);
-    ctx.scale(zoom, zoom);
-
-    // Grid lines between center pins and links to corner pins
-    ctx.lineWidth = 1 / zoom;
-    const pinsPerTarget = 2;
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const ci = (r * cols + c) * pinsPerTarget;
-        const ki = ci + 1;
-        // Dashed line between center pins
-        ctx.strokeStyle = 'rgba(255, 200, 50, 0.25)';
-        ctx.setLineDash([6 / zoom, 4 / zoom]);
-        if (c < cols - 1) {
-          const nextCi = ci + pinsPerTarget;
-          ctx.beginPath();
-          ctx.moveTo(this._pins[ci].x, this._pins[ci].y);
-          ctx.lineTo(this._pins[nextCi].x, this._pins[nextCi].y);
-          ctx.stroke();
-        }
-        if (r < rows - 1) {
-          const belowCi = ((r + 1) * cols + c) * pinsPerTarget;
-          ctx.beginPath();
-          ctx.moveTo(this._pins[ci].x, this._pins[ci].y);
-          ctx.lineTo(this._pins[belowCi].x, this._pins[belowCi].y);
-          ctx.stroke();
-        }
-        // Dotted line from center to its corner pin
-        ctx.strokeStyle = 'rgba(255, 200, 50, 0.15)';
-        ctx.setLineDash([2 / zoom, 3 / zoom]);
-        ctx.beginPath();
-        ctx.moveTo(this._pins[ci].x, this._pins[ci].y);
-        ctx.lineTo(this._pins[ki].x, this._pins[ki].y);
-        ctx.stroke();
-      }
-    }
-    ctx.setLineDash([]);
-
-    // Pin markers — center pins get checkerboard icons, corner pins get smaller dots
-    const pinR = 8 / zoom;
-    const cornerR = 5 / zoom;
-    const cbHalf = 7 / zoom;
-    for (let i = 0; i < this._pins.length; i++) {
-      const pin = this._pins[i];
-      const isCenter = i % 2 === 0;
-      const targetIdx = Math.floor(i / 2);
-      const isOrigin = targetIdx === 0 && isCenter;
-      const active = this._dragging && this._dragIndex === i;
-      const enabled = this._enabled[i];
-
-      if (isCenter) {
-        // 2x2 checkerboard icon at center pin
-        if (enabled) {
-          ctx.globalAlpha = active ? 0.85 : 0.55;
-          ctx.fillStyle = isOrigin ? '#8B9A6B' : '#5A5650';
-          ctx.fillRect(pin.x - cbHalf, pin.y - cbHalf, cbHalf, cbHalf);
-          ctx.fillStyle = '#1C1C1E';
-          ctx.fillRect(pin.x, pin.y - cbHalf, cbHalf, cbHalf);
-          ctx.fillStyle = '#1C1C1E';
-          ctx.fillRect(pin.x - cbHalf, pin.y, cbHalf, cbHalf);
-          ctx.fillStyle = '#5A5650';
-          ctx.fillRect(pin.x, pin.y, cbHalf, cbHalf);
-          ctx.globalAlpha = 1;
-        }
-
-        // Center pin ring
-        const colour = !enabled ? 'rgba(150,150,150,.6)'
-          : active ? 'rgba(255, 220, 80, 1)' : 'rgba(255, 200, 50, 0.85)';
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.lineWidth = 3 / zoom;
-        ctx.beginPath();
-        ctx.arc(pin.x, pin.y, pinR, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeStyle = colour;
-        ctx.lineWidth = 1.5 / zoom;
-        if (!enabled) ctx.setLineDash([3 / zoom, 3 / zoom]);
-        ctx.beginPath();
-        ctx.arc(pin.x, pin.y, pinR, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Crosshair
-        const ch = 4 / zoom;
-        ctx.strokeStyle = colour;
-        ctx.lineWidth = 1 / zoom;
-        ctx.beginPath();
-        ctx.moveTo(pin.x - ch, pin.y); ctx.lineTo(pin.x + ch, pin.y);
-        ctx.moveTo(pin.x, pin.y - ch); ctx.lineTo(pin.x, pin.y + ch);
-        ctx.stroke();
-
-        // Label
-        const fontSize = Math.max(1, Math.round(10 / zoom));
-        ctx.font = `bold ${fontSize}px monospace`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 3 / zoom;
-        ctx.fillStyle = enabled ? '#fff' : '#888';
-        const labelY = pin.y - pinR - fontSize * 0.7;
-        ctx.strokeText(String(targetIdx + 1), pin.x, labelY);
-        ctx.fillText(String(targetIdx + 1), pin.x, labelY);
-
-        // Origin marker
-        if (isOrigin && enabled) {
-          ctx.fillStyle = 'rgba(139, 154, 107, 0.9)';
-          ctx.font = `bold ${Math.max(1, Math.round(8 / zoom))}px monospace`;
-          ctx.fillText('ORIGIN', pin.x, pin.y + pinR + fontSize * 0.8);
-        }
-      } else {
-        // Corner pin — smaller filled dot
-        const colour = !enabled ? 'rgba(150,150,150,.4)'
-          : active ? 'rgba(255, 220, 80, 1)' : 'rgba(255, 180, 50, 0.7)';
-        ctx.fillStyle = colour;
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.lineWidth = 1.5 / zoom;
-        if (!enabled) ctx.setLineDash([2 / zoom, 2 / zoom]);
-        ctx.beginPath();
-        ctx.arc(pin.x, pin.y, cornerR, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Small crosshair
-        const ch = 3 / zoom;
-        ctx.strokeStyle = colour;
-        ctx.lineWidth = 0.8 / zoom;
-        ctx.beginPath();
-        ctx.moveTo(pin.x - ch, pin.y); ctx.lineTo(pin.x + ch, pin.y);
-        ctx.moveTo(pin.x, pin.y - ch); ctx.lineTo(pin.x, pin.y + ch);
-        ctx.stroke();
-
-        // Corner label
-        const fontSize = Math.max(1, Math.round(8 / zoom));
-        ctx.font = `${fontSize}px monospace`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2 / zoom;
-        ctx.fillStyle = enabled ? 'rgba(255,255,255,0.7)' : '#666';
-        const labelY = pin.y - cornerR - fontSize * 0.6;
-        ctx.strokeText(`${targetIdx + 1}c`, pin.x, labelY);
-        ctx.fillText(`${targetIdx + 1}c`, pin.x, labelY);
-      }
-    }
-
-    ctx.restore();
-
-    // Info text in screen space
-    const spacing = this.mapScale.cbSpacing;
-    const enabledCount = this._enabled.filter(Boolean).length;
-    const maxPinY = Math.max(...this._pins.map(p => p.y));
-    const avgX = this._pins.reduce((s, p) => s + p.x, 0) / this._pins.length;
-    const screenPos = viewport.mapToScreen(avgX, maxPinY + 30 / zoom);
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 200, 50, 0.9)';
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(
-      `${cols}x${rows} targets (${this._pins.length} pins) @ ${spacing}m  |  ${enabledCount} active  |  dbl-click to toggle`,
-      screenPos.x, screenPos.y
-    );
-    ctx.restore();
-  }
-
-  _renderMagnifier(ctx, viewport) {
-    if (!this._dragging || this._dragIndex < 0) return;
-
-    const pin = this._pins[this._dragIndex];
-    const screenPin = viewport.mapToScreen(pin.x, pin.y);
-    const canvasW = ctx.canvas.width;
-    const canvasH = ctx.canvas.height;
-
-    const R = 70;
-    const MAG = 4;
-    const innerZoom = viewport.zoom * MAG;
-
-    let cx = screenPin.x;
-    let cy = screenPin.y - R - 35;
-    if (cy - R < 10) cy = screenPin.y + R + 35;
-    cx = Math.max(R + 5, Math.min(canvasW - R - 5, cx));
-    cy = Math.max(R + 5, Math.min(canvasH - R - 5, cy));
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.clip();
-
-    ctx.fillStyle = '#111';
-    ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
-
-    const ipx = cx - pin.x * innerZoom;
-    const ipy = cy - pin.y * innerZoom;
-
-    if (this.mapLayer.image) {
-      ctx.save();
-      ctx.translate(ipx, ipy);
-      ctx.scale(innerZoom, innerZoom);
-      ctx.drawImage(this.mapLayer.image, 0, 0, this.mapLayer.width, this.mapLayer.height);
-      ctx.restore();
-    }
-
-    // Draw pins inside magnifier
-    ctx.save();
-    ctx.translate(ipx, ipy);
-    ctx.scale(innerZoom, innerZoom);
-    for (let i = 0; i < this._pins.length; i++) {
-      const p = this._pins[i];
-      const r = (i === this._dragIndex ? 5 : 3) / innerZoom;
-      ctx.fillStyle = i === this._dragIndex ? 'rgba(255, 220, 80, 1)' : 'rgba(255, 200, 50, 0.4)';
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.lineWidth = 1 / innerZoom;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // Magnifier crosshair
-    ctx.strokeStyle = 'rgba(255, 200, 50, 0.9)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(cx - 14, cy); ctx.lineTo(cx - 5, cy);
-    ctx.moveTo(cx + 5, cy);  ctx.lineTo(cx + 14, cy);
-    ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy - 5);
-    ctx.moveTo(cx, cy + 5);  ctx.lineTo(cx, cy + 14);
-    ctx.stroke();
-
-    ctx.restore();
-
-    // Magnifier border
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 200, 50, 0.9)';
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    // Tether line
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 200, 50, 0.25)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-    const edgeY = cy < screenPin.y ? cy + R : cy - R;
-    ctx.beginPath();
-    ctx.moveTo(cx, edgeY);
-    ctx.lineTo(screenPin.x, screenPin.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-  }
+function _roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
 }
