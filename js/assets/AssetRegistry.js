@@ -1,84 +1,155 @@
-import { WoodPlankFloor } from './WoodPlankFloor.js';
-import { WoodPlankFloor1x1 } from './WoodPlankFloor1x1.js';
-import { WoodBeam1m, WoodBeam2m, WoodBeamVertical } from './WoodBeam.js';
-import { LogBeam2m, LogBeam4m, LogPole } from './LogBeam.js';
-import { WoodStairs2x2, WoodStairs1x2 } from './WoodStairs.js';
-import { WoodWall1m, WoodWall2m } from './WoodWall.js';
-import { Grausten1x1, Grausten2x1, Grausten4x1, Grausten2x2, Grausten4x4 } from './GraustenFloor.js';
-import { StoneFloor1x1, StoneFloor2x1, StoneFloor2x2, StoneFloor4x1 } from './StoneFloor.js';
-import { StoneStairs2x2 } from './StoneStairs.js';
-import { Marble1x1, Marble2x1, Marble2x2, MarbleColumn1x1, MarbleColumn2x2, MarbleStairs2x2 } from './BlackMarble.js';
-import { ThatchStraight, ThatchInnerCorner, ThatchOuterCorner, ThatchRidge } from './ThatchRoof.js';
-import { ShingleStraight, ShingleInnerCorner, ShingleOuterCorner, ShingleRidge } from './ShingleRoof.js';
+import { CategoryAsset } from './CategoryAsset.js';
+import { invalidateCategory, invalidateVariant } from './textureCache.js';
+import * as wood from './categories/wood.js';
+import * as grausten from './categories/grausten.js';
+import * as stone from './categories/stone.js';
+import * as marble from './categories/marble.js';
+import * as thatch from './categories/thatch.js';
+import * as shingle from './categories/shingle.js';
 
-const registry = [
-  { type: 'wood-plank-floor', name: 'Wood Floor 2x2', cls: WoodPlankFloor, widthM: 2, heightM: 2, category: 'Wood' },
-  { type: 'wood-plank-floor-1x1', name: 'Wood Floor 1x1', cls: WoodPlankFloor1x1, widthM: 1, heightM: 1, category: 'Wood' },
-  { type: 'wood-beam-2m', name: 'Wood Beam 2m', cls: WoodBeam2m, widthM: 2, heightM: 0.5, category: 'Wood' },
-  { type: 'wood-beam-1m', name: 'Wood Beam 1m', cls: WoodBeam1m, widthM: 1, heightM: 0.5, category: 'Wood' },
-  { type: 'wood-beam-vertical', name: 'Vertical Beam', cls: WoodBeamVertical, widthM: 0.5, heightM: 0.5, category: 'Wood' },
-  { type: 'log-beam-2m', name: 'Log Beam 2m', cls: LogBeam2m, widthM: 2, heightM: 0.2, category: 'Wood' },
-  { type: 'log-beam-4m', name: 'Log Beam 4m', cls: LogBeam4m, widthM: 4, heightM: 0.2, category: 'Wood' },
-  { type: 'log-pole', name: 'Log Pole', cls: LogPole, widthM: 0.2, heightM: 0.2, category: 'Wood' },
-  { type: 'wood-stairs-2x2', name: 'Wood Stairs 2x2', cls: WoodStairs2x2, widthM: 2, heightM: 2, category: 'Wood' },
-  { type: 'wood-stairs-1x2', name: 'Wood Stairs 1x2', cls: WoodStairs1x2, widthM: 1, heightM: 2, category: 'Wood' },
-  { type: 'wood-wall-1m', name: 'Wood Wall 1m', cls: WoodWall1m, widthM: 1, heightM: 0.3, category: 'Wood' },
-  { type: 'wood-wall-2m', name: 'Wood Wall 2m', cls: WoodWall2m, widthM: 2, heightM: 0.3, category: 'Wood' },
-  { type: 'grausten-1x1', name: 'Grausten 1x1', cls: Grausten1x1, widthM: 1, heightM: 1, category: 'Grausten' },
-  { type: 'grausten-2x1', name: 'Grausten 2x1', cls: Grausten2x1, widthM: 2, heightM: 1, category: 'Grausten' },
-  { type: 'grausten-4x1', name: 'Grausten 4x1', cls: Grausten4x1, widthM: 4, heightM: 1, category: 'Grausten' },
-  { type: 'grausten-2x2', name: 'Grausten 2x2', cls: Grausten2x2, widthM: 2, heightM: 2, category: 'Grausten' },
-  { type: 'grausten-4x4', name: 'Grausten 4x4', cls: Grausten4x4, widthM: 4, heightM: 4, category: 'Grausten' },
-  { type: 'stone-1x1', name: 'Stone 1x1', cls: StoneFloor1x1, widthM: 1, heightM: 1, category: 'Stone' },
-  { type: 'stone-2x1', name: 'Stone 2x1', cls: StoneFloor2x1, widthM: 2, heightM: 1, category: 'Stone' },
-  { type: 'stone-2x2', name: 'Stone 2x2', cls: StoneFloor2x2, widthM: 2, heightM: 2, category: 'Stone' },
-  { type: 'stone-4x1', name: 'Stone 4x1', cls: StoneFloor4x1, widthM: 4, heightM: 1, category: 'Stone' },
-  { type: 'stone-stairs-2x2', name: 'Stone Stairs 2x2', cls: StoneStairs2x2, widthM: 2, heightM: 2, category: 'Stone' },
-  { type: 'marble-1x1', name: 'Marble 1x1', cls: Marble1x1, widthM: 1, heightM: 1, category: 'Black Marble' },
-  { type: 'marble-2x1', name: 'Marble 2x1', cls: Marble2x1, widthM: 2, heightM: 1, category: 'Black Marble' },
-  { type: 'marble-2x2', name: 'Marble 2x2', cls: Marble2x2, widthM: 2, heightM: 2, category: 'Black Marble' },
-  { type: 'marble-column-1x1', name: 'Marble Column 1x1', cls: MarbleColumn1x1, widthM: 1, heightM: 1, category: 'Black Marble' },
-  { type: 'marble-column-2x2', name: 'Marble Column 2x2', cls: MarbleColumn2x2, widthM: 2, heightM: 2, category: 'Black Marble' },
-  { type: 'marble-stairs-2x2', name: 'Marble Stairs 2x2', cls: MarbleStairs2x2, widthM: 2, heightM: 2, category: 'Black Marble' },
-  { type: 'thatch-straight', name: 'Thatch Straight', cls: ThatchStraight, widthM: 2, heightM: 2, category: 'Thatch' },
-  { type: 'thatch-inner-corner', name: 'Thatch Inner Corner', cls: ThatchInnerCorner, widthM: 2, heightM: 2, category: 'Thatch' },
-  { type: 'thatch-outer-corner', name: 'Thatch Outer Corner', cls: ThatchOuterCorner, widthM: 2, heightM: 2, category: 'Thatch' },
-  { type: 'thatch-ridge', name: 'Thatch Ridge', cls: ThatchRidge, widthM: 2, heightM: 2, category: 'Thatch' },
-  { type: 'shingle-straight', name: 'Shingle Straight', cls: ShingleStraight, widthM: 2, heightM: 2, category: 'Shingle' },
-  { type: 'shingle-inner-corner', name: 'Shingle Inner Corner', cls: ShingleInnerCorner, widthM: 2, heightM: 2, category: 'Shingle' },
-  { type: 'shingle-outer-corner', name: 'Shingle Outer Corner', cls: ShingleOuterCorner, widthM: 2, heightM: 2, category: 'Shingle' },
-  { type: 'shingle-ridge', name: 'Shingle Ridge', cls: ShingleRidge, widthM: 2, heightM: 2, category: 'Shingle' },
-];
+export const CATEGORY_PATHS = {
+  wood: 'js/assets/categories/wood.js',
+  grausten: 'js/assets/categories/grausten.js',
+  stone: 'js/assets/categories/stone.js',
+  marble: 'js/assets/categories/marble.js',
+  thatch: 'js/assets/categories/thatch.js',
+  shingle: 'js/assets/categories/shingle.js',
+};
 
-export function getAssetTypes() {
-  return registry;
+const categories = new Map();
+const pristineMeta = new Map();
+for (const [id, mod] of [
+  ['wood', wood], ['grausten', grausten], ['stone', stone],
+  ['marble', marble], ['thatch', thatch], ['shingle', shingle],
+]) {
+  categories.set(id, mod);
+  pristineMeta.set(id, structuredClone(mod.meta));
 }
 
-export function getEntry(type) {
-  return registry.find(r => r.type === type) || null;
+function findVariant(type) {
+  for (const [catId, mod] of categories) {
+    const v = mod.meta.variants.find(x => x.id === type);
+    if (v) return { catId, variant: v, module: mod };
+  }
+  return null;
+}
+
+export function getCategoryModule(id) {
+  return categories.get(id) || null;
+}
+
+export function getCategoryIds() {
+  return [...categories.keys()];
+}
+
+// Swaps in a module for live preview (e.g. Source-tab keystroke re-eval)
+// without touching the "pristine"/file baseline used by Reset to file data.
+export function previewCategoryModule(id, module) {
+  categories.set(id, module);
+  invalidateCategory(id);
+}
+
+// Swaps in a module AND commits it as the new file baseline — call this
+// once an edit is actually saved (Run & save / Save to file), not on
+// every keystroke.
+export function commitCategoryModule(id, module) {
+  categories.set(id, module);
+  pristineMeta.set(id, structuredClone(module.meta));
+  invalidateCategory(id);
+}
+
+export function registerCategory(id, module, path) {
+  categories.set(id, module);
+  pristineMeta.set(id, structuredClone(module.meta));
+  if (path) CATEGORY_PATHS[id] = path;
+}
+
+export function getAssetTypes() {
+  const list = [];
+  for (const [catId, mod] of categories) {
+    for (const v of mod.meta.variants) {
+      list.push({
+        type: v.id,
+        name: v.label,
+        widthM: v.widthM,
+        heightM: v.heightM,
+        category: mod.meta.label,
+        categoryId: catId,
+      });
+    }
+  }
+  return list;
 }
 
 export function getCategories() {
-  const cats = [];
   const seen = new Set();
-  for (const r of registry) {
-    if (!seen.has(r.category)) {
-      seen.add(r.category);
-      cats.push(r.category);
-    }
+  const out = [];
+  for (const mod of categories.values()) {
+    if (!seen.has(mod.meta.label)) { seen.add(mod.meta.label); out.push(mod.meta.label); }
   }
-  return cats;
+  return out;
+}
+
+export function getEntry(type) {
+  const found = findVariant(type);
+  if (!found) return null;
+  return {
+    type: found.variant.id,
+    name: found.variant.label,
+    widthM: found.variant.widthM,
+    heightM: found.variant.heightM,
+    category: found.module.meta.label,
+    categoryId: found.catId,
+  };
+}
+
+export function getVariant(type) {
+  return findVariant(type);
 }
 
 export function createAsset(type) {
-  const entry = registry.find(r => r.type === type);
-  if (!entry) return null;
-  return new entry.cls();
+  const found = findVariant(type);
+  if (!found) return null;
+  const { catId, variant } = found;
+  return new CategoryAsset(type, catId, variant.id, variant.widthM, variant.heightM, variant.snapPoints);
 }
 
 export function updateAssetSize(type, widthM, heightM) {
-  const entry = registry.find(r => r.type === type);
-  if (!entry) return;
-  entry.widthM = widthM;
-  entry.heightM = heightM;
+  const found = findVariant(type);
+  if (!found) return;
+  found.variant.widthM = widthM;
+  found.variant.heightM = heightM;
+  invalidateVariant(found.catId, found.variant.id);
+}
+
+function getPristineVariant(categoryId, variantId) {
+  const meta = pristineMeta.get(categoryId);
+  return meta ? meta.variants.find(v => v.id === variantId) || null : null;
+}
+
+// Applies a partial patch (name/label, widthM, heightM, shapeKind,
+// customVerts, snapPoints, ...) to a variant's live meta entry.
+export function updateVariant(categoryId, variantId, patch) {
+  const mod = categories.get(categoryId);
+  if (!mod) return null;
+  const v = mod.meta.variants.find(x => x.id === variantId);
+  if (!v) return null;
+  Object.assign(v, patch);
+  invalidateVariant(categoryId, variantId);
+  return v;
+}
+
+export function resetVariantToFileData(categoryId, variantId) {
+  const pristine = getPristineVariant(categoryId, variantId);
+  if (!pristine) return null;
+  return updateVariant(categoryId, variantId, structuredClone(pristine));
+}
+
+export function isVariantDirty(categoryId, variantId) {
+  const mod = categories.get(categoryId);
+  const pristine = getPristineVariant(categoryId, variantId);
+  if (!mod || !pristine) return false;
+  const live = mod.meta.variants.find(x => x.id === variantId);
+  if (!live) return false;
+  return JSON.stringify(live) !== JSON.stringify(pristine);
 }

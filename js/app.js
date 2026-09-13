@@ -20,6 +20,7 @@ import { Toolbar } from './ui/Toolbar.js';
 import { PlaceContextBar } from './ui/PlaceContextBar.js';
 import { LayerPanel } from './ui/LayerPanel.js';
 import { AssetPanel } from './ui/AssetPanel.js';
+import { AssetEditSheet } from './ui/AssetEditSheet.js';
 import { PlanPanel } from './ui/PlanPanel.js';
 import { SelectionInspector } from './ui/SelectionInspector.js';
 import { CalibrationPanel } from './ui/CalibrationPanel.js';
@@ -59,6 +60,8 @@ const toolbar = new Toolbar(toolManager, mapScale, bus);
 const placeContextBar = new PlaceContextBar(placeTool, toolManager, bus);
 const layerPanel = new LayerPanel(layerManager, assetLayer, bus);
 const assetPanel = new AssetPanel(bus);
+const assetEditSheet = new AssetEditSheet(bus);
+bus.on('asset:edit', (type) => assetEditSheet.open(type));
 const planPanel = new PlanPanel(gridSettings, mapScale, assetLayer, layerManager, fineTuneState, bus);
 const selectionInspector = new SelectionInspector(selectTool, viewport, assetLayer, toolManager, bus);
 const calibrationPanel = new CalibrationPanel(mapScale, calibrationTool, bus);
@@ -174,7 +177,7 @@ bus.on('tool:changed', (name) => {
 toolManager.activate('select');
 
 // Test hook
-window._app = { bus, viewport, mapScale, mapLayer, assetLayer, layerManager, toolManager, renderer, calibrationTool, gridSettings, fineTuneState };
+window._app = { bus, viewport, mapScale, mapLayer, assetLayer, layerManager, toolManager, renderer, calibrationTool, gridSettings, fineTuneState, assetEditSheet, saveLoad };
 
 document.getElementById('help-close').addEventListener('click', () => {
   document.getElementById('help-panel').classList.add('hidden');
