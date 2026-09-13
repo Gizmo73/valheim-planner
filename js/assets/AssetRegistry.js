@@ -17,11 +17,13 @@ export const CATEGORY_PATHS = {
 };
 
 const categories = new Map();
+const pristineMeta = new Map();
 for (const [id, mod] of [
   ['wood', wood], ['grausten', grausten], ['stone', stone],
   ['marble', marble], ['thatch', thatch], ['shingle', shingle],
 ]) {
   categories.set(id, mod);
+  pristineMeta.set(id, structuredClone(mod.meta));
 }
 
 function findVariant(type) {
@@ -40,13 +42,25 @@ export function getCategoryIds() {
   return [...categories.keys()];
 }
 
-export function setCategoryModule(id, module) {
+// Swaps in a module for live preview (e.g. Source-tab keystroke re-eval)
+// without touching the "pristine"/file baseline used by Reset to file data.
+export function previewCategoryModule(id, module) {
   categories.set(id, module);
+  invalidateCategory(id);
+}
+
+// Swaps in a module AND commits it as the new file baseline — call this
+// once an edit is actually saved (Run & save / Save to file), not on
+// every keystroke.
+export function commitCategoryModule(id, module) {
+  categories.set(id, module);
+  pristineMeta.set(id, structuredClone(module.meta));
   invalidateCategory(id);
 }
 
 export function registerCategory(id, module, path) {
   categories.set(id, module);
+  pristineMeta.set(id, structuredClone(module.meta));
   if (path) CATEGORY_PATHS[id] = path;
 }
 
@@ -106,4 +120,36 @@ export function updateAssetSize(type, widthM, heightM) {
   found.variant.widthM = widthM;
   found.variant.heightM = heightM;
   invalidateVariant(found.catId, found.variant.id);
+}
+
+function getPristineVariant(categoryId, variantId) {
+  const meta = pristineMeta.get(categoryId);
+  return meta ? meta.variants.find(v => v.id === variantId) || null : null;
+}
+
+// Applies a partial patch (name/label, widthM, heightM, shapeKind,
+// customVerts, snapPoints, ...) to a variant's live meta entry.
+export function updateVariant(categoryId, variantId, patch) {
+  const mod = categories.get(categoryId);
+  if (!mod) return null;
+  const v = mod.meta.variants.find(x => x.id === variantId);
+  if (!v) return null;
+  Object.assign(v, patch);
+  invalidateVariant(categoryId, variantId);
+  return v;
+}
+
+export function resetVariantToFileData(categoryId, variantId) {
+  const pristine = getPristineVariant(categoryId, variantId);
+  if (!pristine) return null;
+  return updateVariant(categoryId, variantId, structuredClone(pristine));
+}
+
+export function isVariantDirty(categoryId, variantId) {
+  const mod = categories.get(categoryId);
+  const pristine = getPristineVariant(categoryId, variantId);
+  if (!mod || !pristine) return false;
+  const live = mod.meta.variants.find(x => x.id === variantId);
+  if (!live) return false;
+  return JSON.stringify(live) !== JSON.stringify(pristine);
 }

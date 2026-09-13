@@ -1,7 +1,12 @@
-import { getAssetTypes, getCategories, updateAssetSize } from '../assets/AssetRegistry.js';
+import { getAssetTypes, getCategories, updateAssetSize, registerCategory } from '../assets/AssetRegistry.js';
 import { renderThumbnail } from '../assets/textureCache.js';
+import { createCategoryTemplate, evalCategoryModule, downloadText } from '../assets/categorySource.js';
 import { refreshIcons } from './icons.js';
 import { TILE_METRES } from '../core/MapScale.js';
+
+function slugify(label) {
+  return label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'category';
+}
 
 const THUMB_DISPLAY_SIZE = 64;
 
@@ -81,7 +86,57 @@ export class AssetPanel {
       this._el.appendChild(group);
     }
 
+    if (!this._query) this._el.appendChild(this._buildNewCategoryCard());
+
     refreshIcons();
+  }
+
+  _buildNewCategoryCard() {
+    const card = document.createElement('div');
+    card.className = 'new-category-card';
+
+    const label = document.createElement('label');
+    label.className = 'edit-field-label';
+    label.textContent = 'New category';
+    const input = document.createElement('input');
+    input.className = 'edit-input';
+    input.type = 'text';
+    input.placeholder = 'e.g. Black Marble Trim';
+    const path = document.createElement('div');
+    path.className = 'new-category-path';
+    const updatePath = () => {
+      const id = slugify(input.value || 'category');
+      path.textContent = `→ assets/categories/${id}.js`;
+    };
+    input.addEventListener('input', updatePath);
+    updatePath();
+
+    const createBtn = document.createElement('button');
+    createBtn.className = 'btn-outline';
+    createBtn.textContent = 'Create';
+    createBtn.addEventListener('click', async () => {
+      const rawLabel = input.value.trim();
+      if (!rawLabel) return;
+      const id = slugify(rawLabel);
+      const text = createCategoryTemplate(id, rawLabel);
+      const result = await evalCategoryModule(text);
+      if (!result.ok) {
+        alert('Could not create category: ' + result.error);
+        return;
+      }
+      registerCategory(id, result.module, `js/assets/categories/${id}.js`);
+      downloadText(`${id}.js`, text);
+      input.value = '';
+      updatePath();
+      this._render();
+      alert(`Created "${rawLabel}" for this session and downloaded ${id}.js.\n\nTo keep it after a reload, add it to js/assets/AssetRegistry.js: import it and add it to the categories list, the same way the existing categories are registered.`);
+    });
+
+    card.appendChild(label);
+    card.appendChild(input);
+    card.appendChild(path);
+    card.appendChild(createBtn);
+    return card;
   }
 
   _buildItem(t) {
@@ -102,6 +157,16 @@ export class AssetPanel {
     const tex = renderThumbnail(t.categoryId, t.type, t.widthM, t.heightM, bufSize);
     tCtx.drawImage(tex, 0, 0, bufSize, bufSize);
     thumbWrap.appendChild(thumb);
+
+    const pencil = document.createElement('button');
+    pencil.className = 'asset-pencil';
+    pencil.title = 'Edit piece';
+    pencil.innerHTML = '<i data-lucide="pencil"></i>';
+    pencil.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.bus.emit('asset:edit', t.type);
+    });
+    thumbWrap.appendChild(pencil);
 
     const label = document.createElement('div');
     label.className = 'asset-label';
