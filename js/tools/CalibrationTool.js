@@ -1,4 +1,5 @@
 export const PAIR_ROLES = ['across', 'down', 'check'];
+export const CALIB_METHODS = ['pairs', 'rectangle'];
 
 export class CalibrationTool {
   constructor(viewport, mapLayer, mapScale, bus) {
@@ -16,8 +17,9 @@ export class CalibrationTool {
     this._worldInitialized = false;
     this._updatingFromCircle = false;
 
-    // Local mode: three fixed measurement-pair slots. `check` never carries
-    // a tile count — it's a cardinal-angle sanity edge, not a length.
+    // Local mode, method 'pairs': three fixed measurement-pair slots. `check`
+    // never carries a tile count — it's a cardinal-angle sanity edge.
+    this._calibMethod = 'pairs';
     this._pairs = {
       across: { a: null, b: null, tiles: null },
       down: { a: null, b: null, tiles: null },
@@ -25,14 +27,21 @@ export class CalibrationTool {
     };
     this._selectedRole = null;
 
-    // Shared drag state
+    // Local mode, method 'rectangle': four corners (in order around the
+    // rectangle, so edge 0->1 is the width and 1->2 is the height) plus a
+    // known width/height. The pairs above double as post-solve validators
+    // in this method — dropped anywhere, compared against what the solved
+    // homography implies there.
+    this._rectangle = { corners: [null, null, null, null], widthTiles: null, heightTiles: null };
+
+    // Shared drag state. `_dragTarget` is either { corner: 0..3 } or
+    // { role, key: 'a'|'b' }.
     this._dragging = false;
     this._dragType = null;
     this._dragStart = null;
     this._startRadius = 0;
     this._startCenter = null;
-    this._dragRole = null;
-    this._dragPoint = null; // 'a' | 'b'
+    this._dragTarget = null;
     this._dragOffset = null;
 
     // Grid preview state
@@ -62,7 +71,7 @@ export class CalibrationTool {
 
     bus.on('map:loaded', () => {
       this._worldInitialized = false;
-      this._resetPairs();
+      this._resetCalibration();
     });
   }
 
@@ -72,6 +81,25 @@ export class CalibrationTool {
       down: { ...this._pairs.down },
       check: { ...this._pairs.check },
     };
+  }
+
+  get rectangle() {
+    return {
+      corners: this._rectangle.corners.map(c => (c ? { ...c } : null)),
+      widthTiles: this._rectangle.widthTiles,
+      heightTiles: this._rectangle.heightTiles,
+    };
+  }
+
+  get calibMethod() {
+    return this._calibMethod;
+  }
+
+  set calibMethod(val) {
+    if (!CALIB_METHODS.includes(val)) return;
+    this._calibMethod = val;
+    this.bus.emit('calibration:methodChanged', val);
+    this.bus.emit('render:request');
   }
 
   get previewActive() {
@@ -87,18 +115,19 @@ export class CalibrationTool {
     this.bus.emit('render:request');
   }
 
-  _resetPairs() {
+  _resetCalibration() {
     this._pairs = {
       across: { a: null, b: null, tiles: null },
       down: { a: null, b: null, tiles: null },
       check: { a: null, b: null, tiles: null },
     };
+    this._rectangle = { corners: [null, null, null, null], widthTiles: null, heightTiles: null };
     this._selectedRole = null;
     this.bus.emit('calibration:pairsChanged');
   }
 
   resetPairs() {
-    this._resetPairs();
+    this._resetCalibration();
     this.bus.emit('render:request');
   }
 
@@ -113,6 +142,21 @@ export class CalibrationTool {
   clearPair(role) {
     if (!PAIR_ROLES.includes(role)) return;
     this._pairs[role] = { a: null, b: null, tiles: null };
+    this.bus.emit('calibration:pairsChanged');
+    this.bus.emit('render:request');
+  }
+
+  setRectangleSize(widthTiles, heightTiles) {
+    const w = parseFloat(widthTiles);
+    const h = parseFloat(heightTiles);
+    this._rectangle.widthTiles = (w > 0 && isFinite(w)) ? w : null;
+    this._rectangle.heightTiles = (h > 0 && isFinite(h)) ? h : null;
+    this.bus.emit('calibration:pairsChanged');
+    this.bus.emit('render:request');
+  }
+
+  clearRectangle() {
+    this._rectangle = { corners: [null, null, null, null], widthTiles: null, heightTiles: null };
     this.bus.emit('calibration:pairsChanged');
     this.bus.emit('render:request');
   }
@@ -191,16 +235,35 @@ export class CalibrationTool {
     return null;
   }
 
+  // --- Generic point access for whatever the drag target is ---
+
+  _getPoint(target) {
+    if (!target) return null;
+    if ('corner' in target) return this._rectangle.corners[target.corner];
+    return this._pairs[target.role][target.key];
+  }
+
+  _setPoint(target, pt) {
+    if (!target) return;
+    if ('corner' in target) this._rectangle.corners[target.corner] = pt;
+    else this._pairs[target.role][target.key] = pt;
+  }
+
   _hitTestLocal(mapX, mapY) {
     const threshold = 15 / this.viewport.zoom;
+    if (this._calibMethod === 'rectangle') {
+      for (let i = 0; i < 4; i++) {
+        const pt = this._rectangle.corners[i];
+        if (!pt) continue;
+        if (Math.hypot(mapX - pt.x, mapY - pt.y) < threshold) return { corner: i };
+      }
+    }
     for (const role of PAIR_ROLES) {
       const p = this._pairs[role];
       for (const key of ['a', 'b']) {
         const pt = p[key];
         if (!pt) continue;
-        if (Math.hypot(mapX - pt.x, mapY - pt.y) < threshold) {
-          return { role, key };
-        }
+        if (Math.hypot(mapX - pt.x, mapY - pt.y) < threshold) return { role, key };
       }
     }
     return null;
@@ -231,14 +294,24 @@ export class CalibrationTool {
     // where dropped or dragged.
     const hit = this._hitTestLocal(map.x, map.y);
     if (hit) {
-      const pt = this._pairs[hit.role][hit.key];
+      const pt = this._getPoint(hit);
       this._dragging = true;
-      this._dragRole = hit.role;
-      this._dragPoint = hit.key;
+      this._dragTarget = hit;
       this._dragOffset = { x: pt.x - map.x, y: pt.y - map.y };
-      this._selectedRole = hit.role;
+      if ('role' in hit) this._selectedRole = hit.role;
       this.bus.emit('render:request');
       return;
+    }
+
+    if (this._calibMethod === 'rectangle') {
+      const idx = this._rectangle.corners.findIndex(c => !c);
+      if (idx >= 0) {
+        this._rectangle.corners[idx] = { x: map.x, y: map.y };
+        this.bus.emit('calibration:pairsChanged');
+        if (idx === 3) this.bus.emit('calibration:rectangleCompleted');
+        this.bus.emit('render:request');
+        return;
+      }
     }
 
     const role = this._nextIncompleteRole();
@@ -272,10 +345,10 @@ export class CalibrationTool {
       return;
     }
 
-    this._pairs[this._dragRole][this._dragPoint] = {
+    this._setPoint(this._dragTarget, {
       x: map.x + this._dragOffset.x,
       y: map.y + this._dragOffset.y,
-    };
+    });
     this.bus.emit('render:request');
   }
 
@@ -287,11 +360,10 @@ export class CalibrationTool {
     if (this._dragging) {
       this._dragging = false;
       this._dragType = null;
-      const draggedRole = this._dragRole;
-      this._dragRole = null;
-      this._dragPoint = null;
+      const draggedTarget = this._dragTarget;
+      this._dragTarget = null;
       this._dragOffset = null;
-      if (draggedRole) this.bus.emit('calibration:pairsChanged');
+      if (draggedTarget) this.bus.emit('calibration:pairsChanged');
       this.bus.emit('render:request');
     }
   }
@@ -501,6 +573,62 @@ export class CalibrationTool {
     ctx.restore();
   }
 
+  _drawSegment(ctx, zoom, a, b, colorStart, colorEnd, dashed) {
+    ctx.lineWidth = 4 / zoom;
+    ctx.strokeStyle = 'rgba(22, 24, 38, 0.7)';
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+
+    const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+    grad.addColorStop(0, colorStart);
+    grad.addColorStop(1, colorEnd);
+    ctx.lineWidth = 2 / zoom;
+    if (dashed) ctx.setLineDash([6 / zoom, 4 / zoom]);
+    ctx.strokeStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  _drawPin(ctx, zoom, pt, ringColor, active) {
+    const r = (active ? 9.5 : 8.5) / zoom;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(28, 30, 44, 0.95)';
+    ctx.fill();
+    ctx.lineWidth = 1 / zoom;
+    ctx.strokeStyle = 'rgba(22, 24, 38, 0.9)';
+    ctx.stroke();
+    ctx.lineWidth = 2.5 / zoom;
+    ctx.strokeStyle = ringColor;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  _drawChip(ctx, screenPt, label, ringColor) {
+    ctx.save();
+    ctx.font = '500 12px Inter, system-ui, sans-serif';
+    const textW = ctx.measureText(label).width;
+    const chipW = textW + 20;
+    const chipH = 24;
+    ctx.fillStyle = '#1c1e2c';
+    ctx.strokeStyle = ringColor;
+    ctx.lineWidth = 1;
+    _roundRect(ctx, screenPt.x - chipW / 2, screenPt.y - chipH / 2, chipW, chipH, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#ddd9fd';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, screenPt.x, screenPt.y + 0.5);
+    ctx.restore();
+  }
+
   _renderLocalOverlay(ctx, viewport) {
     const zoom = viewport.zoom;
     const ROLE_COLOR = {
@@ -509,10 +637,27 @@ export class CalibrationTool {
       check: { line: '#f5d547', lineEnd: '#f5d547' },
     };
     const LETTER = { across: 'A', down: 'B', check: 'C' };
+    const inRectMethod = this._calibMethod === 'rectangle';
 
     ctx.save();
     ctx.translate(viewport.panX, viewport.panY);
     ctx.scale(zoom, zoom);
+
+    if (inRectMethod) {
+      const corners = this._rectangle.corners;
+      for (let i = 0; i < 4; i++) {
+        const a = corners[i];
+        const b = corners[(i + 1) % 4];
+        if (!a || !b) continue;
+        this._drawSegment(ctx, zoom, a, b, '#b5abfc', '#ddd9fd', false);
+      }
+      for (let i = 0; i < 4; i++) {
+        const pt = corners[i];
+        if (!pt) continue;
+        const dragging = this._dragging && this._dragTarget && this._dragTarget.corner === i;
+        this._drawPin(ctx, zoom, pt, '#ddd9fd', dragging);
+      }
+    }
 
     for (const role of PAIR_ROLES) {
       const p = this._pairs[role];
@@ -521,50 +666,46 @@ export class CalibrationTool {
       const selected = this._selectedRole === role;
 
       if (p.b) {
-        // Dark halo for legibility over any map, then the coloured line.
-        ctx.lineWidth = 4 / zoom;
-        ctx.strokeStyle = 'rgba(22, 24, 38, 0.7)';
-        ctx.beginPath();
-        ctx.moveTo(p.a.x, p.a.y);
-        ctx.lineTo(p.b.x, p.b.y);
-        ctx.stroke();
-
-        const grad = ctx.createLinearGradient(p.a.x, p.a.y, p.b.x, p.b.y);
-        grad.addColorStop(0, colors.line);
-        grad.addColorStop(1, colors.lineEnd);
-        ctx.lineWidth = 2 / zoom;
-        if (role === 'check') ctx.setLineDash([6 / zoom, 4 / zoom]);
-        ctx.strokeStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(p.a.x, p.a.y);
-        ctx.lineTo(p.b.x, p.b.y);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        this._drawSegment(ctx, zoom, p.a, p.b, colors.line, colors.lineEnd, role === 'check');
       }
 
       for (const key of ['a', 'b']) {
         const pt = p[key];
         if (!pt) continue;
-        const dragging = this._dragging && this._dragRole === role && this._dragPoint === key;
-        const r = (dragging ? 9.5 : 8.5) / zoom;
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(28, 30, 44, 0.95)';
-        ctx.fill();
-        ctx.lineWidth = 1 / zoom;
-        ctx.strokeStyle = 'rgba(22, 24, 38, 0.9)';
-        ctx.stroke();
-        ctx.lineWidth = 2.5 / zoom;
-        ctx.strokeStyle = selected ? '#ddd9fd' : colors.lineEnd;
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-        ctx.stroke();
+        const dragging = this._dragging && this._dragTarget
+          && this._dragTarget.role === role && this._dragTarget.key === key;
+        const ringColor = selected ? '#ddd9fd' : colors.lineEnd;
+        this._drawPin(ctx, zoom, pt, ringColor, dragging);
       }
     }
 
     ctx.restore();
 
-    // Mid-line chips, drawn in screen space so text stays legible at any zoom.
+    // Mid-line/corner chips, drawn in screen space so text stays legible at any zoom.
+    if (inRectMethod) {
+      const corners = this._rectangle.corners;
+      for (let i = 0; i < 4; i++) {
+        const pt = corners[i];
+        if (!pt) continue;
+        const screen = viewport.mapToScreen(pt.x, pt.y);
+        this._drawChip(ctx, screen, String(i + 1), '#3f424d');
+      }
+      if (corners[0] && corners[1]) {
+        const mid = viewport.mapToScreen((corners[0].x + corners[1].x) / 2, (corners[0].y + corners[1].y) / 2);
+        const label = this._rectangle.widthTiles
+          ? `W  ${this._rectangle.widthTiles} tiles`
+          : 'W  · click to set width';
+        this._drawChip(ctx, mid, label, '#9184d9');
+      }
+      if (corners[1] && corners[2]) {
+        const mid = viewport.mapToScreen((corners[1].x + corners[2].x) / 2, (corners[1].y + corners[2].y) / 2);
+        const label = this._rectangle.heightTiles
+          ? `H  ${this._rectangle.heightTiles} tiles`
+          : 'H  · click to set height';
+        this._drawChip(ctx, mid, label, '#9184d9');
+      }
+    }
+
     for (const role of PAIR_ROLES) {
       const p = this._pairs[role];
       if (!p.a || !p.b) continue;
@@ -574,34 +715,22 @@ export class CalibrationTool {
 
       let label;
       if (role === 'check') {
-        label = 'Check angle';
+        label = inRectMethod ? 'Check angle' : 'Check angle';
+      } else if (inRectMethod) {
+        label = `${LETTER[role]}  validate`;
       } else {
         const tiles = p.tiles;
         label = tiles ? `${LETTER[role]}  ${tiles} tiles` : `${LETTER[role]}  · click to set tiles`;
       }
 
-      ctx.save();
-      ctx.font = '500 12px Inter, system-ui, sans-serif';
-      const textW = ctx.measureText(label).width;
-      const chipW = textW + 20;
-      const chipH = 24;
-      ctx.fillStyle = '#1c1e2c';
-      ctx.strokeStyle = selected ? '#9184d9' : (role === 'check' ? 'rgba(245,213,71,0.6)' : '#3f424d');
-      ctx.lineWidth = 1;
-      _roundRect(ctx, mid.x - chipW / 2, mid.y - chipH / 2, chipW, chipH, 6);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#ddd9fd';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(label, mid.x, mid.y + 0.5);
-      ctx.restore();
+      const ringColor = selected ? '#9184d9' : (role === 'check' ? 'rgba(245,213,71,0.6)' : '#3f424d');
+      this._drawChip(ctx, mid, label, ringColor);
     }
   }
 
   _renderMagnifier(ctx, viewport) {
-    if (!this._dragging || !this._dragRole) return;
-    const pin = this._pairs[this._dragRole][this._dragPoint];
+    if (!this._dragging || !this._dragTarget) return;
+    const pin = this._getPoint(this._dragTarget);
     if (!pin) return;
 
     const screenPin = viewport.mapToScreen(pin.x, pin.y);
@@ -641,12 +770,32 @@ export class CalibrationTool {
     ctx.save();
     ctx.translate(ipx, ipy);
     ctx.scale(innerZoom, innerZoom);
+    const isDraggedTarget = (target) => {
+      if (!target) return false;
+      if ('corner' in this._dragTarget) return 'corner' in target && target.corner === this._dragTarget.corner;
+      return 'role' in target && target.role === this._dragTarget.role && target.key === this._dragTarget.key;
+    };
+    if (this._calibMethod === 'rectangle') {
+      for (let i = 0; i < 4; i++) {
+        const pt = this._rectangle.corners[i];
+        if (!pt) continue;
+        const active = isDraggedTarget({ corner: i });
+        const r = (active ? 5 : 3) / innerZoom;
+        ctx.fillStyle = active ? 'rgba(255, 220, 80, 1)' : 'rgba(181, 171, 252, 0.5)';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.lineWidth = 1 / innerZoom;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
     for (const role of PAIR_ROLES) {
       const p = this._pairs[role];
       for (const key of ['a', 'b']) {
         const pt = p[key];
         if (!pt) continue;
-        const active = role === this._dragRole && key === this._dragPoint;
+        const active = isDraggedTarget({ role, key });
         const r = (active ? 5 : 3) / innerZoom;
         ctx.fillStyle = active ? 'rgba(255, 220, 80, 1)' : 'rgba(181, 171, 252, 0.5)';
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';

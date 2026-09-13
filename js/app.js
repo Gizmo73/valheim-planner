@@ -210,9 +210,28 @@ let _preCalibrationState = null;
 
 bus.on('calibration:apply', () => {
   if (!mapLayer.image) return;
-  const pairs = calibrationTool.pairs;
-  const solve = MapScale.solveCalibration(pairs);
-  if (solve.mode !== 'affine' && solve.mode !== 'iso') return;
+
+  // Anchor the straightened output on a fixed point of the solved matrix —
+  // the rectangle's first corner, or the across pair's first pin — so the
+  // rest of the plan (working layer, existing assets) needs only a single
+  // reference point to re-anchor against.
+  let H, outPxPerTile, anchor;
+  if (calibrationTool.calibMethod === 'rectangle') {
+    const rect = calibrationTool.rectangle;
+    const rectSolve = MapScale.solveRectangle(rect.corners, rect.widthTiles, rect.heightTiles);
+    if (!rectSolve) return;
+    H = rectSolve.H;
+    outPxPerTile = rectSolve.outPxPerMetre * TILE_METRES;
+    anchor = rect.corners[0];
+  } else {
+    const pairs = calibrationTool.pairs;
+    const solve = MapScale.solveCalibration(pairs);
+    if (solve.mode !== 'affine' && solve.mode !== 'iso') return;
+    anchor = pairs.across.a;
+    outPxPerTile = (solve.pxPerTileX + solve.pxPerTileY) / 2;
+    H = MapScale.buildStraightenMatrix(solve, anchor, outPxPerTile);
+    if (!H) return;
+  }
 
   const oldImage = mapLayer.image;
   const oldWidth = mapLayer.width;
@@ -232,13 +251,6 @@ bus.on('calibration:apply', () => {
   }));
 
   _preCalibrationState = { oldImage, oldWidth, oldHeight, oldMpp, oldLayers, oldAssets };
-
-  // Anchor the straightened output on the across pair's first pin — the
-  // matrix construction keeps that point's pixel position fixed.
-  const anchor = pairs.across.a;
-  const outPxPerTile = (solve.pxPerTileX + solve.pxPerTileY) / 2;
-  const H = MapScale.buildStraightenMatrix(solve, anchor, outPxPerTile);
-  if (!H) { _preCalibrationState = null; return; }
 
   const outCanvas = PerspectiveTransform.correctImageFromMatrix(mapLayer.image, H);
   if (!outCanvas) { _preCalibrationState = null; return; }

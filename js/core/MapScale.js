@@ -1,3 +1,5 @@
+import { PerspectiveTransform } from './PerspectiveTransform.js';
+
 export const WORLD_DIAMETER = 21000;
 export const TILE_METRES = 2;
 
@@ -264,5 +266,74 @@ export class MapScale {
     const tx = anchor.x - (A[0][0] * anchor.x + A[0][1] * anchor.y);
     const ty = anchor.y - (A[1][0] * anchor.x + A[1][1] * anchor.y);
     return [[A[0][0], A[0][1], tx], [A[1][0], A[1][1], ty], [0, 0, 1]];
+  }
+
+  /**
+   * Solve genuine perspective correction from four rectangle corners with a
+   * known width and height. Unlike solveCalibration's affine fit, this
+   * recovers a true homography — it can un-converge vanishing lines from an
+   * angled camera shot, because four absolute correspondences (not just
+   * pairwise lengths) fully determine a projective transform.
+   *
+   * corners: [c0,c1,c2,c3] pixel points in order around the rectangle, so
+   * edge c0->c1 is the width and c1->c2 is the height.
+   * Returns { H, outPxPerMetre, widthPx, heightPx } mapping source image
+   * px -> straightened output px, anchored so c0 keeps its pixel position.
+   */
+  static solveRectangle(corners, widthTiles, heightTiles) {
+    if (!corners || corners.length !== 4 || corners.some(c => !c)) return null;
+    if (!(widthTiles > 0) || !(heightTiles > 0)) return null;
+
+    const widthPx = Math.hypot(corners[1].x - corners[0].x, corners[1].y - corners[0].y);
+    const heightPx = Math.hypot(corners[2].x - corners[1].x, corners[2].y - corners[1].y);
+    const wM = widthTiles * TILE_METRES;
+    const hM = heightTiles * TILE_METRES;
+    const outPxPerMetre = (widthPx / wM + heightPx / hM) / 2;
+    if (!(outPxPerMetre > 0) || !isFinite(outPxPerMetre)) return null;
+
+    const anchor = corners[0];
+    const dst = [
+      { x: anchor.x, y: anchor.y },
+      { x: anchor.x + wM * outPxPerMetre, y: anchor.y },
+      { x: anchor.x + wM * outPxPerMetre, y: anchor.y + hM * outPxPerMetre },
+      { x: anchor.x, y: anchor.y + hM * outPxPerMetre },
+    ];
+    const H = PerspectiveTransform.computeHomography(corners, dst);
+    if (!H) return null;
+
+    return { H, outPxPerMetre, widthPx, heightPx, anchor };
+  }
+
+  /**
+   * Validate a measurement pair against an already-solved rectangle
+   * homography: project both pins through H and read off the implied tile
+   * length and the angle relative to the rectangle's own axes. Purely
+   * informational — it never feeds back into the rectangle solve, which is
+   * already exact from the four corners.
+   */
+  static evaluatePairAgainstRectangle(rectSolve, pair) {
+    if (!rectSolve || !pair || !pair.a || !pair.b) return null;
+    const { H, outPxPerMetre } = rectSolve;
+    const oa = PerspectiveTransform.transformPoint(H, pair.a.x, pair.a.y);
+    const ob = PerspectiveTransform.transformPoint(H, pair.b.x, pair.b.y);
+    const outPx = Math.hypot(ob.x - oa.x, ob.y - oa.y);
+    const impliedTiles = outPx / outPxPerMetre / TILE_METRES;
+
+    const angleDeg = ((Math.atan2(ob.y - oa.y, ob.x - oa.x) * RAD2DEG) % 360 + 360) % 360;
+    const k = Math.round(angleDeg / 22.5);
+    const nearestMultipleDeg = (k * 22.5) % 360;
+    let angleDeviationDeg = angleDeg - nearestMultipleDeg;
+    if (angleDeviationDeg > 180) angleDeviationDeg -= 360;
+    if (angleDeviationDeg < -180) angleDeviationDeg += 360;
+
+    const result = {
+      impliedTiles, angleDeg, nearestMultipleDeg, angleDeviationDeg,
+      angleFlagged: Math.abs(angleDeviationDeg) > 2,
+    };
+    if (pair.tiles > 0) {
+      result.deviationPct = (impliedTiles - pair.tiles) / pair.tiles * 100;
+      result.lengthFlagged = Math.abs(result.deviationPct) > 5;
+    }
+    return result;
   }
 }

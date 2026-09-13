@@ -3,6 +3,7 @@ import { MapScale, TILE_METRES } from '../core/MapScale.js';
 
 const ROLE_LETTER = { across: 'A', down: 'B', check: 'C' };
 const ROLE_LABEL = { across: 'Across', down: 'Down', check: 'Check angle' };
+const PAIR_ORDER = ['across', 'down', 'check'];
 
 export class CalibrationPanel {
   constructor(mapScale, calibrationTool, bus) {
@@ -16,6 +17,7 @@ export class CalibrationPanel {
     this._open = false;
     this._previewing = false;
     this._focusRole = null;
+    this._focusRectangle = false;
 
     this._renderModal();
 
@@ -23,10 +25,15 @@ export class CalibrationPanel {
     bus.on('scale:changed', () => this._renderModal());
     bus.on('scale:lockChanged', () => this._renderModal());
     bus.on('calibration:modeChanged', () => this._renderModal());
+    bus.on('calibration:methodChanged', () => this._renderModal());
     bus.on('calibration:unitChanged', () => this._renderModal());
     bus.on('calibration:pairsChanged', () => this._renderModal());
     bus.on('calibration:pairCompleted', (role) => {
       this._focusRole = role;
+      this._renderModal();
+    });
+    bus.on('calibration:rectangleCompleted', () => {
+      this._focusRectangle = true;
       this._renderModal();
     });
     bus.on('tool:changed', (name) => {
@@ -90,7 +97,7 @@ export class CalibrationPanel {
 
   _renderLocalModal() {
     const tool = this.calibrationTool;
-    const pairs = tool.pairs;
+    const method = tool.calibMethod;
     const unit = this.mapScale.calibrationUnit;
 
     const heading = document.createElement('div');
@@ -99,13 +106,42 @@ export class CalibrationPanel {
     heading.style.gap = '6px';
     const h2 = document.createElement('div');
     h2.className = 'scale-modal-title';
-    h2.textContent = 'Measure in tiles';
     const desc = document.createElement('div');
     desc.className = 'scale-modal-desc';
-    desc.textContent = 'Drop a pin at each end of something you can count, then say how many tiles long it is. Across and Down are enough; the optional Check edge validates rotation against a known cardinal build angle.';
+    if (method === 'rectangle') {
+      h2.textContent = 'Measure a rectangle';
+      desc.textContent = 'Drop pins on the four corners of something rectangular you know the size of — a foundation, a floor section. This corrects real camera perspective, not just rotation and shear.';
+    } else {
+      h2.textContent = 'Measure in tiles';
+      desc.textContent = 'Drop a pin at each end of something you can count, then say how many tiles long it is. Across and Down are enough; the optional Check edge validates rotation against a known cardinal build angle.';
+    }
     heading.appendChild(h2);
     heading.appendChild(desc);
     this._modal.appendChild(heading);
+
+    // Method toggle
+    const methodField = document.createElement('div');
+    const methodLabel = document.createElement('span');
+    methodLabel.className = 'scale-field-label';
+    methodLabel.textContent = 'Method';
+    const methodSeg = document.createElement('div');
+    methodSeg.className = 'seg';
+    methodSeg.style.width = '100%';
+    const pairsBtn = document.createElement('button');
+    pairsBtn.className = 'seg-btn' + (method === 'pairs' ? ' active' : '');
+    pairsBtn.style.flex = '1';
+    pairsBtn.textContent = 'Pairs';
+    pairsBtn.addEventListener('click', () => { tool.calibMethod = 'pairs'; });
+    const rectBtn = document.createElement('button');
+    rectBtn.className = 'seg-btn' + (method === 'rectangle' ? ' active' : '');
+    rectBtn.style.flex = '1';
+    rectBtn.textContent = 'Rectangle corners';
+    rectBtn.addEventListener('click', () => { tool.calibMethod = 'rectangle'; });
+    methodSeg.appendChild(pairsBtn);
+    methodSeg.appendChild(rectBtn);
+    methodField.appendChild(methodLabel);
+    methodField.appendChild(methodSeg);
+    this._modal.appendChild(methodField);
 
     // Unit toggle
     const unitField = document.createElement('div');
@@ -131,7 +167,17 @@ export class CalibrationPanel {
     unitField.appendChild(unitSeg);
     this._modal.appendChild(unitField);
 
-    // Pair rows
+    if (method === 'rectangle') {
+      this._renderRectangleMethod(unit);
+    } else {
+      this._renderPairsMethod(unit);
+    }
+  }
+
+  _renderPairsMethod(unit) {
+    const tool = this.calibrationTool;
+    const pairs = tool.pairs;
+
     const pairsField = document.createElement('div');
     pairsField.style.display = 'flex';
     pairsField.style.flexDirection = 'column';
@@ -141,14 +187,13 @@ export class CalibrationPanel {
     pairsLabel.textContent = 'Measurement pairs';
     pairsField.appendChild(pairsLabel);
 
-    for (const role of ['across', 'down', 'check']) {
-      pairsField.appendChild(this._pairCard(role, pairs[role], unit));
+    for (const role of PAIR_ORDER) {
+      pairsField.appendChild(this._pairCard(role, pairs[role], unit, { mode: 'solve' }));
     }
     this._modal.appendChild(pairsField);
 
     this._modal.appendChild(Object.assign(document.createElement('div'), { className: 'scale-hr' }));
 
-    // Solved fit
     const solve = MapScale.solveCalibration(pairs);
     const fitField = document.createElement('div');
     fitField.style.display = 'flex';
@@ -177,10 +222,72 @@ export class CalibrationPanel {
 
     const info = document.createElement('div');
     info.className = 'scale-info-note';
-    info.innerHTML = '<span class="icon"><i data-lucide="info"></i></span><span>Across and Down solve scale, rotation and shear. The Check edge is optional — it nudges rotation/shear toward the nearest 22.5° build angle.</span>';
+    info.innerHTML = '<span class="icon"><i data-lucide="info"></i></span><span>Across and Down solve scale, rotation and shear — this assumes the source image has no real camera perspective. The Check edge nudges rotation/shear toward the nearest 22.5° build angle.</span>';
     this._modal.appendChild(info);
 
-    // Actions
+    this._renderActions(solve.mode === 'affine' || solve.mode === 'iso');
+  }
+
+  _renderRectangleMethod(unit) {
+    const tool = this.calibrationTool;
+    const rect = tool.rectangle;
+    const rectSolve = MapScale.solveRectangle(rect.corners, rect.widthTiles, rect.heightTiles);
+
+    const rectField = document.createElement('div');
+    rectField.style.display = 'flex';
+    rectField.style.flexDirection = 'column';
+    rectField.style.gap = '8px';
+    const rectLabel = document.createElement('span');
+    rectLabel.className = 'scale-field-label';
+    rectLabel.textContent = 'Rectangle';
+    rectField.appendChild(rectLabel);
+    rectField.appendChild(this._rectangleCard(unit, rect, rectSolve));
+    this._modal.appendChild(rectField);
+
+    const validateField = document.createElement('div');
+    validateField.style.display = 'flex';
+    validateField.style.flexDirection = 'column';
+    validateField.style.gap = '8px';
+    const validateLabel = document.createElement('span');
+    validateLabel.className = 'scale-field-label';
+    validateLabel.textContent = 'Validate (optional)';
+    validateField.appendChild(validateLabel);
+    const validateDesc = document.createElement('div');
+    validateDesc.className = 'scale-modal-desc';
+    validateDesc.style.marginTop = '-4px';
+    validateDesc.textContent = 'Drop a pair elsewhere on the map to check the rectangle solve holds up away from the corners.';
+    validateField.appendChild(validateDesc);
+
+    const pairs = tool.pairs;
+    for (const role of PAIR_ORDER) {
+      validateField.appendChild(this._pairCard(role, pairs[role], unit, { mode: 'validate', rectSolve }));
+    }
+    this._modal.appendChild(validateField);
+
+    this._modal.appendChild(Object.assign(document.createElement('div'), { className: 'scale-hr' }));
+
+    const fitField = document.createElement('div');
+    fitField.style.display = 'flex';
+    fitField.style.flexDirection = 'column';
+    fitField.style.gap = '6px';
+    const fitLabel = document.createElement('span');
+    fitLabel.className = 'scale-field-label';
+    fitLabel.textContent = 'Solved fit';
+    fitField.appendChild(fitLabel);
+    fitField.appendChild(this._fitRow('Width edge', rectSolve ? `${rectSolve.widthPx.toFixed(0)} px` : '—'));
+    fitField.appendChild(this._fitRow('Height edge', rectSolve ? `${rectSolve.heightPx.toFixed(0)} px` : '—'));
+    fitField.appendChild(this._fitRow('Output scale', rectSolve ? `${(rectSolve.outPxPerMetre * TILE_METRES).toFixed(1)} px/tile` : '—'));
+    this._modal.appendChild(fitField);
+
+    const info = document.createElement('div');
+    info.className = 'scale-info-note';
+    info.innerHTML = '<span class="icon"><i data-lucide="info"></i></span><span>Four corners with a known size fully determine a true perspective correction — unlike Pairs, this un-converges vanishing lines from an angled shot.</span>';
+    this._modal.appendChild(info);
+
+    this._renderActions(!!rectSolve);
+  }
+
+  _renderActions(canStraighten) {
     const actions = document.createElement('div');
     actions.className = 'scale-actions';
     const row = document.createElement('div');
@@ -193,15 +300,123 @@ export class CalibrationPanel {
     const applyBtn = document.createElement('button');
     applyBtn.className = 'primary';
     applyBtn.textContent = 'Straighten map';
-    applyBtn.disabled = solve.mode !== 'affine' && solve.mode !== 'iso';
+    applyBtn.disabled = !canStraighten;
     applyBtn.addEventListener('click', () => this.bus.emit('calibration:apply'));
     row.appendChild(applyBtn);
     actions.appendChild(row);
     this._modal.appendChild(actions);
   }
 
-  _pairCard(role, pair, unit) {
+  _rectangleCard(unit, rect, rectSolve) {
     const tool = this.calibrationTool;
+    const placed = rect.corners.filter(Boolean).length;
+    const card = document.createElement('div');
+    card.className = 'scale-pair-card';
+
+    const header = document.createElement('div');
+    header.className = 'scale-pair-header';
+    const badge = document.createElement('span');
+    badge.className = 'scale-pair-badge';
+    badge.textContent = '▭';
+    const label = document.createElement('span');
+    label.className = 'scale-pair-label';
+    label.textContent = 'Corners 1–4';
+    header.appendChild(badge);
+    header.appendChild(label);
+
+    if (placed > 0) {
+      const clearBtn = document.createElement('button');
+      clearBtn.className = 'scale-pair-clear';
+      clearBtn.innerHTML = '<i data-lucide="trash-2"></i>';
+      clearBtn.title = 'Clear the rectangle';
+      clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        tool.clearRectangle();
+      });
+      header.appendChild(clearBtn);
+    }
+    card.appendChild(header);
+
+    const value = document.createElement('div');
+    value.className = 'scale-pair-value';
+    value.style.flexWrap = 'wrap';
+
+    if (placed < 4) {
+      value.textContent = `Click the map to drop corner ${placed + 1} of 4`;
+      value.classList.add('scale-pair-hint');
+    } else {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '8px';
+      row.style.width = '100%';
+
+      const makeInput = (value_, placeholder) => {
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.step = unit === 'tiles' ? '0.5' : (TILE_METRES / 2).toString();
+        input.min = '0';
+        input.className = 'scale-pair-input';
+        input.style.width = '52px';
+        input.value = value_ != null ? value_ : '';
+        input.placeholder = placeholder;
+        input.addEventListener('keydown', (e) => e.stopPropagation());
+        return input;
+      };
+
+      const wDisplay = rect.widthTiles != null ? (unit === 'tiles' ? rect.widthTiles : rect.widthTiles * TILE_METRES) : null;
+      const hDisplay = rect.heightTiles != null ? (unit === 'tiles' ? rect.heightTiles : rect.heightTiles * TILE_METRES) : null;
+      const wInput = makeInput(wDisplay, 'W');
+      const hInput = makeInput(hDisplay, 'H');
+      const commit = () => {
+        const wv = parseFloat(wInput.value);
+        const hv = parseFloat(hInput.value);
+        const wTiles = wv > 0 ? (unit === 'tiles' ? wv : wv / TILE_METRES) : null;
+        const hTiles = hv > 0 ? (unit === 'tiles' ? hv : hv / TILE_METRES) : null;
+        tool.setRectangleSize(wTiles, hTiles);
+      };
+      wInput.addEventListener('change', commit);
+      hInput.addEventListener('change', commit);
+
+      const xSep = document.createElement('span');
+      xSep.textContent = '×';
+      xSep.style.color = 'var(--color-neutral-500)';
+      const unitLabel = document.createElement('span');
+      unitLabel.className = 'scale-pair-unit';
+      unitLabel.textContent = unit === 'tiles' ? 'tiles' : 'm';
+
+      row.appendChild(wInput);
+      row.appendChild(xSep);
+      row.appendChild(hInput);
+      row.appendChild(unitLabel);
+      value.appendChild(row);
+
+      const readout = document.createElement('span');
+      readout.className = 'scale-pair-readout';
+      readout.style.width = '100%';
+      readout.style.textAlign = 'right';
+      if (rectSolve) {
+        readout.textContent = `${rectSolve.widthPx.toFixed(0)} × ${rectSolve.heightPx.toFixed(0)} px`;
+      } else {
+        const wPx = Math.hypot(rect.corners[1].x - rect.corners[0].x, rect.corners[1].y - rect.corners[0].y);
+        const hPx = Math.hypot(rect.corners[2].x - rect.corners[1].x, rect.corners[2].y - rect.corners[1].y);
+        readout.textContent = `${wPx.toFixed(0)} × ${hPx.toFixed(0)} px`;
+      }
+      value.appendChild(readout);
+
+      if (this._focusRectangle) {
+        this._focusRectangle = false;
+        requestAnimationFrame(() => wInput.focus());
+      }
+    }
+    card.appendChild(value);
+    return card;
+  }
+
+  _pairCard(role, pair, unit, opts) {
+    const tool = this.calibrationTool;
+    const mode = opts && opts.mode || 'solve';
+    const rectSolve = opts && opts.rectSolve;
     const selected = tool.selectedRole === role;
     const card = document.createElement('div');
     card.className = 'scale-pair-card' + (selected ? ' selected' : '');
@@ -243,8 +458,21 @@ export class CalibrationPanel {
     } else if (role === 'check') {
       const dx = pair.b.x - pair.a.x, dy = pair.b.y - pair.a.y;
       const lenPx = Math.hypot(dx, dy);
-      value.textContent = `${lenPx.toFixed(0)} px edge · feeds rotation/shear`;
-      value.classList.add('scale-pair-hint');
+      if (mode === 'validate' && rectSolve) {
+        const ev = MapScale.evaluatePairAgainstRectangle(rectSolve, pair);
+        const span = document.createElement('span');
+        if (ev) {
+          const sign = ev.angleDeviationDeg >= 0 ? '+' : '';
+          span.textContent = `${sign}${ev.angleDeviationDeg.toFixed(1)}° from ${ev.nearestMultipleDeg.toFixed(1)}°`;
+          span.style.color = ev.angleFlagged ? '#f5d547' : '#9ee6a8';
+        } else {
+          span.textContent = `${lenPx.toFixed(0)} px edge`;
+        }
+        value.appendChild(span);
+      } else {
+        value.textContent = `${lenPx.toFixed(0)} px edge · feeds rotation/shear`;
+        value.classList.add('scale-pair-hint');
+      }
     } else {
       const input = document.createElement('input');
       input.type = 'number';
@@ -270,7 +498,21 @@ export class CalibrationPanel {
       readout.className = 'scale-pair-readout';
       const dx = pair.b.x - pair.a.x, dy = pair.b.y - pair.a.y;
       const lenPx = Math.hypot(dx, dy);
-      if (pair.tiles > 0) {
+
+      if (mode === 'validate') {
+        const ev = rectSolve ? MapScale.evaluatePairAgainstRectangle(rectSolve, pair) : null;
+        if (ev) {
+          if (pair.tiles > 0) {
+            const sign = ev.deviationPct >= 0 ? '+' : '';
+            readout.textContent = `implies ${ev.impliedTiles.toFixed(2)} tiles (${sign}${ev.deviationPct.toFixed(1)}%)`;
+            readout.style.color = ev.lengthFlagged ? '#f5d547' : '#9ee6a8';
+          } else {
+            readout.textContent = `implies ${ev.impliedTiles.toFixed(2)} tiles`;
+          }
+        } else {
+          readout.textContent = `${lenPx.toFixed(0)} px`;
+        }
+      } else if (pair.tiles > 0) {
         const metres = pair.tiles * TILE_METRES;
         const pxPerTile = lenPx / pair.tiles;
         readout.textContent = unit === 'tiles'
@@ -399,7 +641,7 @@ export class CalibrationPanel {
     title.textContent = 'Does the grid line up with the ground?';
     const sub = document.createElement('div');
     sub.className = 'sub';
-    sub.textContent = `Scale set to ${this.mapScale.metresPerPixel.toFixed(2)} m/px · grid anchored to the across pin`;
+    sub.textContent = `Scale set to ${this.mapScale.metresPerPixel.toFixed(2)} m/px · grid anchored to the calibration origin`;
     info.appendChild(title);
     info.appendChild(sub);
     this._previewBar.appendChild(info);

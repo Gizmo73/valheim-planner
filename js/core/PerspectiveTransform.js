@@ -1,5 +1,60 @@
 export class PerspectiveTransform {
 
+  static _solveLinear(A, b) {
+    const n = b.length;
+    const M = A.map((row, i) => [...row, b[i]]);
+    for (let col = 0; col < n; col++) {
+      let maxVal = Math.abs(M[col][col]);
+      let maxRow = col;
+      for (let row = col + 1; row < n; row++) {
+        if (Math.abs(M[row][col]) > maxVal) {
+          maxVal = Math.abs(M[row][col]);
+          maxRow = row;
+        }
+      }
+      [M[col], M[maxRow]] = [M[maxRow], M[col]];
+      if (Math.abs(M[col][col]) < 1e-12) return null;
+      for (let row = col + 1; row < n; row++) {
+        const f = M[row][col] / M[col][col];
+        for (let j = col; j <= n; j++) M[row][j] -= f * M[col][j];
+      }
+    }
+    const x = new Array(n);
+    for (let i = n - 1; i >= 0; i--) {
+      x[i] = M[i][n];
+      for (let j = i + 1; j < n; j++) x[i] -= M[i][j] * x[j];
+      x[i] /= M[i][i];
+    }
+    return x;
+  }
+
+  // Exact 4-point homography: solves the 3x3 projective matrix H (up to
+  // scale, with H[2][2]=1) mapping each src[i] -> dst[i]. This is the real
+  // perspective solve — unlike an affine fit, it can un-converge vanishing
+  // lines from an angled camera shot, given four known correspondences.
+  static computeHomography(src, dst) {
+    const A = [], b = [];
+    for (let i = 0; i < 4; i++) {
+      const { x: sx, y: sy } = src[i];
+      const { x: dx, y: dy } = dst[i];
+      A.push([sx, sy, 1, 0, 0, 0, -dx * sx, -dx * sy]);
+      b.push(dx);
+      A.push([0, 0, 0, sx, sy, 1, -dy * sx, -dy * sy]);
+      b.push(dy);
+    }
+    const h = PerspectiveTransform._solveLinear(A, b);
+    if (!h) return null;
+    return [[h[0], h[1], h[2]], [h[3], h[4], h[5]], [h[6], h[7], 1]];
+  }
+
+  static transformPoint(H, x, y) {
+    const w = H[2][0] * x + H[2][1] * y + H[2][2];
+    return {
+      x: (H[0][0] * x + H[0][1] * y + H[0][2]) / w,
+      y: (H[1][0] * x + H[1][1] * y + H[1][2]) / w,
+    };
+  }
+
   static invert3x3(M) {
     const [[a, b, c], [d, e, f], [g, h, i]] = M;
     const det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
