@@ -38,11 +38,4 @@ export class LayerManager {
   getByType(type) {
     return this.layers.filter(l => l.type === type);
   }
-
-  renderAll(ctx, viewport, canvasWidth, canvasHeight) {
-    for (const layer of this.layers) {
-      if (!layer.visible) continue;
-      layer.render(ctx, viewport, canvasWidth, canvasHeight);
-    }
-  }
 }

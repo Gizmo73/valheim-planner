@@ -1,11 +1,12 @@
 export class Renderer {
-  constructor(canvas, viewport, layerManager, toolManager, bus) {
+  constructor(canvas, viewport, layerManager, toolManager, bus, gridSettings) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.viewport = viewport;
     this.layerManager = layerManager;
     this.toolManager = toolManager;
     this.bus = bus;
+    this.gridSettings = gridSettings || null;
     this.needsRender = true;
     this._rafId = null;
 
@@ -49,12 +50,30 @@ export class Renderer {
     ctx.translate(vp.panX, vp.panY);
     ctx.scale(vp.zoom, vp.zoom);
 
-    this.layerManager.renderAll(ctx, vp, this.width, this.height);
+    this._renderLayers(ctx, vp);
 
     ctx.restore();
 
     if (this.toolManager) {
       this.toolManager.renderOverlay(ctx, vp);
     }
+  }
+
+  // Working-layer grids sit either above or below the asset layer,
+  // controlled by gridSettings.abovePieces — everything else renders in
+  // its normal layer-array order.
+  _renderLayers(ctx, vp) {
+    const layers = this.layerManager.layers;
+    const abovePieces = this.gridSettings ? this.gridSettings.abovePieces : true;
+
+    const mapLayers = layers.filter(l => l.visible && l.type === 'map');
+    const workingLayers = layers.filter(l => l.visible && l.type === 'working');
+    const otherLayers = layers.filter(l => l.visible && l.type !== 'map' && l.type !== 'working');
+
+    for (const l of mapLayers) l.render(ctx, vp, this.width, this.height);
+    for (const wl of workingLayers) wl.renderBase(ctx, vp, this.width, this.height);
+    if (!abovePieces) for (const wl of workingLayers) wl.renderGrid(ctx, vp, this.width, this.height);
+    for (const l of otherLayers) l.render(ctx, vp, this.width, this.height);
+    if (abovePieces) for (const wl of workingLayers) wl.renderGrid(ctx, vp, this.width, this.height);
   }
 }

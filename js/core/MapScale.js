@@ -245,6 +245,19 @@ export class MapScale {
   }
 
   /**
+   * Unit vectors for the across/down tile axes at a given rotation, no
+   * shear — used by the fine-tune grid overlay to draw rotated lines
+   * without needing the full affine-matrix machinery.
+   */
+  static axisUnitVectors(rotationDeg) {
+    const theta = rotationDeg * DEG2RAD;
+    return {
+      across: { x: Math.cos(theta), y: Math.sin(theta) },
+      down: { x: Math.cos(theta + Math.PI / 2), y: Math.sin(theta + Math.PI / 2) },
+    };
+  }
+
+  /**
    * Build the 3x3 affine matrix (image px -> straightened output px) that
    * removes the solved rotation/shear/anisotropic-scale, anchored so the
    * across pair's first pin keeps its pixel position. `outPxPerTile` is the

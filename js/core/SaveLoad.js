@@ -2,7 +2,7 @@ import { createAsset } from '../assets/AssetRegistry.js';
 import { WorkingLayer } from '../layers/WorkingLayer.js';
 
 export class SaveLoad {
-  constructor(layerManager, mapLayer, assetLayer, mapScale, viewport, renderer, bus) {
+  constructor(layerManager, mapLayer, assetLayer, mapScale, viewport, renderer, bus, gridSettings, fineTuneState) {
     this.layerManager = layerManager;
     this.mapLayer = mapLayer;
     this.assetLayer = assetLayer;
@@ -10,6 +10,8 @@ export class SaveLoad {
     this.viewport = viewport;
     this.renderer = renderer;
     this.bus = bus;
+    this.gridSettings = gridSettings;
+    this.fineTuneState = fineTuneState;
   }
 
   serialize() {
@@ -101,7 +103,7 @@ export class SaveLoad {
         const wl = new WorkingLayer(
           wlData.originX, wlData.originY,
           wlData.width, wlData.height,
-          this.bus, this.mapScale
+          this.bus, this.mapScale, this.gridSettings, this.fineTuneState
         );
         wl.name = wlData.name;
         wl.visible = wlData.visible;

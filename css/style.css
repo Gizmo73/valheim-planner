@@ -1001,6 +1001,143 @@ svg.lucide {
 .plan-summary-row span:first-child { color: var(--color-neutral-600); }
 .plan-summary-row span:last-child { color: var(--color-neutral-300); }
 
+.plan-disabled-note {
+  font: 400 12px/1.5 Inter, system-ui, sans-serif;
+  color: var(--color-neutral-600);
+}
+
+/* Fine tune */
+
+.nudge-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 30px);
+  grid-template-rows: repeat(3, 30px);
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.nudge-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-neutral-900);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.nudge-btn:hover { background: var(--color-accent-tint-strong); border-color: var(--color-accent); }
+.nudge-btn.center { color: var(--color-neutral-600); font-size: 13px; }
+
+.rotation-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  background: var(--color-neutral-900);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.rotation-btn:hover { background: var(--color-accent-tint-strong); }
+
+.axis-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px;
+  border-radius: 8px;
+  background: var(--color-neutral-900);
+  box-shadow: 0 0 0 1px var(--color-neutral-800);
+}
+
+.axis-card-header {
+  display: flex;
+  align-items: center;
+  font: 600 10.5px Inter, system-ui, sans-serif;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-neutral-600);
+}
+
+.axis-card-header .mode {
+  margin-left: auto;
+  font: 500 11px ui-monospace, Menlo, monospace;
+  color: #4ee3ec;
+}
+
+.axis-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.axis-field-label {
+  font: 500 11.5px Inter, system-ui, sans-serif;
+  width: 52px;
+  color: var(--color-neutral-500);
+  flex-shrink: 0;
+}
+
+.axis-field-label.active { color: #bdf4f7; }
+
+.axis-input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 9px;
+  background: #1c1e2c;
+  border: 1px solid var(--color-neutral-800);
+  border-radius: 7px;
+  color: var(--color-neutral-500);
+  font: 500 12px ui-monospace, Menlo, monospace;
+}
+
+.axis-input.active { color: var(--color-text); border-color: #4ee3ec; }
+
+.axis-footnote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 11.5px/1.45 Inter, system-ui, sans-serif;
+  color: var(--color-neutral-500);
+}
+
+.finetune-axis-pill {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1c1e2c;
+  border: 1px solid #4ee3ec;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: 500 12.5px Inter, system-ui, sans-serif;
+  color: #bdf4f7;
+  z-index: 25;
+}
+
+.finetune-axis-pill.hidden { display: none; }
+
+.finetune-axis-pill kbd {
+  background: #252838;
+  border: 1px solid var(--color-neutral-800);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font: 500 11px ui-monospace, Menlo, monospace;
+  color: var(--color-text);
+}
+
 /* ===================== */
 /* Set map scale modal    */
 /* ===================== */
