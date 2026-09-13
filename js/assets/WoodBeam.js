@@ -46,16 +46,17 @@ function getTextureVert() {
   return cachedTexVert;
 }
 
-function makeThumbnail(texFn, srcW, srcH) {
+function makeThumbnail(texFn, srcW, srcH, size = 48) {
   const c = document.createElement('canvas');
-  c.width = 48;
-  c.height = 48;
+  c.width = size;
+  c.height = size;
   const ctx = c.getContext('2d');
   const tex = texFn();
-  const scale = Math.min(44 / srcW, 44 / srcH);
+  const inner = size - size * (4 / 48);
+  const scale = Math.min(inner / srcW, inner / srcH);
   const dw = srcW * scale;
   const dh = srcH * scale;
-  ctx.drawImage(tex, (48 - dw) / 2, (48 - dh) / 2, dw, dh);
+  ctx.drawImage(tex, (size - dw) / 2, (size - dh) / 2, dw, dh);
   return c;
 }
 
@@ -79,8 +80,8 @@ export class WoodBeam1m extends Asset {
     ctx.drawImage(getTexture1m(), x, y, w, h);
   }
 
-  static getThumbnail() {
-    return makeThumbnail(getTexture1m, 48, 16);
+  static getThumbnail(size) {
+    return makeThumbnail(getTexture1m, 48, 16, size);
   }
 }
 
@@ -104,8 +105,8 @@ export class WoodBeam2m extends Asset {
     ctx.drawImage(getTexture2m(), x, y, w, h);
   }
 
-  static getThumbnail() {
-    return makeThumbnail(getTexture2m, 64, 16);
+  static getThumbnail(size) {
+    return makeThumbnail(getTexture2m, 64, 16, size);
   }
 }
 
@@ -127,7 +128,7 @@ export class WoodBeamVertical extends Asset {
     ctx.drawImage(getTextureVert(), x, y, w, h);
   }
 
-  static getThumbnail() {
-    return makeThumbnail(getTextureVert, 16, 16);
+  static getThumbnail(size) {
+    return makeThumbnail(getTextureVert, 16, 16, size);
   }
 }

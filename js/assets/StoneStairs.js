@@ -43,12 +43,13 @@ export class StoneStairs2x2 extends Asset {
     ctx.drawImage(this._texture, x, y, w, h);
   }
 
-  static getThumbnail() {
+  static getThumbnail(size = 48) {
     const tex = generateTexture();
     const c = document.createElement('canvas');
-    c.width = 48; c.height = 48;
+    c.width = size; c.height = size;
     const tCtx = c.getContext('2d');
-    tCtx.drawImage(tex, 2, 2, 44, 44);
+    const k = size / 48;
+    tCtx.drawImage(tex, 2 * k, 2 * k, 44 * k, 44 * k);
     return c;
   }
 }

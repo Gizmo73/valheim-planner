@@ -77,16 +77,17 @@ function generateTexture(tilesW, tilesH) {
   return c;
 }
 
-function makeThumbnail(tilesW, tilesH) {
+function makeThumbnail(tilesW, tilesH, size = 48) {
   const tex = generateTexture(tilesW, tilesH);
   const c = document.createElement('canvas');
-  c.width = 48;
-  c.height = 48;
+  c.width = size;
+  c.height = size;
   const ctx = c.getContext('2d');
-  const scale = Math.min(44 / tex.width, 44 / tex.height);
+  const inner = size - size * (4 / 48);
+  const scale = Math.min(inner / tex.width, inner / tex.height);
   const dw = tex.width * scale;
   const dh = tex.height * scale;
-  ctx.drawImage(tex, (48 - dw) / 2, (48 - dh) / 2, dw, dh);
+  ctx.drawImage(tex, (size - dw) / 2, (size - dh) / 2, dw, dh);
   return c;
 }
 
@@ -100,8 +101,8 @@ function stoneAsset(type, wm, hm) {
     draw(ctx, x, y, w, h) {
       ctx.drawImage(this._texture, x, y, w, h);
     }
-    static getThumbnail() {
-      return makeThumbnail(tilesW, tilesH);
+    static getThumbnail(size) {
+      return makeThumbnail(tilesW, tilesH, size);
     }
   };
 }

@@ -84,7 +84,7 @@ export class PlanPanel {
     resetBtn.className = 'btn-chip';
     resetBtn.style.flex = '1';
     resetBtn.style.justifyContent = 'center';
-    resetBtn.style.border = '1px solid var(--color-neutral-800)';
+    resetBtn.style.border = '1px solid var(--color-control-border)';
     resetBtn.textContent = 'Reset to solved';
     resetBtn.disabled = !ft.hasPending;
     resetBtn.addEventListener('click', () => ft.reset());
@@ -142,8 +142,8 @@ export class PlanPanel {
     col.style.minWidth = '0';
 
     const stepLabel = document.createElement('span');
-    stepLabel.style.fontSize = '11px';
-    stepLabel.style.color = 'var(--color-neutral-600)';
+    stepLabel.style.font = '500 11px Inter, system-ui, sans-serif';
+    stepLabel.style.color = 'var(--color-label)';
     stepLabel.textContent = 'Nudge step';
     col.appendChild(stepLabel);
 
@@ -164,8 +164,8 @@ export class PlanPanel {
     rotRow.style.alignItems = 'center';
     rotRow.style.gap = '7px';
     const rotLabel = document.createElement('span');
-    rotLabel.style.fontSize = '11px';
-    rotLabel.style.color = 'var(--color-neutral-600)';
+    rotLabel.style.font = '500 11px Inter, system-ui, sans-serif';
+    rotLabel.style.color = 'var(--color-label)';
     rotLabel.style.flex = '1';
     rotLabel.textContent = 'Rotation';
     const minusBtn = document.createElement('button');
@@ -208,7 +208,7 @@ export class PlanPanel {
     seg.style.display = 'flex';
     seg.style.padding = '2px';
     seg.style.background = '#1c1e2c';
-    seg.style.border = '1px solid var(--color-neutral-800)';
+    seg.style.border = '1px solid var(--color-control-border)';
     seg.style.borderRadius = '7px';
     seg.style.gap = '2px';
     for (const [val, icon, text] of AXIS_MODES) {
@@ -259,8 +259,8 @@ export class PlanPanel {
     input.addEventListener('keydown', (e) => e.stopPropagation());
     input.addEventListener('change', () => onChange(input.value));
     const unit = document.createElement('span');
-    unit.style.fontSize = '11px';
-    unit.style.color = 'var(--color-neutral-600)';
+    unit.style.font = '500 11px Inter, system-ui, sans-serif';
+    unit.style.color = 'var(--color-muted)';
     unit.textContent = 'px/tile';
     row.appendChild(l);
     row.appendChild(input);
@@ -292,7 +292,7 @@ export class PlanPanel {
 
     const colorField = document.createElement('div');
     colorField.className = 'plan-field';
-    colorField.innerHTML = '<span class="plan-field-title" style="display:block"><span>Line colour</span></span>';
+    colorField.innerHTML = '<div class="plan-field-title"><span>Line colour</span><span></span></div>';
     const swatchRow = document.createElement('div');
     swatchRow.className = 'swatch-row';
     for (const c of GRID_COLORS) {

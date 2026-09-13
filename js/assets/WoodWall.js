@@ -40,15 +40,16 @@ function generateWallTexture(lengthPx, thickPx) {
   return c;
 }
 
-function makeThumbnail(lengthPx, thickPx) {
+function makeThumbnail(lengthPx, thickPx, size = 48) {
   const tex = generateWallTexture(lengthPx, thickPx);
   const c = document.createElement('canvas');
-  c.width = 48; c.height = 48;
+  c.width = size; c.height = size;
   const ctx = c.getContext('2d');
-  const scale = Math.min(44 / lengthPx, 44 / thickPx);
+  const inner = size - size * (4 / 48);
+  const scale = Math.min(inner / lengthPx, inner / thickPx);
   const dw = lengthPx * scale;
   const dh = thickPx * scale;
-  ctx.drawImage(tex, (48 - dw) / 2, (48 - dh) / 2, dw, dh);
+  ctx.drawImage(tex, (size - dw) / 2, (size - dh) / 2, dw, dh);
   return c;
 }
 
@@ -76,8 +77,8 @@ function wallAsset(type, lengthM, thickM) {
       ctx.drawImage(generateWallTexture(lpx, tpx), x, y, w, h);
     }
 
-    static getThumbnail() {
-      return makeThumbnail(lpx, tpx);
+    static getThumbnail(size) {
+      return makeThumbnail(lpx, tpx, size);
     }
   };
 }
