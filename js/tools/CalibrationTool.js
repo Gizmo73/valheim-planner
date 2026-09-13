@@ -446,6 +446,7 @@ export class CalibrationTool {
       this._renderWorldOverlay(ctx, viewport);
     } else {
       this._renderLocalOverlay(ctx, viewport);
+      this._renderMagnifier(ctx, viewport);
     }
   }
 
@@ -596,6 +597,103 @@ export class CalibrationTool {
       ctx.fillText(label, mid.x, mid.y + 0.5);
       ctx.restore();
     }
+  }
+
+  _renderMagnifier(ctx, viewport) {
+    if (!this._dragging || !this._dragRole) return;
+    const pin = this._pairs[this._dragRole][this._dragPoint];
+    if (!pin) return;
+
+    const screenPin = viewport.mapToScreen(pin.x, pin.y);
+    const canvasW = ctx.canvas.width;
+    const canvasH = ctx.canvas.height;
+
+    const R = 70;
+    const MAG = 4;
+    const innerZoom = viewport.zoom * MAG;
+
+    let cx = screenPin.x;
+    let cy = screenPin.y - R - 35;
+    if (cy - R < 10) cy = screenPin.y + R + 35;
+    cx = Math.max(R + 5, Math.min(canvasW - R - 5, cx));
+    cy = Math.max(R + 5, Math.min(canvasH - R - 5, cy));
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.clip();
+
+    ctx.fillStyle = '#111';
+    ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+
+    const ipx = cx - pin.x * innerZoom;
+    const ipy = cy - pin.y * innerZoom;
+
+    if (this.mapLayer.image) {
+      ctx.save();
+      ctx.translate(ipx, ipy);
+      ctx.scale(innerZoom, innerZoom);
+      ctx.drawImage(this.mapLayer.image, 0, 0, this.mapLayer.width, this.mapLayer.height);
+      ctx.restore();
+    }
+
+    // Draw every placed pin inside the magnifier, dragged one highlighted.
+    ctx.save();
+    ctx.translate(ipx, ipy);
+    ctx.scale(innerZoom, innerZoom);
+    for (const role of PAIR_ROLES) {
+      const p = this._pairs[role];
+      for (const key of ['a', 'b']) {
+        const pt = p[key];
+        if (!pt) continue;
+        const active = role === this._dragRole && key === this._dragPoint;
+        const r = (active ? 5 : 3) / innerZoom;
+        ctx.fillStyle = active ? 'rgba(255, 220, 80, 1)' : 'rgba(181, 171, 252, 0.5)';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.lineWidth = 1 / innerZoom;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+
+    // Magnifier crosshair
+    ctx.strokeStyle = 'rgba(181, 171, 252, 0.9)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 14, cy); ctx.lineTo(cx - 5, cy);
+    ctx.moveTo(cx + 5, cy);  ctx.lineTo(cx + 14, cy);
+    ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy - 5);
+    ctx.moveTo(cx, cy + 5);  ctx.lineTo(cx, cy + 14);
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Magnifier border
+    ctx.save();
+    ctx.strokeStyle = 'rgba(181, 171, 252, 0.9)';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Tether line
+    ctx.save();
+    ctx.strokeStyle = 'rgba(181, 171, 252, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    const edgeY = cy < screenPin.y ? cy + R : cy - R;
+    ctx.beginPath();
+    ctx.moveTo(cx, edgeY);
+    ctx.lineTo(screenPin.x, screenPin.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
   }
 
   _renderPreviewOverlay(ctx, viewport) {
