@@ -40,9 +40,7 @@ export class SaveLoad {
         metresPerPixel: this.mapScale.metresPerPixel,
         locked: this.mapScale.locked,
         mapMode: this.mapScale.mapMode,
-        cbCols: this.mapScale.cbCols,
-        cbRows: this.mapScale.cbRows,
-        cbSpacing: this.mapScale.cbSpacing,
+        calibrationUnit: this.mapScale.calibrationUnit,
       },
       workingLayers,
       groups,
@@ -85,9 +83,7 @@ export class SaveLoad {
     if (data.scale) {
       this.mapScale.locked = false;
       if (data.scale.mapMode) this.mapScale.mapMode = data.scale.mapMode;
-      if (data.scale.cbCols >= 2) this.mapScale.cbCols = data.scale.cbCols;
-      if (data.scale.cbRows >= 2) this.mapScale.cbRows = data.scale.cbRows;
-      if (data.scale.cbSpacing >= 2) this.mapScale.cbSpacing = data.scale.cbSpacing;
+      if (data.scale.calibrationUnit) this.mapScale.calibrationUnit = data.scale.calibrationUnit;
       this.mapScale.metresPerPixel = data.scale.metresPerPixel;
       this.mapScale.locked = data.scale.locked;
     }

@@ -1,6 +1,6 @@
 import { EventBus } from './core/EventBus.js';
 import { Viewport } from './core/Viewport.js';
-import { MapScale } from './core/MapScale.js';
+import { MapScale, TILE_METRES } from './core/MapScale.js';
 import { GridSettings } from './core/GridSettings.js';
 import { PerspectiveTransform } from './core/PerspectiveTransform.js';
 import { Renderer } from './core/Renderer.js';
@@ -208,23 +208,11 @@ bus.on('sidebar:close', closeSidebar);
 // State preserved across the preview step
 let _preCalibrationState = null;
 
-bus.on('calibration:snapAll', () => {
-  const failed = calibrationTool.snapAllPins();
-  if (failed.length > 0) {
-    bus.emit('calibration:snapResult', {
-      ok: false,
-      why: 'no corner found for pin(s) ' + failed.join(', '),
-    });
-  } else {
-    bus.emit('calibration:snapResult', { ok: true, why: 'all pins snapped' });
-  }
-});
-
 bus.on('calibration:apply', () => {
   if (!mapLayer.image) return;
-  const srcPins = calibrationTool.pins;
-  const worldPins = calibrationTool.pinWorldCoords();
-  const enabled = calibrationTool.enabled;
+  const pairs = calibrationTool.pairs;
+  const solve = MapScale.solveCalibration(pairs);
+  if (solve.mode !== 'affine' && solve.mode !== 'iso') return;
 
   const oldImage = mapLayer.image;
   const oldWidth = mapLayer.width;
@@ -245,14 +233,19 @@ bus.on('calibration:apply', () => {
 
   _preCalibrationState = { oldImage, oldWidth, oldHeight, oldMpp, oldLayers, oldAssets };
 
-  const result = PerspectiveTransform.correctImageCheckerboard(
-    mapLayer.image, srcPins, worldPins, enabled
-  );
-  if (!result) return;
+  // Anchor the straightened output on the across pair's first pin — the
+  // matrix construction keeps that point's pixel position fixed.
+  const anchor = pairs.across.a;
+  const outPxPerTile = (solve.pxPerTileX + solve.pxPerTileY) / 2;
+  const H = MapScale.buildStraightenMatrix(solve, anchor, outPxPerTile);
+  if (!H) { _preCalibrationState = null; return; }
 
-  mapLayer.applyCorrectedImage(result.canvas);
+  const outCanvas = PerspectiveTransform.correctImageFromMatrix(mapLayer.image, H);
+  if (!outCanvas) { _preCalibrationState = null; return; }
+
+  mapLayer.applyCorrectedImage(outCanvas);
   mapScale.locked = false;
-  mapScale.metresPerPixel = result.metresPerPixel;
+  mapScale.metresPerPixel = TILE_METRES / outPxPerTile;
   viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
 
   if (mapScale.mapMode === 'local') {
@@ -262,15 +255,13 @@ bus.on('calibration:apply', () => {
 
     const wl = new WorkingLayer(0, 0, mapLayer.width, mapLayer.height, bus, mapScale, gridSettings);
     wl.name = 'Build area 1';
-    if (result.refRect) {
-      wl.gridAnchorX = result.refRect.x;
-      wl.gridAnchorY = result.refRect.y;
-    }
+    wl.gridAnchorX = anchor.x;
+    wl.gridAnchorY = anchor.y;
     layerManager.addLayer(wl);
 
-    const newMpp = result.metresPerPixel;
-    const newAx = wl.gridAnchorX != null ? wl.gridAnchorX : wl.originX;
-    const newAy = wl.gridAnchorY != null ? wl.gridAnchorY : wl.originY;
+    const newMpp = mapScale.metresPerPixel;
+    const newAx = anchor.x;
+    const newAy = anchor.y;
     for (const asset of assetLayer.assets) {
       if (asset.workingLayer && oldLayer) {
         const oldAx = oldLayer.gridAnchorX != null ? oldLayer.gridAnchorX : oldLayer.originX;
@@ -286,9 +277,7 @@ bus.on('calibration:apply', () => {
     // Hide the working layer grid during preview (the tool draws its own)
     wl.visible = false;
 
-    const anchorX = result.refRect ? result.refRect.x : 0;
-    const anchorY = result.refRect ? result.refRect.y : 0;
-    calibrationTool.enterPreview(anchorX, anchorY, result.metresPerPixel);
+    calibrationTool.enterPreview(anchor.x, anchor.y, newMpp);
   } else {
     _preCalibrationState = null;
     toolManager.activate('select');
@@ -311,6 +300,7 @@ bus.on('calibration:previewConfirm', () => {
   }
 
   calibrationTool.exitPreview();
+  calibrationTool.resetPairs();
   _preCalibrationState = null;
   toolManager.activate('select');
   bus.emit('render:request');

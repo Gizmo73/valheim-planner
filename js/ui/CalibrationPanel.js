@@ -1,4 +1,8 @@
 import { refreshIcons } from './icons.js';
+import { MapScale, TILE_METRES } from '../core/MapScale.js';
+
+const ROLE_LETTER = { across: 'A', down: 'B', check: 'C' };
+const ROLE_LABEL = { across: 'Across', down: 'Down', check: 'Check angle' };
 
 export class CalibrationPanel {
   constructor(mapScale, calibrationTool, bus) {
@@ -6,12 +10,12 @@ export class CalibrationPanel {
     this.calibrationTool = calibrationTool;
     this.bus = bus;
     this._modal = document.getElementById('scale-modal');
-    this._backdrop = document.getElementById('scale-backdrop');
     this._hint = document.getElementById('scale-hint');
     this._hintText = document.getElementById('scale-hint-text');
     this._previewBar = document.getElementById('scale-preview-bar');
     this._open = false;
     this._previewing = false;
+    this._focusRole = null;
 
     this._renderModal();
 
@@ -19,8 +23,12 @@ export class CalibrationPanel {
     bus.on('scale:changed', () => this._renderModal());
     bus.on('scale:lockChanged', () => this._renderModal());
     bus.on('calibration:modeChanged', () => this._renderModal());
-    bus.on('calibration:gridChanged', () => this._renderModal());
-    bus.on('calibration:snapResult', () => this._renderModal());
+    bus.on('calibration:unitChanged', () => this._renderModal());
+    bus.on('calibration:pairsChanged', () => this._renderModal());
+    bus.on('calibration:pairCompleted', (role) => {
+      this._focusRole = role;
+      this._renderModal();
+    });
     bus.on('tool:changed', (name) => {
       if (name !== 'calibrate' && this._open && !this._previewing) this._closeModal();
     });
@@ -29,25 +37,18 @@ export class CalibrationPanel {
       if (active) this._closeModal(true);
       this._renderPreviewBar();
     });
-
-    // Refresh the hint/pin counter while dragging pins.
-    bus.on('render:request', () => {
-      if (this._open && this.mapScale.mapMode === 'local') this._renderHint();
-    });
   }
 
   _openModal() {
     this._open = true;
     this.bus.emit('tool:activate', 'calibrate');
     this._modal.classList.remove('hidden');
-    this._backdrop.classList.remove('hidden');
     this._renderModal();
   }
 
   _closeModal(skipToolChange) {
     this._open = false;
     this._modal.classList.add('hidden');
-    this._backdrop.classList.add('hidden');
     this._hint.classList.add('hidden');
     if (!skipToolChange) this.bus.emit('tool:activate', 'select');
   }
@@ -55,30 +56,10 @@ export class CalibrationPanel {
   _renderModal() {
     if (!this._open) return;
     const isLocal = this.mapScale.mapMode === 'local';
-
     this._modal.innerHTML = '';
 
-    const heading = document.createElement('div');
-    heading.style.display = 'flex';
-    heading.style.flexDirection = 'column';
-    heading.style.gap = '6px';
-    const h2 = document.createElement('div');
-    h2.className = 'scale-modal-title';
-    h2.textContent = 'Set map scale';
-    const desc = document.createElement('div');
-    desc.className = 'scale-modal-desc';
-    desc.textContent = isLocal
-      ? 'Drop a pin on each corner of a shape you know the size of. The planner works out metres per pixel and straightens the photo.'
-      : 'Drag the reference circle to match a known distance on the world map.';
-    heading.appendChild(h2);
-    heading.appendChild(desc);
-    this._modal.appendChild(heading);
-
-    // Map type
+    // Map type (kept minimal — the redesign only covers local calibration)
     const typeField = document.createElement('div');
-    const typeLabel = document.createElement('span');
-    typeLabel.className = 'scale-field-label';
-    typeLabel.textContent = 'Map type';
     const seg = document.createElement('div');
     seg.className = 'seg';
     seg.style.width = '100%';
@@ -94,71 +75,252 @@ export class CalibrationPanel {
     worldBtn.addEventListener('click', () => { this.mapScale.mapMode = 'world'; });
     seg.appendChild(localBtn);
     seg.appendChild(worldBtn);
-    typeField.appendChild(typeLabel);
     typeField.appendChild(seg);
     this._modal.appendChild(typeField);
 
     if (isLocal) {
-      const gridField = document.createElement('div');
-      const gridLabel = document.createElement('span');
-      gridLabel.className = 'scale-field-label';
-      gridLabel.textContent = 'Reference grid';
-      gridField.appendChild(gridLabel);
-
-      const row1 = document.createElement('div');
-      row1.className = 'scale-input-row';
-      const colsInput = document.createElement('input');
-      colsInput.type = 'number';
-      colsInput.className = 'scale-input';
-      colsInput.style.width = '54px';
-      colsInput.min = '2';
-      colsInput.max = '10';
-      colsInput.value = this.mapScale.cbCols;
-      colsInput.addEventListener('change', () => { this.mapScale.cbCols = parseInt(colsInput.value, 10); });
-      colsInput.addEventListener('keydown', (e) => e.stopPropagation());
-      const acrossLabel = document.createElement('span');
-      acrossLabel.className = 'scale-input-label';
-      acrossLabel.textContent = 'pins across';
-      const rowsInput = document.createElement('input');
-      rowsInput.type = 'number';
-      rowsInput.className = 'scale-input';
-      rowsInput.style.width = '54px';
-      rowsInput.min = '2';
-      rowsInput.max = '10';
-      rowsInput.value = this.mapScale.cbRows;
-      rowsInput.addEventListener('change', () => { this.mapScale.cbRows = parseInt(rowsInput.value, 10); });
-      rowsInput.addEventListener('keydown', (e) => e.stopPropagation());
-      const downLabel = document.createElement('span');
-      downLabel.className = 'scale-input-label';
-      downLabel.textContent = 'down';
-      row1.appendChild(colsInput);
-      row1.appendChild(acrossLabel);
-      row1.appendChild(rowsInput);
-      row1.appendChild(downLabel);
-      gridField.appendChild(row1);
-
-      const row2 = document.createElement('div');
-      row2.className = 'scale-input-row';
-      row2.style.marginTop = '7px';
-      const spacingInput = document.createElement('input');
-      spacingInput.type = 'number';
-      spacingInput.className = 'scale-input';
-      spacingInput.style.width = '54px';
-      spacingInput.min = '2';
-      spacingInput.value = this.mapScale.cbSpacing;
-      spacingInput.addEventListener('change', () => { this.mapScale.cbSpacing = parseFloat(spacingInput.value); });
-      spacingInput.addEventListener('keydown', (e) => e.stopPropagation());
-      const spacingLabel = document.createElement('span');
-      spacingLabel.className = 'scale-input-label';
-      spacingLabel.textContent = 'metres between pins';
-      row2.appendChild(spacingInput);
-      row2.appendChild(spacingLabel);
-      gridField.appendChild(row2);
-
-      this._modal.appendChild(gridField);
+      this._renderLocalModal();
+    } else {
+      this._renderWorldModal();
     }
 
-    // Scale
+    refreshIcons();
+    this._renderHint();
+  }
+
+  _renderLocalModal() {
+    const tool = this.calibrationTool;
+    const pairs = tool.pairs;
+    const unit = this.mapScale.calibrationUnit;
+
+    const heading = document.createElement('div');
+    heading.style.display = 'flex';
+    heading.style.flexDirection = 'column';
+    heading.style.gap = '6px';
+    const h2 = document.createElement('div');
+    h2.className = 'scale-modal-title';
+    h2.textContent = 'Measure in tiles';
+    const desc = document.createElement('div');
+    desc.className = 'scale-modal-desc';
+    desc.textContent = 'Drop a pin at each end of something you can count, then say how many tiles long it is. Across and Down are enough; the optional Check edge validates rotation against a known cardinal build angle.';
+    heading.appendChild(h2);
+    heading.appendChild(desc);
+    this._modal.appendChild(heading);
+
+    // Unit toggle
+    const unitField = document.createElement('div');
+    const unitLabel = document.createElement('span');
+    unitLabel.className = 'scale-field-label';
+    unitLabel.textContent = 'Unit';
+    const unitSeg = document.createElement('div');
+    unitSeg.className = 'seg';
+    unitSeg.style.width = '100%';
+    const tilesBtn = document.createElement('button');
+    tilesBtn.className = 'seg-btn' + (unit === 'tiles' ? ' active' : '');
+    tilesBtn.style.flex = '1';
+    tilesBtn.textContent = `Tiles (${TILE_METRES} m)`;
+    tilesBtn.addEventListener('click', () => { this.mapScale.calibrationUnit = 'tiles'; });
+    const metresBtn = document.createElement('button');
+    metresBtn.className = 'seg-btn' + (unit === 'metres' ? ' active' : '');
+    metresBtn.style.flex = '1';
+    metresBtn.textContent = 'Metres';
+    metresBtn.addEventListener('click', () => { this.mapScale.calibrationUnit = 'metres'; });
+    unitSeg.appendChild(tilesBtn);
+    unitSeg.appendChild(metresBtn);
+    unitField.appendChild(unitLabel);
+    unitField.appendChild(unitSeg);
+    this._modal.appendChild(unitField);
+
+    // Pair rows
+    const pairsField = document.createElement('div');
+    pairsField.style.display = 'flex';
+    pairsField.style.flexDirection = 'column';
+    pairsField.style.gap = '8px';
+    const pairsLabel = document.createElement('span');
+    pairsLabel.className = 'scale-field-label';
+    pairsLabel.textContent = 'Measurement pairs';
+    pairsField.appendChild(pairsLabel);
+
+    for (const role of ['across', 'down', 'check']) {
+      pairsField.appendChild(this._pairCard(role, pairs[role], unit));
+    }
+    this._modal.appendChild(pairsField);
+
+    this._modal.appendChild(Object.assign(document.createElement('div'), { className: 'scale-hr' }));
+
+    // Solved fit
+    const solve = MapScale.solveCalibration(pairs);
+    const fitField = document.createElement('div');
+    fitField.style.display = 'flex';
+    fitField.style.flexDirection = 'column';
+    fitField.style.gap = '6px';
+    const fitLabel = document.createElement('span');
+    fitLabel.className = 'scale-field-label';
+    fitLabel.textContent = 'Solved fit';
+    fitField.appendChild(fitLabel);
+
+    const fmtPx = (v) => (v == null ? '—' : `${v.toFixed(1)} px`);
+    fitField.appendChild(this._fitRow('Tile across', fmtPx(solve.pxPerTileX)));
+    fitField.appendChild(this._fitRow('Tile down', fmtPx(solve.pxPerTileY)));
+    fitField.appendChild(this._fitRow('Shear', solve.mode === 'affine' ? `${solve.shearDeg.toFixed(1)}°` : '—'));
+    fitField.appendChild(this._fitRow('Residual', solve.residualPx == null ? '—' : `${solve.residualPx.toFixed(1)} px`,
+      solve.residualPx != null && solve.residualPx < 1 ? '#9ee6a8' : null));
+
+    if (solve.angleCheck) {
+      fitField.appendChild(this._fitRow(
+        'Angle check',
+        `${solve.angleCheck.deviationDeg >= 0 ? '+' : ''}${solve.angleCheck.deviationDeg.toFixed(1)}° from ${solve.angleCheck.nearestMultipleDeg.toFixed(1)}°`,
+        solve.angleCheck.flagged ? '#f5d547' : '#9ee6a8'
+      ));
+    }
+    this._modal.appendChild(fitField);
+
+    const info = document.createElement('div');
+    info.className = 'scale-info-note';
+    info.innerHTML = '<span class="icon"><i data-lucide="info"></i></span><span>Across and Down solve scale, rotation and shear. The Check edge is optional — it nudges rotation/shear toward the nearest 22.5° build angle.</span>';
+    this._modal.appendChild(info);
+
+    // Actions
+    const actions = document.createElement('div');
+    actions.className = 'scale-actions';
+    const row = document.createElement('div');
+    row.className = 'row';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => this._closeModal());
+    row.appendChild(cancelBtn);
+
+    const applyBtn = document.createElement('button');
+    applyBtn.className = 'primary';
+    applyBtn.textContent = 'Straighten map';
+    applyBtn.disabled = solve.mode !== 'affine' && solve.mode !== 'iso';
+    applyBtn.addEventListener('click', () => this.bus.emit('calibration:apply'));
+    row.appendChild(applyBtn);
+    actions.appendChild(row);
+    this._modal.appendChild(actions);
+  }
+
+  _pairCard(role, pair, unit) {
+    const tool = this.calibrationTool;
+    const selected = tool.selectedRole === role;
+    const card = document.createElement('div');
+    card.className = 'scale-pair-card' + (selected ? ' selected' : '');
+    card.addEventListener('click', () => { tool.selectedRole = role; });
+
+    const header = document.createElement('div');
+    header.className = 'scale-pair-header';
+    const badge = document.createElement('span');
+    badge.className = 'scale-pair-badge';
+    badge.textContent = ROLE_LETTER[role];
+    const label = document.createElement('span');
+    label.className = 'scale-pair-label';
+    label.textContent = ROLE_LABEL[role] + (role === 'check' ? ' (optional)' : '');
+    header.appendChild(badge);
+    header.appendChild(label);
+
+    if (pair.a || pair.b) {
+      const clearBtn = document.createElement('button');
+      clearBtn.className = 'scale-pair-clear';
+      clearBtn.innerHTML = '<i data-lucide="trash-2"></i>';
+      clearBtn.title = 'Clear this pair';
+      clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        tool.clearPair(role);
+      });
+      header.appendChild(clearBtn);
+    }
+    card.appendChild(header);
+
+    const value = document.createElement('div');
+    value.className = 'scale-pair-value';
+
+    if (!pair.a) {
+      value.textContent = 'Click the map to drop the first pin';
+      value.classList.add('scale-pair-hint');
+    } else if (!pair.b) {
+      value.textContent = 'Click the map to drop the second pin';
+      value.classList.add('scale-pair-hint');
+    } else if (role === 'check') {
+      const dx = pair.b.x - pair.a.x, dy = pair.b.y - pair.a.y;
+      const lenPx = Math.hypot(dx, dy);
+      value.textContent = `${lenPx.toFixed(0)} px edge · feeds rotation/shear`;
+      value.classList.add('scale-pair-hint');
+    } else {
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.step = unit === 'tiles' ? '0.5' : (TILE_METRES / 2).toString();
+      input.min = '0';
+      input.className = 'scale-pair-input';
+      const displayVal = pair.tiles != null
+        ? (unit === 'tiles' ? pair.tiles : pair.tiles * TILE_METRES)
+        : '';
+      input.value = displayVal;
+      input.placeholder = unit === 'tiles' ? 'tiles' : 'm';
+      input.addEventListener('keydown', (e) => e.stopPropagation());
+      input.addEventListener('change', () => {
+        const v = parseFloat(input.value);
+        if (!(v > 0)) { tool.setPairTiles(role, null); return; }
+        tool.setPairTiles(role, unit === 'tiles' ? v : v / TILE_METRES);
+      });
+      const unitLabel = document.createElement('span');
+      unitLabel.className = 'scale-pair-unit';
+      unitLabel.textContent = unit === 'tiles' ? 'tiles' : 'm';
+
+      const readout = document.createElement('span');
+      readout.className = 'scale-pair-readout';
+      const dx = pair.b.x - pair.a.x, dy = pair.b.y - pair.a.y;
+      const lenPx = Math.hypot(dx, dy);
+      if (pair.tiles > 0) {
+        const metres = pair.tiles * TILE_METRES;
+        const pxPerTile = lenPx / pair.tiles;
+        readout.textContent = unit === 'tiles'
+          ? `${metres.toFixed(1)} m · ${pxPerTile.toFixed(1)} px/tile`
+          : `${pair.tiles.toFixed(2)} tiles · ${pxPerTile.toFixed(1)} px/tile`;
+      } else {
+        readout.textContent = `${lenPx.toFixed(0)} px`;
+      }
+
+      value.appendChild(input);
+      value.appendChild(unitLabel);
+      value.appendChild(readout);
+
+      if (this._focusRole === role) {
+        this._focusRole = null;
+        requestAnimationFrame(() => input.focus());
+      }
+    }
+    card.appendChild(value);
+    return card;
+  }
+
+  _fitRow(label, value, color) {
+    const row = document.createElement('div');
+    row.className = 'scale-fit-row';
+    const l = document.createElement('span');
+    l.textContent = label;
+    const v = document.createElement('span');
+    v.textContent = value;
+    if (color) v.style.color = color;
+    row.appendChild(l);
+    row.appendChild(v);
+    return row;
+  }
+
+  _renderWorldModal() {
+    const heading = document.createElement('div');
+    heading.style.display = 'flex';
+    heading.style.flexDirection = 'column';
+    heading.style.gap = '6px';
+    const h2 = document.createElement('div');
+    h2.className = 'scale-modal-title';
+    h2.textContent = 'Set map scale';
+    const desc = document.createElement('div');
+    desc.className = 'scale-modal-desc';
+    desc.textContent = 'Drag the reference circle to match a known distance on the world map.';
+    heading.appendChild(h2);
+    heading.appendChild(desc);
+    this._modal.appendChild(heading);
+
     const scaleField = document.createElement('div');
     const scaleLabel = document.createElement('span');
     scaleLabel.className = 'scale-field-label';
@@ -196,46 +358,21 @@ export class CalibrationPanel {
     scaleField.appendChild(scaleRow);
     this._modal.appendChild(scaleField);
 
-    // Actions
     const actions = document.createElement('div');
     actions.className = 'scale-actions';
-
-    if (isLocal) {
-      const snapBtn = document.createElement('button');
-      snapBtn.innerHTML = '<span><i data-lucide="crosshair"></i></span>Snap pins to nearest corner';
-      snapBtn.style.display = 'flex';
-      snapBtn.style.alignItems = 'center';
-      snapBtn.style.justifyContent = 'center';
-      snapBtn.style.gap = '7px';
-      snapBtn.addEventListener('click', () => this.bus.emit('calibration:snapAll'));
-      actions.appendChild(snapBtn);
-    }
-
     const row = document.createElement('div');
     row.className = 'row';
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
     cancelBtn.addEventListener('click', () => this._closeModal());
     row.appendChild(cancelBtn);
-
-    if (isLocal) {
-      const applyBtn = document.createElement('button');
-      applyBtn.className = 'primary';
-      applyBtn.textContent = 'Straighten map';
-      applyBtn.addEventListener('click', () => this.bus.emit('calibration:apply'));
-      row.appendChild(applyBtn);
-    } else {
-      const doneBtn = document.createElement('button');
-      doneBtn.className = 'primary';
-      doneBtn.textContent = 'Done';
-      doneBtn.addEventListener('click', () => this._closeModal());
-      row.appendChild(doneBtn);
-    }
+    const doneBtn = document.createElement('button');
+    doneBtn.className = 'primary';
+    doneBtn.textContent = 'Done';
+    doneBtn.addEventListener('click', () => this._closeModal());
+    row.appendChild(doneBtn);
     actions.appendChild(row);
     this._modal.appendChild(actions);
-
-    refreshIcons();
-    this._renderHint();
   }
 
   _renderHint() {
@@ -243,12 +380,7 @@ export class CalibrationPanel {
       this._hint.classList.add('hidden');
       return;
     }
-    const enabled = this.calibrationTool.enabled;
-    const total = enabled.length;
-    const placed = total; // pins always exist once the checkerboard is generated
-    this._hintText.textContent = total > 0
-      ? `Drag each pin onto a grid corner · ${placed} of ${total} placed`
-      : 'Drag each pin onto a grid corner';
+    this._hintText.textContent = 'Drag a pin to move it · pins stay exactly where you put them';
     this._hint.classList.remove('hidden');
   }
 
@@ -267,7 +399,7 @@ export class CalibrationPanel {
     title.textContent = 'Does the grid line up with the ground?';
     const sub = document.createElement('div');
     sub.className = 'sub';
-    sub.textContent = `Scale set to ${this.mapScale.metresPerPixel.toFixed(2)} m/px · grid anchored to the top-left pin`;
+    sub.textContent = `Scale set to ${this.mapScale.metresPerPixel.toFixed(2)} m/px · grid anchored to the across pin`;
     info.appendChild(title);
     info.appendChild(sub);
     this._previewBar.appendChild(info);
