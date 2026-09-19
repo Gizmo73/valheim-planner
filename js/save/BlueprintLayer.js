@@ -32,6 +32,7 @@ export class BlueprintLayer {
     this.heightLevels = [];
     this.terrainCompilers = [];
     this.showTerrain = false;
+    this.layerRotationDeg = 0;
   }
 
   setPieces(pieces, sign) {
@@ -96,10 +97,19 @@ export class BlueprintLayer {
     this.terrainCompilers = tcs;
   }
 
+  rotateLayer(deltaDeg) {
+    this.layerRotationDeg = (this.layerRotationDeg + deltaDeg) % 360;
+    if (this.layerRotationDeg < 0) this.layerRotationDeg += 360;
+    this.bus.emit('render:request');
+  }
+
   render(ctx, viewport, canvasW, canvasH) {
     if (!this.pieces.length || !this.signPos) return;
 
     ctx.save();
+
+    const layerRad = this.layerRotationDeg * Math.PI / 180;
+    if (layerRad !== 0) ctx.rotate(layerRad);
 
     this._renderGrid(ctx, viewport, canvasW, canvasH);
 
@@ -223,7 +233,7 @@ export class BlueprintLayer {
 
     if (zoom > 0.3) {
       ctx.save();
-      ctx.rotate(-(piece.yawDeg * Math.PI / 180));
+      ctx.rotate(-(piece.yawDeg + this.layerRotationDeg) * Math.PI / 180);
       const fontSize = Math.max(8 / zoom, 0.25);
       ctx.font = `${fontSize}px sans-serif`;
       ctx.fillStyle = '#fff';
@@ -280,12 +290,16 @@ export class BlueprintLayer {
     ctx.stroke();
 
     if (zoom > 0.15) {
+      ctx.save();
+      const layerRad = this.layerRotationDeg * Math.PI / 180;
+      if (layerRad !== 0) ctx.rotate(-layerRad);
       const fontSize = Math.max(10 / zoom, 0.4);
       ctx.font = `bold ${fontSize}px sans-serif`;
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
       ctx.fillText('BLUEPRINT', 0, -r - 3 / zoom);
+      ctx.restore();
     }
   }
 
@@ -337,14 +351,17 @@ export class BlueprintLayer {
 
   getBounds() {
     if (!this.pieces.length) return null;
+    const rad = this.layerRotationDeg * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const p of this.pieces) {
-      const cx = p.localX;
-      const cy = -p.localZ;
-      minX = Math.min(minX, cx - 2);
-      maxX = Math.max(maxX, cx + 2);
-      minY = Math.min(minY, cy - 2);
-      maxY = Math.max(maxY, cy + 2);
+      const lx = p.localX, ly = -p.localZ;
+      const rx = lx * cos - ly * sin;
+      const ry = lx * sin + ly * cos;
+      minX = Math.min(minX, rx - 2);
+      maxX = Math.max(maxX, rx + 2);
+      minY = Math.min(minY, ry - 2);
+      maxY = Math.max(maxY, ry + 2);
     }
     return { minX, maxX, minY, maxY };
   }

@@ -85,6 +85,13 @@ export class ImportUI {
         <button class="height-slider-close" title="Hide"><i data-lucide="x"></i></button>
       </div>
       <input type="range" class="height-slider" min="-10" max="20" step="0.5" value="20">
+      <div class="blueprint-rotate-row">
+        <span class="blueprint-rotate-label"><i data-lucide="rotate-ccw"></i> Rotate</span>
+        <button class="blueprint-rotate-btn" data-dir="-1" title="Rotate 22.5° counter-clockwise"><i data-lucide="chevron-left"></i></button>
+        <span class="blueprint-rotate-value">0°</span>
+        <button class="blueprint-rotate-btn" data-dir="1" title="Rotate 22.5° clockwise"><i data-lucide="chevron-right"></i></button>
+        <button class="blueprint-rotate-reset" title="Reset rotation">Reset</button>
+      </div>
     `;
     document.getElementById('canvas-container').appendChild(this._sliderContainer);
 
@@ -100,6 +107,36 @@ export class ImportUI {
       this._sliderContainer.querySelector('.height-slider-toggle').classList.toggle('active', this.blueprintLayer.showTerrain);
       this.bus.emit('render:request');
     });
+
+    for (const btn of this._sliderContainer.querySelectorAll('.blueprint-rotate-btn')) {
+      btn.addEventListener('click', () => {
+        const dir = parseInt(btn.dataset.dir, 10);
+        this.blueprintLayer.rotateLayer(dir * 22.5);
+        this._updateRotateDisplay();
+        this._refitViewport();
+      });
+    }
+
+    this._sliderContainer.querySelector('.blueprint-rotate-reset').addEventListener('click', () => {
+      this.blueprintLayer.layerRotationDeg = 0;
+      this.bus.emit('render:request');
+      this._updateRotateDisplay();
+      this._refitViewport();
+    });
+  }
+
+  _updateRotateDisplay() {
+    const val = this.blueprintLayer.layerRotationDeg;
+    this._sliderContainer.querySelector('.blueprint-rotate-value').textContent = `${val}°`;
+  }
+
+  _refitViewport() {
+    const bounds = this.blueprintLayer.getBounds();
+    if (bounds) {
+      const w = bounds.maxX - bounds.minX;
+      const h = bounds.maxY - bounds.minY;
+      this.viewport.fitRect(bounds.minX, bounds.minY, w, h, this.renderer.width, this.renderer.height);
+    }
   }
 
   _onSliderChange() {

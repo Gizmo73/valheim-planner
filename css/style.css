@@ -2489,3 +2489,58 @@ kbd {
   border: 2px solid var(--color-surface);
   box-shadow: 0 1px 4px rgba(0,0,0,0.4);
 }
+
+.blueprint-rotate-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-neutral-700);
+}
+
+.blueprint-rotate-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.blueprint-rotate-label svg { width: 14px; height: 14px; }
+
+.blueprint-rotate-btn {
+  background: none;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-neutral-400);
+  cursor: pointer;
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+}
+
+.blueprint-rotate-btn:hover { color: var(--color-text); border-color: var(--color-accent); }
+.blueprint-rotate-btn svg { width: 14px; height: 14px; }
+
+.blueprint-rotate-value {
+  font-size: 12px;
+  color: var(--color-accent-300);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: center;
+}
+
+.blueprint-rotate-reset {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-neutral-500);
+  cursor: pointer;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.blueprint-rotate-reset:hover { color: var(--color-text); border-color: var(--color-accent); }
