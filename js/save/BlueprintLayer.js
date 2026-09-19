@@ -108,10 +108,10 @@ export class BlueprintLayer {
 
     ctx.save();
 
+    this._renderGrid(ctx, viewport, canvasW, canvasH);
+
     const layerRad = this.layerRotationDeg * Math.PI / 180;
     if (layerRad !== 0) ctx.rotate(layerRad);
-
-    this._renderGrid(ctx, viewport, canvasW, canvasH);
 
     if (this.showTerrain) {
       this._renderTerrainEdits(ctx, viewport);

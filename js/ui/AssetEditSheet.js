@@ -3,6 +3,7 @@ import { renderVariantTexture, renderThumbnail } from '../assets/textureCache.js
 import { fetchCategorySource, replaceMetaBlock, downloadText, evalCategoryModule } from '../assets/categorySource.js';
 import { snapCandidates, isCircle, boundsOf } from '../assets/shapes.js';
 import { refreshIcons } from './icons.js';
+import { getAllPieces, loadPieceLookup } from '../save/pieceLookup.js';
 
 const SHAPE_OPTIONS = [
   { kind: 'rect', label: 'Rectangular', icon: 'square' },
@@ -258,7 +259,72 @@ export class AssetEditSheet {
       shapeField.appendChild(shapeNote);
     }
 
+    const idField = document.createElement('div');
+    idField.className = 'edit-internal-id-field';
+    const idLabel = document.createElement('label');
+    idLabel.className = 'edit-field-label';
+    idLabel.textContent = 'Internal ID';
+    idField.appendChild(idLabel);
+
+    const idWrap = document.createElement('div');
+    idWrap.className = 'edit-internal-id-wrap';
+    const idInput = document.createElement('input');
+    idInput.className = 'edit-input';
+    idInput.type = 'text';
+    idInput.placeholder = 'Search Valheim pieces...';
+    idInput.value = v.internalId || '';
+    const idDropdown = document.createElement('div');
+    idDropdown.className = 'edit-id-dropdown hidden';
+    idWrap.appendChild(idInput);
+    idWrap.appendChild(idDropdown);
+    idField.appendChild(idWrap);
+
+    if (v.internalId) {
+      const idNote = document.createElement('div');
+      idNote.className = 'edit-input-note';
+      const allPieces = getAllPieces();
+      const match = allPieces.find(p => p.name === v.internalId);
+      idNote.textContent = match ? `${match.en} · ${match.material || 'no material'} · ${match.category || 'uncategorized'}` : 'No match in piece table';
+      const clearBtn = document.createElement('button');
+      clearBtn.className = 'edit-id-clear';
+      clearBtn.textContent = 'Clear';
+      clearBtn.addEventListener('click', () => {
+        this._touch({ internalId: null });
+      });
+      idNote.appendChild(clearBtn);
+      idField.appendChild(idNote);
+    }
+
+    const showResults = (query) => {
+      const allPieces = getAllPieces();
+      if (!allPieces.length || !query) { idDropdown.classList.add('hidden'); return; }
+      const q = query.toLowerCase();
+      const matches = allPieces
+        .filter(p => p.name.toLowerCase().includes(q) || (p.en && p.en.toLowerCase().includes(q)))
+        .slice(0, 12);
+      if (!matches.length) { idDropdown.classList.add('hidden'); return; }
+      idDropdown.innerHTML = '';
+      for (const p of matches) {
+        const opt = document.createElement('div');
+        opt.className = 'edit-id-option';
+        opt.innerHTML = `<span class="edit-id-name">${p.name}</span><span class="edit-id-en">${p.en || ''}</span>`;
+        opt.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          this._touch({ internalId: p.name });
+        });
+        idDropdown.appendChild(opt);
+      }
+      idDropdown.classList.remove('hidden');
+    };
+
+    idInput.addEventListener('input', () => showResults(idInput.value));
+    idInput.addEventListener('focus', () => { if (idInput.value) showResults(idInput.value); });
+    idInput.addEventListener('blur', () => { setTimeout(() => idDropdown.classList.add('hidden'), 150); });
+
+    loadPieceLookup().catch(() => {});
+
     body.appendChild(nameField);
+    body.appendChild(idField);
     body.appendChild(dimsField);
     body.appendChild(shapeField);
   }

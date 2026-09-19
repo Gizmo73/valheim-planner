@@ -1802,6 +1802,61 @@ kbd {
   margin-top: 6px;
 }
 
+.edit-internal-id-wrap {
+  position: relative;
+}
+
+.edit-id-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-neutral-700);
+  border-radius: 0 0 7px 7px;
+  box-shadow: var(--shadow-md);
+  z-index: 50;
+}
+
+.edit-id-dropdown.hidden { display: none; }
+
+.edit-id-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.edit-id-option:hover { background: var(--color-accent-tint); }
+
+.edit-id-name {
+  color: var(--color-text);
+  font-weight: 500;
+  font-family: monospace;
+}
+
+.edit-id-en {
+  color: var(--color-label);
+  font-size: 11px;
+}
+
+.edit-id-clear {
+  background: none;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-neutral-500);
+  cursor: pointer;
+  padding: 1px 6px;
+  font-size: 10px;
+  margin-left: 8px;
+}
+
+.edit-id-clear:hover { color: var(--color-text); border-color: var(--color-accent); }
+
 .edit-dims-row {
   display: flex;
   align-items: center;
