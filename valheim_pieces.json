@@ -1,0 +1,5541 @@
+{
+ "_about": {
+  "generated_from": "Jotunn piece-list.md (Valheim 1.0.12, _HammerPieceTable)",
+  "coords": "Local metres. x = right, y = up, z = forward. Pivot at piece centre. World yaw from save: local x -> (cos t, -sin t), local z -> (sin t, cos t) in world (x, z).",
+  "source": {
+   "save": "measured from snapped spacing in a real save",
+   "name": "size taken from the piece name, pivot assumed centre",
+   "user": "stated by Lee (all sloped pieces 2x2 plan; rise 26=1 m, 45=2 m, 67=4 m)",
+   "assumed": "best estimate, verify with a test save",
+   "null": "no footprint yet, draw as a marker"
+  },
+  "hash": "Valheim stable string hash of name; matches the prefab int in .chunk ZDOs"
+ },
+ "pieces": [
+  {
+   "name": "piece_repair",
+   "hash": 1677287196,
+   "en": "Repair",
+   "material": "",
+   "category": "Misc.",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_wall_quarter",
+   "hash": 622849921,
+   "en": "Wood Wall 1x1",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 1,
+    "h": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      0
+     ],
+     [
+      0.5,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "wood_wall_half",
+   "hash": -1000346356,
+   "en": "Wood Wall Half",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "woodwall",
+   "hash": -523056075,
+   "en": "Wood Wall",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "wood_wall_roof_a",
+   "hash": 423064375,
+   "en": "Wood Wall 26",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_wall_roof_45",
+   "hash": -1218250357,
+   "en": "Wood Wall 45",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_wall_roof_67_a",
+   "hash": 972907565,
+   "en": "Wood Wall 67",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 4,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_wall_roof_upsidedown",
+   "hash": 1974160938,
+   "en": "Wood Wall 26 (Inverted)",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_wall_roof_45_upsidedown",
+   "hash": 618430194,
+   "en": "Wood Wall 45 (Inverted)",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_wall_roof_67_upsidedown",
+   "hash": -1093325314,
+   "en": "Wood Wall 67 (Inverted)",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 4,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_floor_1x1",
+   "hash": -745132593,
+   "en": "Wood Floor 1x1",
+   "material": "Wood",
+   "category": "Building, Flooring",
+   "snap": {
+    "type": "rect",
+    "w": 1,
+    "d": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      -0.5
+     ],
+     [
+      0.5,
+      0,
+      -0.5
+     ],
+     [
+      0.5,
+      0,
+      0.5
+     ],
+     [
+      -0.5,
+      0,
+      0.5
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "wood_floor",
+   "hash": -1045925142,
+   "en": "Wood Floor 2x2",
+   "material": "Wood",
+   "category": "Building, Flooring",
+   "snap": {
+    "type": "rect",
+    "w": 2,
+    "d": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      1.0
+     ],
+     [
+      -1.0,
+      0,
+      1.0
+     ]
+    ]
+   },
+   "source": "save"
+  },
+  {
+   "name": "wood_pole",
+   "hash": 1142703842,
+   "en": "Wood Pole 1 m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "pole",
+    "h": 1,
+    "points": [
+     [
+      0,
+      -0.5,
+      0
+     ],
+     [
+      0,
+      0.5,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "wood_pole2",
+   "hash": 524618856,
+   "en": "Wood Pole 2 m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "pole",
+    "h": 2,
+    "points": [
+     [
+      0,
+      -1.0,
+      0
+     ],
+     [
+      0,
+      1.0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "wood_beam_1",
+   "hash": -155126795,
+   "en": "Wood Beam 1 m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "line",
+    "len": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      0
+     ],
+     [
+      0.5,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "wood_beam",
+   "hash": -1109248277,
+   "en": "Wood Beam 2 m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "line",
+    "len": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "wood_beam_26",
+   "hash": 1332601932,
+   "en": "Wood Beam 26",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      0,
+      -0.5,
+      -1.0
+     ],
+     [
+      0,
+      0.5,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_beam_45",
+   "hash": 1735886465,
+   "en": "Wood Beam 45",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      0,
+      -1.0,
+      -1.0
+     ],
+     [
+      0,
+      1.0,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_beam_67",
+   "hash": -1396281419,
+   "en": "Wood Beam 67",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      0,
+      -2.0,
+      -1.0
+     ],
+     [
+      0,
+      2.0,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_wall_roof_top",
+   "hash": 437925541,
+   "en": "Wood Roof Cross 26",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_wall_roof_top_45",
+   "hash": -1199392921,
+   "en": "Wood Roof Cross 45",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_wall_roof_top_67",
+   "hash": -36593505,
+   "en": "Wood Roof Cross 67",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 4,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof",
+   "hash": -1626585462,
+   "en": "Thatch Roof 26",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      -1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      0.5,
+      1.0
+     ],
+     [
+      -1.0,
+      0.5,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof_45",
+   "hash": -877641284,
+   "en": "Thatch Roof 45",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      -1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      1.0,
+      1.0
+     ],
+     [
+      -1.0,
+      1.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof_67",
+   "hash": -2040440700,
+   "en": "Thatch Roof 67",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      -1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      2.0,
+      1.0
+     ],
+     [
+      -1.0,
+      2.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof_icorner",
+   "hash": -1076788695,
+   "en": "Thatch Roof Inner Corner 26",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_inner_corner",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      -1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      0.5,
+      1.0
+     ],
+     [
+      -1.0,
+      0.5,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof_icorner_45",
+   "hash": 1132532351,
+   "en": "Thatch Roof Inner Corner 45",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_inner_corner",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      -1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      1.0,
+      1.0
+     ],
+     [
+      -1.0,
+      1.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof_icorner_67",
+   "hash": -1999635529,
+   "en": "Thatch Roof Inner Corner 67",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_inner_corner",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      -1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      2.0,
+      1.0
+     ],
+     [
+      -1.0,
+      2.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof_ocorner",
+   "hash": -1076581777,
+   "en": "Thatch Roof Outer Corner 26",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_outer_corner",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      -1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      0.5,
+      1.0
+     ],
+     [
+      -1.0,
+      0.5,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof_ocorner_45",
+   "hash": 1139360637,
+   "en": "Thatch Roof Outer Corner 45",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_outer_corner",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      -1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      1.0,
+      1.0
+     ],
+     [
+      -1.0,
+      1.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof_ocorner_67",
+   "hash": -1992807247,
+   "en": "Thatch Roof Outer Corner 67",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_outer_corner",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      -1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      2.0,
+      1.0
+     ],
+     [
+      -1.0,
+      2.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof_top",
+   "hash": 2141320638,
+   "en": "Thatch Roof Ridge 26",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_ridge",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      -1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      0.5,
+      1.0
+     ],
+     [
+      -1.0,
+      0.5,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof_top_45",
+   "hash": -598122136,
+   "en": "Thatch Roof Ridge 45",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_ridge",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      -1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      1.0,
+      1.0
+     ],
+     [
+      -1.0,
+      1.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_roof_top_67",
+   "hash": -1760921552,
+   "en": "Thatch Roof Ridge 67",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_ridge",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      -1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      2.0,
+      1.0
+     ],
+     [
+      -1.0,
+      2.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "wood_door",
+   "hash": 692106840,
+   "en": "Wood Door",
+   "material": "Wood",
+   "category": "Building, Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_gate",
+   "hash": 1007930775,
+   "en": "Wood Gate",
+   "material": "Wood",
+   "category": "Building, Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_window",
+   "hash": -1138351504,
+   "en": "Wood Shutter",
+   "material": "Wood",
+   "category": "Building, Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_dragon1",
+   "hash": 775398114,
+   "en": "Wood Dragon Adornment",
+   "material": "Wood",
+   "category": "Building, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_fence",
+   "hash": -2081117101,
+   "en": "Roundpole Fence",
+   "material": "Wood",
+   "category": "Misc., Walls",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_fence_gate",
+   "hash": -1695673393,
+   "en": "Roundpole Gate",
+   "material": "Wood",
+   "category": "Misc., Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stone_fence",
+   "hash": 1478421295,
+   "en": "Stone Fence",
+   "material": "Stone",
+   "category": "Misc., Walls",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_stair",
+   "hash": 945264965,
+   "en": "Wood Stairs",
+   "material": "Wood",
+   "category": "Building, Stairs",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_stepladder",
+   "hash": -354552934,
+   "en": "Wood Ladder",
+   "material": "Wood",
+   "category": "Building, Stairs",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stake_wall",
+   "hash": 13326225,
+   "en": "Stakewall",
+   "material": "Wood",
+   "category": "Walls, Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_sharpstakes",
+   "hash": 1059480620,
+   "en": "Sharp Stakes",
+   "material": "Wood",
+   "category": "Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_pole_log",
+   "hash": -1424233331,
+   "en": "Log Pole 2 m",
+   "material": "HardWood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_pole_log_4",
+   "hash": 1024658248,
+   "en": "Log Pole 4 m",
+   "material": "HardWood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_wall_log",
+   "hash": -886156835,
+   "en": "Log Beam 2 m",
+   "material": "HardWood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_wall_log_4x0.5",
+   "hash": 214591025,
+   "en": "Log Beam 4 m",
+   "material": "HardWood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_log_26",
+   "hash": 581611607,
+   "en": "Log Beam 26",
+   "material": "HardWood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_log_45",
+   "hash": -224957444,
+   "en": "Log Beam 45",
+   "material": "HardWood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_log_67",
+   "hash": -1387756860,
+   "en": "Log Beam 67",
+   "material": "HardWood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stone_wall_1x1",
+   "hash": -1764426495,
+   "en": "Stone Wall 1x1",
+   "material": "Stone",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall",
+    "w": 1,
+    "h": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      0
+     ],
+     [
+      0.5,
+      0,
+      0
+     ]
+    ],
+    "t": 1
+   },
+   "source": "name"
+  },
+  {
+   "name": "stone_wall_2x1",
+   "hash": -1623263994,
+   "en": "Stone Wall 2x1",
+   "material": "Stone",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ],
+    "t": 1
+   },
+   "source": "name"
+  },
+  {
+   "name": "stone_wall_4x2",
+   "hash": -2066954473,
+   "en": "Stone Wall 4x2",
+   "material": "Stone",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 4,
+    "h": 2,
+    "points": [
+     [
+      -2.0,
+      0,
+      0
+     ],
+     [
+      2.0,
+      0,
+      0
+     ]
+    ],
+    "t": 1
+   },
+   "source": "name"
+  },
+  {
+   "name": "stone_floor_2x2",
+   "hash": 2048610715,
+   "en": "Stone Floor 2x2",
+   "material": "Stone",
+   "category": "Building, Flooring",
+   "snap": {
+    "type": "rect",
+    "w": 2,
+    "d": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      1.0
+     ],
+     [
+      -1.0,
+      0,
+      1.0
+     ]
+    ]
+   },
+   "source": "save"
+  },
+  {
+   "name": "stone_pillar",
+   "hash": -1747173676,
+   "en": "Stone Pillar",
+   "material": "Stone",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "pole",
+    "h": 2,
+    "points": [
+     [
+      0,
+      -1.0,
+      0
+     ],
+     [
+      0,
+      1.0,
+      0
+     ]
+    ]
+   },
+   "source": "assumed"
+  },
+  {
+   "name": "stone_arch",
+   "hash": -542996224,
+   "en": "Stone Arch",
+   "material": "Stone",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stone_stair",
+   "hash": 389771597,
+   "en": "Stone Stair",
+   "material": "Stone",
+   "category": "Building, Stairs",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "woodiron_pole",
+   "hash": -2023619468,
+   "en": "Wood Iron Pole",
+   "material": "Iron",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "pole",
+    "h": 2,
+    "points": [
+     [
+      0,
+      -1.0,
+      0
+     ],
+     [
+      0,
+      1.0,
+      0
+     ]
+    ]
+   },
+   "source": "assumed"
+  },
+  {
+   "name": "woodiron_beam",
+   "hash": -1499117535,
+   "en": "Wood Iron Beam",
+   "material": "Iron",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "line",
+    "len": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "save"
+  },
+  {
+   "name": "woodiron_beam_26",
+   "hash": -1403331882,
+   "en": "Wood Iron Beam 26",
+   "material": "Iron",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      0,
+      -0.5,
+      -1.0
+     ],
+     [
+      0,
+      0.5,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "woodiron_beam_45",
+   "hash": -1000047361,
+   "en": "Wood Iron Beam 45",
+   "material": "Iron",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      0,
+      -1.0,
+      -1.0
+     ],
+     [
+      0,
+      1.0,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "woodiron_beam_67",
+   "hash": 162752055,
+   "en": "Wood Iron Beam 67",
+   "material": "Iron",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      0,
+      -2.0,
+      -1.0
+     ],
+     [
+      0,
+      2.0,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "iron_floor_1x1_v2",
+   "hash": 918289113,
+   "en": "Cage Floor 1x1",
+   "material": "Iron",
+   "category": "Building, Flooring",
+   "snap": {
+    "type": "rect",
+    "w": 1,
+    "d": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      -0.5
+     ],
+     [
+      0.5,
+      0,
+      -0.5
+     ],
+     [
+      0.5,
+      0,
+      0.5
+     ],
+     [
+      -0.5,
+      0,
+      0.5
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "iron_floor_2x2",
+   "hash": -479912446,
+   "en": "Cage Floor 2x2",
+   "material": "Iron",
+   "category": "Building, Flooring",
+   "snap": {
+    "type": "rect",
+    "w": 2,
+    "d": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      1.0
+     ],
+     [
+      -1.0,
+      0,
+      1.0
+     ]
+    ]
+   },
+   "source": "save"
+  },
+  {
+   "name": "iron_wall_1x1",
+   "hash": 424208618,
+   "en": "Cage Wall 1x1",
+   "material": "Iron",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 1,
+    "h": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      0
+     ],
+     [
+      0.5,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "iron_wall_2x2",
+   "hash": 424208778,
+   "en": "Cage Wall 2x2",
+   "material": "Iron",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "iron_grate",
+   "hash": -2019670596,
+   "en": "Iron Gate",
+   "material": "Iron",
+   "category": "Building, Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "darkwood_decowall",
+   "hash": 1429703979,
+   "en": "Carved Darkwood Divider",
+   "material": "Wood",
+   "category": "Building, Walls, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "darkwood_pole",
+   "hash": -1351226314,
+   "en": "Darkwood Pole 2m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "pole",
+    "h": 2,
+    "points": [
+     [
+      0,
+      -1.0,
+      0
+     ],
+     [
+      0,
+      1.0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "darkwood_pole4",
+   "hash": -1211998438,
+   "en": "Darkwood Pole 4m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "pole",
+    "h": 4,
+    "points": [
+     [
+      0,
+      -2.0,
+      0
+     ],
+     [
+      0,
+      2.0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "darkwood_beam",
+   "hash": -840537217,
+   "en": "Darkwood Beam 2 m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "line",
+    "len": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "darkwood_beam4x4",
+   "hash": -791142009,
+   "en": "Darkwood Beam 4 m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "line",
+    "len": 4,
+    "points": [
+     [
+      -2.0,
+      0,
+      0
+     ],
+     [
+      2.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "darkwood_beam_26",
+   "hash": -581430636,
+   "en": "Darkwood Beam 26",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      0,
+      -0.5,
+      -1.0
+     ],
+     [
+      0,
+      0.5,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_beam_45",
+   "hash": 2147452713,
+   "en": "Darkwood Beam 45",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      0,
+      -1.0,
+      -1.0
+     ],
+     [
+      0,
+      1.0,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_beam_67",
+   "hash": 984653301,
+   "en": "[piece_darkwoodbeam67]",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      0,
+      -2.0,
+      -1.0
+     ],
+     [
+      0,
+      2.0,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_arch",
+   "hash": 463424268,
+   "en": "Darkwood Arch",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "darkwood_roof",
+   "hash": 255263578,
+   "en": "Shingle Roof 26",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      -1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      0.5,
+      1.0
+     ],
+     [
+      -1.0,
+      0.5,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_roof_45",
+   "hash": -1271098328,
+   "en": "Shingle Roof 45",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      -1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      1.0,
+      1.0
+     ],
+     [
+      -1.0,
+      1.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_roof_67",
+   "hash": -108298912,
+   "en": "Shingle Roof 67",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      -1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      2.0,
+      1.0
+     ],
+     [
+      -1.0,
+      2.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_roof_icorner",
+   "hash": -1737626015,
+   "en": "Shingle Roof Inner Corner 26",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_inner_corner",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      -1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      0.5,
+      1.0
+     ],
+     [
+      -1.0,
+      0.5,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_roof_icorner_45",
+   "hash": 740898699,
+   "en": "Shingle Roof Inner Corner 45",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_inner_corner",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      -1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      1.0,
+      1.0
+     ],
+     [
+      -1.0,
+      1.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_roof_icorner_67",
+   "hash": -421900717,
+   "en": "Shingle Roof Inner Corner 67",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_inner_corner",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      -1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      2.0,
+      1.0
+     ],
+     [
+      -1.0,
+      2.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_roof_ocorner",
+   "hash": -1737832933,
+   "en": "Shingle Roof Outer Corner 26",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_outer_corner",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      -1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      0.5,
+      1.0
+     ],
+     [
+      -1.0,
+      0.5,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_roof_ocorner_45",
+   "hash": 734070413,
+   "en": "Shingle Roof Outer Corner 45",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_outer_corner",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      -1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      1.0,
+      1.0
+     ],
+     [
+      -1.0,
+      1.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_roof_ocorner_67",
+   "hash": -428728999,
+   "en": "Shingle Roof Outer Corner 67",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_outer_corner",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      -1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      2.0,
+      1.0
+     ],
+     [
+      -1.0,
+      2.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_roof_top",
+   "hash": 360656326,
+   "en": "Shingle Roof Ridge 26",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_ridge",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      -1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      -0.5,
+      -1.0
+     ],
+     [
+      1.0,
+      0.5,
+      1.0
+     ],
+     [
+      -1.0,
+      0.5,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_roof_top_45",
+   "hash": 1645551772,
+   "en": "Shingle Roof Ridge 45",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_ridge",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      -1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -1.0,
+      -1.0
+     ],
+     [
+      1.0,
+      1.0,
+      1.0
+     ],
+     [
+      -1.0,
+      1.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_roof_top_67",
+   "hash": -1486616108,
+   "en": "Shingle Roof Ridge 67",
+   "material": "Wood",
+   "category": "Building, Roofing",
+   "snap": {
+    "type": "roof_ridge",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      -1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      -2.0,
+      -1.0
+     ],
+     [
+      1.0,
+      2.0,
+      1.0
+     ],
+     [
+      -1.0,
+      2.0,
+      1.0
+     ]
+    ],
+    "w": 2
+   },
+   "source": "user"
+  },
+  {
+   "name": "darkwood_gate",
+   "hash": 1276642083,
+   "en": "Darkwood Gate",
+   "material": "HardWood",
+   "category": "Building, Walls, Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "darkwood_raven",
+   "hash": 1646817558,
+   "en": "Raven Adornment",
+   "material": "Wood",
+   "category": "Building, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "darkwood_wolf",
+   "hash": -403494760,
+   "en": "Wolf Adornment",
+   "material": "Wood",
+   "category": "Building, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackmarble_1x1",
+   "hash": -1195767551,
+   "en": "Black Marble 1x1x1",
+   "material": "Marble",
+   "category": "Building, Flooring, Walls, Architecture",
+   "snap": {
+    "type": "rect",
+    "w": 1,
+    "d": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      -0.5
+     ],
+     [
+      0.5,
+      0,
+      -0.5
+     ],
+     [
+      0.5,
+      0,
+      0.5
+     ],
+     [
+      -0.5,
+      0,
+      0.5
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "blackmarble_2x1x1",
+   "hash": -1161852937,
+   "en": "Black Marble 2x1x1",
+   "material": "Marble",
+   "category": "Building, Flooring, Walls, Architecture",
+   "snap": {
+    "type": "rect",
+    "w": 2,
+    "d": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      -0.5
+     ],
+     [
+      1.0,
+      0,
+      -0.5
+     ],
+     [
+      1.0,
+      0,
+      0.5
+     ],
+     [
+      -1.0,
+      0,
+      0.5
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "blackmarble_2x2x2",
+   "hash": -1161852777,
+   "en": "Black Marble 2x2x2",
+   "material": "Marble",
+   "category": "Building, Flooring, Walls, Architecture",
+   "snap": {
+    "type": "rect",
+    "w": 2,
+    "d": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      1.0
+     ],
+     [
+      -1.0,
+      0,
+      1.0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "blackmarble_floor",
+   "hash": 747145,
+   "en": "Black Marble Floor",
+   "material": "Marble",
+   "category": "Building, Flooring",
+   "snap": {
+    "type": "rect",
+    "w": 2,
+    "d": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      1.0
+     ],
+     [
+      -1.0,
+      0,
+      1.0
+     ]
+    ]
+   },
+   "source": "save"
+  },
+  {
+   "name": "blackmarble_floor_triangle",
+   "hash": 955526822,
+   "en": "Black Marble Floor Triangle",
+   "material": "Marble",
+   "category": "Building, Flooring",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackmarble_base_1",
+   "hash": 1745123876,
+   "en": "Black Marble Plinth",
+   "material": "Marble",
+   "category": "Building, Walls, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackmarble_basecorner",
+   "hash": 232501507,
+   "en": "Black Marble Plinth Corner",
+   "material": "Marble",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackmarble_tip",
+   "hash": 1082779386,
+   "en": "Black Marble Quarter Spire",
+   "material": "Marble",
+   "category": "Building",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackmarble_out_1",
+   "hash": -1881176611,
+   "en": "Black Marble Cornice",
+   "material": "Marble",
+   "category": "Building, Walls, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackmarble_outcorner",
+   "hash": 2097111366,
+   "en": "Black Marble Cornice Corner",
+   "material": "Marble",
+   "category": "Building, Walls, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackmarble_column_1",
+   "hash": 262767717,
+   "en": "Black Marble Column Small",
+   "material": "Marble",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackmarble_column_2",
+   "hash": -140516810,
+   "en": "Black Marble Column Wide",
+   "material": "Marble",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackmarble_arch",
+   "hash": -1262523563,
+   "en": "Black Marble Arch",
+   "material": "Marble",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackmarble_stair",
+   "hash": 1580391858,
+   "en": "Black Marble Stair",
+   "material": "Marble",
+   "category": "Building, Stairs",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "crystal_wall_1x1",
+   "hash": 650075310,
+   "en": "Crystal Wall 1x1",
+   "material": "Wood",
+   "category": "Building, Walls, Decor, Doors and Windows",
+   "snap": {
+    "type": "wall",
+    "w": 1,
+    "h": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      0
+     ],
+     [
+      0.5,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "piece_dvergr_metal_wall_2x2",
+   "hash": -957080763,
+   "en": "Dvergr Metal Wall",
+   "material": "Iron",
+   "category": "Building, Walls, Decor",
+   "snap": {
+    "type": "wall",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "piece_dvergr_stake_wall",
+   "hash": -2144306477,
+   "en": "Dvergr Stakewall",
+   "material": "HardWood",
+   "category": "Building, Walls, Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_dvergr_sharpstakes",
+   "hash": -193320087,
+   "en": "Dvergr Sharp Stakes",
+   "material": "HardWood",
+   "category": "Building, Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_hexagonal_door",
+   "hash": 1861643587,
+   "en": "Hexagonal Gate",
+   "material": "HardWood",
+   "category": "Building, Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_dvergr_spiralstair",
+   "hash": 1904537040,
+   "en": "Dvergr Spiral Staircase Left",
+   "material": "HardWood",
+   "category": "Building, Architecture, Stairs",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_dvergr_spiralstair_right",
+   "hash": 1347147117,
+   "en": "Dvergr Spiral Staircase Right",
+   "material": "HardWood",
+   "category": "Building, Architecture, Stairs",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "ashwood_quarterwall_1x1",
+   "hash": 1248264999,
+   "en": "Ashwood Quarter Wall",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 1,
+    "h": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      0
+     ],
+     [
+      0.5,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "ashwood_halfwall_1x2",
+   "hash": 976661943,
+   "en": "Ashwood Half Wall",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "ashwood_wall_2x2",
+   "hash": 1924509191,
+   "en": "Ashwood Wall",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "ashwood_wall_arch",
+   "hash": 168049647,
+   "en": "Ashwood Arched Wall",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "ashwood_decowall_2x2",
+   "hash": -1781600630,
+   "en": "Ashwood Decorative Wall",
+   "material": "Wood",
+   "category": "Building, Walls, Decor",
+   "snap": {
+    "type": "wall",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "ashwood_decowall_divider",
+   "hash": 1536438203,
+   "en": "Ashwood Divider",
+   "material": "Wood",
+   "category": "Building, Walls, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "ashwood_decowall_tree",
+   "hash": 1321774774,
+   "en": "Ashwood Decorative Window",
+   "material": "Wood",
+   "category": "Building, Walls, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "ashwood_wall_roof_26",
+   "hash": -216137440,
+   "en": "Ashwood Wall 26",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_wall_roof_26_upsidedown",
+   "hash": 625637655,
+   "en": "Ashwood Wall 26 (Inverted)",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_wall_roof_45",
+   "hash": 187147093,
+   "en": "Ashwood Wall 45",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_wall_roof_45_upsidedown",
+   "hash": 762420190,
+   "en": "Ashwood Wall 45 (Inverted)",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_wall_roof_67_a",
+   "hash": 12274827,
+   "en": "Ashwood Wall 67",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 4,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_wall_roof_67_upsidedown",
+   "hash": -573800234,
+   "en": "Ashwood Wall 67 (Inverted)",
+   "material": "Wood",
+   "category": "Building, Walls, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 4,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_floor_1x1",
+   "hash": -281601339,
+   "en": "Ashwood Floor 1x1",
+   "material": "Wood",
+   "category": "Building, Flooring",
+   "snap": {
+    "type": "rect",
+    "w": 1,
+    "d": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      -0.5
+     ],
+     [
+      0.5,
+      0,
+      -0.5
+     ],
+     [
+      0.5,
+      0,
+      0.5
+     ],
+     [
+      -0.5,
+      0,
+      0.5
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "ashwood_floor_2x2",
+   "hash": -281601243,
+   "en": "Ashwood Floor 2x2",
+   "material": "Wood",
+   "category": "Building, Flooring",
+   "snap": {
+    "type": "rect",
+    "w": 2,
+    "d": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      -1.0
+     ],
+     [
+      1.0,
+      0,
+      1.0
+     ],
+     [
+      -1.0,
+      0,
+      1.0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "ashwood_deco_floor",
+   "hash": -1593123332,
+   "en": "Ashwood Decorative Floor",
+   "material": "Wood",
+   "category": "Building, Flooring, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "ashwood_arch_big",
+   "hash": 499263833,
+   "en": "Ashwood Arch",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "ashwood_pole_1m",
+   "hash": -1233292549,
+   "en": "Ashwood Pole 1 m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "pole",
+    "h": 1,
+    "points": [
+     [
+      0,
+      -0.5,
+      0
+     ],
+     [
+      0,
+      0.5,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "ashwood_pole_2m",
+   "hash": 1495590806,
+   "en": "Ashwood Pole 2 m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "pole",
+    "h": 2,
+    "points": [
+     [
+      0,
+      -1.0,
+      0
+     ],
+     [
+      0,
+      1.0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "ashwood_beam_1m",
+   "hash": -332698626,
+   "en": "Ashwood Beam 1 m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "line",
+    "len": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      0
+     ],
+     [
+      0.5,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "ashwood_beam_2m",
+   "hash": 70585901,
+   "en": "Ashwood Beam 2 m",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "line",
+    "len": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "ashwood_wall_beam_26",
+   "hash": 372906951,
+   "en": "Ashwood Beam 26",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 1,
+    "points": [
+     [
+      0,
+      -0.5,
+      -1.0
+     ],
+     [
+      0,
+      0.5,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_wall_beam_45",
+   "hash": -1193176984,
+   "en": "Ashwood Beam 45",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 2,
+    "points": [
+     [
+      0,
+      -1.0,
+      -1.0
+     ],
+     [
+      0,
+      1.0,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_wall_beam_67",
+   "hash": 1938990896,
+   "en": "Ashwood Beam 67",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "beam_slope",
+    "run": 2,
+    "rise": 4,
+    "points": [
+     [
+      0,
+      -2.0,
+      -1.0
+     ],
+     [
+      0,
+      2.0,
+      1.0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_wall_cross_26",
+   "hash": 304768544,
+   "en": "Ashwood Roof Cross 26",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_wall_cross_45",
+   "hash": 1111337595,
+   "en": "Ashwood Roof Cross 45",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_wall_cross_67",
+   "hash": -2020830285,
+   "en": "Ashwood Roof Cross 67",
+   "material": "Wood",
+   "category": "Building, Architecture",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 4,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "ashwood_door",
+   "hash": -245309624,
+   "en": "Ashwood Door",
+   "material": "Wood",
+   "category": "Building, Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "ashwood_stair",
+   "hash": 1678513475,
+   "en": "Ashwood Stair",
+   "material": "Wood",
+   "category": "Building, Stairs",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_stakewall_blackwood",
+   "hash": -1755799944,
+   "en": "Ashwood Stakewall",
+   "material": "Wood",
+   "category": "Building, Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_grausten_roof_45",
+   "hash": 777162921,
+   "en": "Grausten Roof",
+   "material": "Ashstone",
+   "category": "Building, Roofing",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_grausten_roof_45_corner",
+   "hash": -220578671,
+   "en": "Grausten Roof Corner",
+   "material": "Ashstone",
+   "category": "Building, Roofing",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_grausten_roof_45_corner2",
+   "hash": -312847305,
+   "en": "Grausten Roof Corner",
+   "material": "Ashstone",
+   "category": "Building, Roofing",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_grausten_roof_45_arch",
+   "hash": -1061148390,
+   "en": "Grausten Arched Roof",
+   "material": "Ashstone",
+   "category": "Building, Roofing",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_grausten_roof_45_arch_corner",
+   "hash": -1124378182,
+   "en": "Grausten Arched Roof Corner",
+   "material": "Ashstone",
+   "category": "Building, Roofing",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_grausten_roof_45_arch_corner2",
+   "hash": -1137956792,
+   "en": "Grausten Arched Roof Corner",
+   "material": "Ashstone",
+   "category": "Building, Roofing",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_grausten_stonestair",
+   "hash": -888115219,
+   "en": "Grausten Stairs",
+   "material": "Ashstone",
+   "category": "Building, Stairs",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "flametal_gate",
+   "hash": 977911272,
+   "en": "Flametal Gate",
+   "material": "Iron",
+   "category": "Building, Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_wall_2x2",
+   "hash": 1957545751,
+   "en": "Timber Wall",
+   "material": "Timberwood",
+   "category": "Building, Walls",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_pole_2m",
+   "hash": -1817641892,
+   "en": "Timber Pole 2m",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_pole_4m",
+   "hash": -1011072838,
+   "en": "Timber Pole 4m",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_beam_2m",
+   "hash": 314501709,
+   "en": "Timber Beam 2m",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_beam_4m",
+   "hash": -848297705,
+   "en": "Timber Beam 4m",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_beam_26",
+   "hash": 314501666,
+   "en": "Timber Beam 26",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_beam_45",
+   "hash": -848297745,
+   "en": "Timber Beam 45",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_beam_67",
+   "hash": -2011097161,
+   "en": "Timber Beam 67",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_wall_cross_26",
+   "hash": -963914186,
+   "en": "Timber Roof Cross 26",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_wall_cross_45",
+   "hash": -157345133,
+   "en": "Timber Roof Cross 45",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_wall_cross_67",
+   "hash": 1005454283,
+   "en": "Timber Roof Cross 67",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_deco_wall_2x2",
+   "hash": -702062643,
+   "en": "Lathed Timber Wall",
+   "material": "Timberwood",
+   "category": "Building, Walls, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_deco_pole_2m",
+   "hash": 1962138718,
+   "en": "Decorated Timber Pole 2m",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_deco_beam_2m",
+   "hash": -1916733889,
+   "en": "Decorated Timber Beam 2m",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_deco_beam_26",
+   "hash": -1943585080,
+   "en": "Decorated Timber Beam 26",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_deco_beam_45",
+   "hash": -1540300547,
+   "en": "Decorated Timber Beam 45",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stave_deco_beam_67",
+   "hash": -377501135,
+   "en": "Decorated Timber Beam 67",
+   "material": "Timberwood",
+   "category": "Building, Architecture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "scale_quarterwall_1x1",
+   "hash": 1753656480,
+   "en": "Scalewood Quarter Wall",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 1,
+    "h": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      0
+     ],
+     [
+      0.5,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "scale_halfwall_1x2",
+   "hash": -1361887850,
+   "en": "Scalewood Half Wall",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "scale_wall_2x2",
+   "hash": 499201990,
+   "en": "Scalewood Wall",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "name"
+  },
+  {
+   "name": "scale_wall_roof_26",
+   "hash": -470825463,
+   "en": "Scalewood Wall 26 Left",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "scale_wall_roof_26_flipped",
+   "hash": 1890506462,
+   "en": "Scalewood Wall 26 Right",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "scale_wall_roof_45",
+   "hash": -67540938,
+   "en": "Scalewood Wall 45 Left",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "scale_wall_roof_45_flipped",
+   "hash": -2035366735,
+   "en": "Scalewood Wall 45 Right",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "scale_wall_roof_67",
+   "hash": 1095258474,
+   "en": "Scalewood Wall 67 Left",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 4,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "scale_wall_roof_67_flipped",
+   "hash": -782423427,
+   "en": "Scalewood Wall 67 Right",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 4,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "scale_wall_roof_26_upsidedown",
+   "hash": -484051392,
+   "en": "Scalewood Wall 26 Right (Inverted)",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "scale_wall_roof_26_upsidedown_flipped",
+   "hash": -1625515141,
+   "en": "Scalewood Wall 26 Left (Inverted)",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 1,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "scale_wall_roof_45_upsidedown",
+   "hash": -1462920193,
+   "en": "Scalewood Wall 45 Right (Inverted)",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "scale_wall_roof_45_upsidedown_flipped",
+   "hash": 124726634,
+   "en": "Scalewood Wall 45 Left (Inverted)",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 2,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "scale_wall_roof_67_upsidedown",
+   "hash": 1495818231,
+   "en": "Scalewood Wall 67 Right (Inverted)",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 4,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "scale_wall_roof_67_upsidedown_flipped",
+   "hash": -643994382,
+   "en": "Scalewood Wall 67 Left (Inverted)",
+   "material": "Wood",
+   "category": "Building, Walls",
+   "snap": {
+    "type": "wall_slope",
+    "w": 2,
+    "h": 4,
+    "points": [
+     [
+      -1.0,
+      0,
+      0
+     ],
+     [
+      1.0,
+      0,
+      0
+     ]
+    ]
+   },
+   "source": "user"
+  },
+  {
+   "name": "stave_gate",
+   "hash": -2006986419,
+   "en": "Timberwood Gate",
+   "material": "HardWood",
+   "category": "Building, Walls, Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_drawbridge",
+   "hash": 1964214298,
+   "en": "Timberwood Drawbridge",
+   "material": "Wood",
+   "category": "Building, Defence, Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_drawbridge_log",
+   "hash": 345365581,
+   "en": "Rustic Drawbridge",
+   "material": "Wood",
+   "category": "Building, Defence, Doors and Windows",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_icecube",
+   "hash": -1550627901,
+   "en": "Ice Block",
+   "material": "Ice",
+   "category": "Building, Flooring, Walls, Architecture",
+   "snap": {
+    "type": "rect",
+    "w": 1,
+    "d": 1,
+    "points": [
+     [
+      -0.5,
+      0,
+      -0.5
+     ],
+     [
+      0.5,
+      0,
+      -0.5
+     ],
+     [
+      0.5,
+      0,
+      0.5
+     ],
+     [
+      -0.5,
+      0,
+      0.5
+     ]
+    ]
+   },
+   "source": "save"
+  },
+  {
+   "name": "piece_cookingstation",
+   "hash": 1430888227,
+   "en": "Cooking Station",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_cookingstation_iron",
+   "hash": 778038248,
+   "en": "Iron Cooking Station",
+   "material": "Iron",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_workbench",
+   "hash": -958010034,
+   "en": "Workbench",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_workbench_ext1",
+   "hash": 1017582937,
+   "en": "Chopping Block",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_workbench_ext2",
+   "hash": 1420867464,
+   "en": "Tanning Rack",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_workbench_ext3",
+   "hash": -145216477,
+   "en": "Adze",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_workbench_ext4",
+   "hash": 614298410,
+   "en": "Tool Shelf",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_cauldron",
+   "hash": -1652490355,
+   "en": "Cauldron",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "cauldron_ext1_spice",
+   "hash": -1284852450,
+   "en": "Spice Rack",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "cauldron_ext3_butchertable",
+   "hash": -1932932113,
+   "en": "Butcher's Table",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "cauldron_ext4_pots",
+   "hash": 1470713869,
+   "en": "Pots and Pans",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "cauldron_ext5_mortarandpestle",
+   "hash": 250710815,
+   "en": "Mortar and Pestle",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "cauldron_ext6_rollingpins",
+   "hash": 1758427888,
+   "en": "Rolling Pins and Cutting Boards",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "cauldron_ext7_smoker",
+   "hash": -775256361,
+   "en": "Smoker",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "forge",
+   "hash": -1530372843,
+   "en": "Forge",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "forge_ext1",
+   "hash": -18266612,
+   "en": "Forge Bellows",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "forge_ext2",
+   "hash": -421551139,
+   "en": "Anvils",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "forge_ext3",
+   "hash": 1144532802,
+   "en": "Grinding Wheel",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "forge_ext4",
+   "hash": 385017915,
+   "en": "Smith's Anvil",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "forge_ext5",
+   "hash": 1951101856,
+   "en": "Forge Cooler",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "forge_ext6",
+   "hash": 1547817329,
+   "en": "Forge Tool Rack",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_artisanstation",
+   "hash": 1642546285,
+   "en": "Artisan Table",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "artisan_ext1",
+   "hash": 1852862665,
+   "en": "Artisan Press",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackforge",
+   "hash": -250560308,
+   "en": "Black Forge",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackforge_ext1",
+   "hash": -797439003,
+   "en": "Black Forge Cooler",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackforge_ext2_vise",
+   "hash": -358052686,
+   "en": "Vice",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackforge_ext3_metalcutter",
+   "hash": 104673382,
+   "en": "Metal Cutter",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackforge_ext4_gemcutter",
+   "hash": 1850399833,
+   "en": "Gem Cutter",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackforge_ext5_apron",
+   "hash": -2144743972,
+   "en": "Smith's Aprons",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_magetable",
+   "hash": -832507735,
+   "en": "Galdr Table",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_magetable_ext",
+   "hash": -799092397,
+   "en": "Rune Table",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_magetable_ext2",
+   "hash": 1302205337,
+   "en": "Unfading Candles",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_magetable_ext3",
+   "hash": -1426678018,
+   "en": "Feathery Wreath",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_magetable_ext4",
+   "hash": -1829962545,
+   "en": "Standing Loom",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_preptable",
+   "hash": 1840852078,
+   "en": "Food Preparation Table",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_MeadCauldron",
+   "hash": 1708414500,
+   "en": "Mead Ketill",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "fermenter",
+   "hash": -931391920,
+   "en": "Fermenter",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_oven",
+   "hash": 2024246663,
+   "en": "Stone Oven",
+   "material": "Stone",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "windmill",
+   "hash": -984198658,
+   "en": "Windmill",
+   "material": "Stone",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_stonecutter",
+   "hash": -34430377,
+   "en": "Stonecutter",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_spinningwheel",
+   "hash": 411883698,
+   "en": "Spinning Wheel",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_FrostFoundry",
+   "hash": -623389066,
+   "en": "Frost Foundry",
+   "material": "Stone",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "smelter",
+   "hash": 900941850,
+   "en": "Smelter",
+   "material": "Stone",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "charcoal_kiln",
+   "hash": 816862660,
+   "en": "Charcoal Kiln",
+   "material": "Stone",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blastfurnace",
+   "hash": 1048742812,
+   "en": "Blast Furnace",
+   "material": "Stone",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "eitrrefinery",
+   "hash": 731966626,
+   "en": "Eitr Refinery",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_FrostKiln",
+   "hash": -1777295747,
+   "en": "Frigid Kiln",
+   "material": "Stone",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_sapcollector",
+   "hash": -2013355542,
+   "en": "Sap Extractor",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_beehive",
+   "hash": 28120085,
+   "en": "Beehive",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_birdnest",
+   "hash": -155118860,
+   "en": "Birds' Nest",
+   "material": "Wood",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_wisplure",
+   "hash": 1469046252,
+   "en": "Wisp Fountain",
+   "material": "Stone",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_EternalPyre",
+   "hash": -316796204,
+   "en": "Eternal Pyre",
+   "material": "Stone",
+   "category": "Misc., Crafting, Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "incinerator",
+   "hash": -1876813566,
+   "en": "Obliterator",
+   "material": "Iron",
+   "category": "Crafting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "bed",
+   "hash": -1273339005,
+   "en": "Bed",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_bed02",
+   "hash": 2024210682,
+   "en": "Dragon Bed",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "ashwood_bed",
+   "hash": 823420613,
+   "en": "Ashwood Bed",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_throne01",
+   "hash": 743791676,
+   "en": "Raven Throne",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_throne02",
+   "hash": 340507149,
+   "en": "Stone Throne",
+   "material": "Stone",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_blackmarble_throne",
+   "hash": -2139837784,
+   "en": "Black Marble Throne",
+   "material": "Marble",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_bone_throne",
+   "hash": -2104079778,
+   "en": "Bone Throne",
+   "material": "Marble",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_moose_throne",
+   "hash": -1801819153,
+   "en": "Antler Throne",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chair",
+   "hash": -637414342,
+   "en": "Stool",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chair02",
+   "hash": -1717421956,
+   "en": "Wood Chair",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chair03",
+   "hash": -1717421957,
+   "en": "Darkwood Chair",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chair_runed",
+   "hash": 1275111859,
+   "en": "Carved Chair",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_logbench01",
+   "hash": -1214978310,
+   "en": "Sitting Log",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_bench01",
+   "hash": -2122807554,
+   "en": "Wood Bench",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_blackmarble_bench",
+   "hash": -909098104,
+   "en": "Black Marble Bench",
+   "material": "Marble",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_blackwood_bench01",
+   "hash": 770978985,
+   "en": "Ashwood Bench",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_bench_runed",
+   "hash": 1933004934,
+   "en": "Carved Bench",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_table",
+   "hash": 915094071,
+   "en": "Table",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_table_oak",
+   "hash": -1159820015,
+   "en": "Long Heavy Table",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_table_round",
+   "hash": 441267892,
+   "en": "Round Table",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_blackmarble_table",
+   "hash": 1705458814,
+   "en": "Black Marble Table",
+   "material": "Marble",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_table_runed",
+   "hash": -311339688,
+   "en": "Long Carved Table",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_table_runed_small",
+   "hash": 165530812,
+   "en": "Square Carved Table",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chest_wood",
+   "hash": 328745978,
+   "en": "Chest",
+   "material": "Wood",
+   "category": "Furniture, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chest",
+   "hash": -1443983522,
+   "en": "Reinforced Chest",
+   "material": "Wood",
+   "category": "Furniture, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chest_private",
+   "hash": 698259470,
+   "en": "Personal Chest",
+   "material": "Wood",
+   "category": "Furniture, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chest_barrel",
+   "hash": -1029249879,
+   "en": "Barrel",
+   "material": "Iron",
+   "category": "Furniture, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chest_treasure",
+   "hash": -475222070,
+   "en": "Treasure Chest",
+   "material": "Wood",
+   "category": "Furniture, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chest_blackmetal",
+   "hash": 1417076401,
+   "en": "Black Metal Chest",
+   "material": "Iron",
+   "category": "Furniture, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chest_grausten",
+   "hash": -1210383676,
+   "en": "Grausten Chest",
+   "material": "Iron",
+   "category": "Furniture, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_pot1",
+   "hash": 162798999,
+   "en": "Medium Green Pot",
+   "material": "Wood",
+   "category": "Decor, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_pot2",
+   "hash": -1403284942,
+   "en": "Large Green Pot",
+   "material": "Wood",
+   "category": "Decor, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_pot3",
+   "hash": 1325598413,
+   "en": "Small Green Pot",
+   "material": "Wood",
+   "category": "Decor, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_chest_warderobe",
+   "hash": 2009412434,
+   "en": "Wardrobe",
+   "material": "Iron",
+   "category": "Furniture, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_gift1",
+   "hash": -1181865690,
+   "en": "Yuleklapp",
+   "material": "Wood",
+   "category": "Decor, Storage, Seasonal Items",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_gift2",
+   "hash": -1181865689,
+   "en": "Yuleklapp",
+   "material": "Wood",
+   "category": "Decor, Storage, Seasonal Items",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_gift3",
+   "hash": -1181865688,
+   "en": "Yuleklapp",
+   "material": "Wood",
+   "category": "Decor, Storage, Seasonal Items",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "Cart",
+   "hash": 49675204,
+   "en": "Cart",
+   "material": "Wood",
+   "category": "Transportation",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "ArmorStand",
+   "hash": 1580161127,
+   "en": "Armour Stand",
+   "material": "Wood",
+   "category": "Decor, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "itemstand",
+   "hash": -1235119491,
+   "en": "Item Stand",
+   "material": "Wood",
+   "category": "Decor, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "itemstandh",
+   "hash": 1822362821,
+   "en": "Item Stand",
+   "material": "Wood",
+   "category": "Decor, Storage",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "sign",
+   "hash": 1084866395,
+   "en": "Sign",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "fire_pit",
+   "hash": 399713608,
+   "en": "Campfire",
+   "material": "Wood",
+   "category": "Furniture, Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "fire_pit_iron",
+   "hash": 1462550139,
+   "en": "Iron Fire Pit",
+   "material": "Wood",
+   "category": "Furniture, Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "hearth",
+   "hash": 656210618,
+   "en": "Hearth",
+   "material": "Stone",
+   "category": "Furniture, Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "bonfire",
+   "hash": -999191493,
+   "en": "Bonfire",
+   "material": "Wood",
+   "category": "Misc., Lighting, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_groundtorch_wood",
+   "hash": 1744483228,
+   "en": "Standing Wood Torch",
+   "material": "Wood",
+   "category": "Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_groundtorch",
+   "hash": 261914232,
+   "en": "Standing Iron Torch",
+   "material": "Wood",
+   "category": "Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_groundtorch_blue",
+   "hash": 1441955863,
+   "en": "Standing Blue-burning Iron Torch",
+   "material": "Wood",
+   "category": "Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_groundtorch_green",
+   "hash": -1296288316,
+   "en": "Standing Green-burning Iron Torch",
+   "material": "Wood",
+   "category": "Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_groundtorch_mist",
+   "hash": -1575901004,
+   "en": "Wisp Torch",
+   "material": "Wood",
+   "category": "Lighting, Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "Candle_resin",
+   "hash": 585806441,
+   "en": "Resin Candle",
+   "material": "Wood",
+   "category": "Lighting, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_dvergr_lantern",
+   "hash": 1765483382,
+   "en": "Dvergr Wall Lantern",
+   "material": "Iron",
+   "category": "Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_dvergr_lantern_pole",
+   "hash": 463374813,
+   "en": "Dvergr Pole Lantern",
+   "material": "Iron",
+   "category": "Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_brazierfloor01",
+   "hash": -1758232271,
+   "en": "Standing Brazier",
+   "material": "Wood",
+   "category": "Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_brazierfloor02",
+   "hash": 2133450498,
+   "en": "Blue Standing Brazier",
+   "material": "Wood",
+   "category": "Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_brazierceiling01",
+   "hash": 997718274,
+   "en": "Hanging Brazier",
+   "material": "Wood",
+   "category": "Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_Lavalantern",
+   "hash": -628387079,
+   "en": "Lava Lantern",
+   "material": "Wood",
+   "category": "Lighting, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_hoodedlantern",
+   "hash": -1906199978,
+   "en": "Hooded Lantern",
+   "material": "Wood",
+   "category": "Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_jackoturnip",
+   "hash": 232336033,
+   "en": "Jack-o-turnip",
+   "material": "Wood",
+   "category": "Lighting, Decor, Seasonal Items",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_snowlantern",
+   "hash": -1680860122,
+   "en": "Snow Lantern",
+   "material": "Wood",
+   "category": "Lighting, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_walltorch",
+   "hash": 1038085717,
+   "en": "Sconce",
+   "material": "Wood",
+   "category": "Lighting",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "rug_deer",
+   "hash": 1761585513,
+   "en": "Deer Rug",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "rug_Bjorn",
+   "hash": -1718719738,
+   "en": "Bearskin Rug",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "rug_wolf",
+   "hash": -698527959,
+   "en": "Wolf Rug",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "rug_fur",
+   "hash": 1569410630,
+   "en": "Lox Rug",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "rug_straw",
+   "hash": -1194194392,
+   "en": "Straw",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "rug_hare",
+   "hash": 1472612417,
+   "en": "Hare Rug",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "rug_asksvin",
+   "hash": -535447840,
+   "en": "Asksvin Rug",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "rug_seal",
+   "hash": -658122144,
+   "en": "Sealskin Rug",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "rug_moose",
+   "hash": 586722166,
+   "en": "Moose Hide Carpet",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "jute_carpet",
+   "hash": -1313065786,
+   "en": "Red Jute Carpet",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "jute_carpet_blue",
+   "hash": 321998505,
+   "en": "Blue Jute Carpet",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_cloth_hanging_door",
+   "hash": -1046192253,
+   "en": "Red Jute Curtain",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_cloth_hanging_door_blue",
+   "hash": 124607798,
+   "en": "Blue Jute Drapes",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_cloth_hanging_door_blue2",
+   "hash": 1074246236,
+   "en": "Blue Jute Curtain",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_banner01",
+   "hash": 420204856,
+   "en": "Black Banner",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_banner02",
+   "hash": 823489383,
+   "en": "Blue Banner",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_banner03",
+   "hash": -742594558,
+   "en": "White and Red Striped Banner",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_banner04",
+   "hash": 16920329,
+   "en": "Red Banner",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_banner05",
+   "hash": -1549163612,
+   "en": "Green Banner",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_banner06",
+   "hash": -1145879085,
+   "en": "Blue, Red and White Banner",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_banner07",
+   "hash": 1583004270,
+   "en": "White and Blue Striped Banner",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_banner08",
+   "hash": -1952448139,
+   "en": "Yellow Banner",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_banner09",
+   "hash": 776435216,
+   "en": "Purple Banner",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_banner10",
+   "hash": 1986288798,
+   "en": "Orange Banner",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_banner11",
+   "hash": 420204857,
+   "en": "White Banner",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_CelebrationGarland",
+   "hash": -41399318,
+   "en": "Flower Garland",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_FairylightGarland",
+   "hash": -1443747635,
+   "en": "Fey Lights",
+   "material": "Wood",
+   "category": "Lighting, Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_maypole",
+   "hash": -780564436,
+   "en": "Maypole",
+   "material": "Wood",
+   "category": "Decor, Seasonal Items",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_mistletoe",
+   "hash": 1816215321,
+   "en": "Mistletoe",
+   "material": "Wood",
+   "category": "Decor, Seasonal Items",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_xmascrown",
+   "hash": 1544093477,
+   "en": "Yule Wreath",
+   "material": "Wood",
+   "category": "Decor, Seasonal Items",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_xmasgarland",
+   "hash": 1114342237,
+   "en": "Yule Garland",
+   "material": "Wood",
+   "category": "Decor, Seasonal Items",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_xmastree",
+   "hash": -1443700678,
+   "en": "Yule Tree",
+   "material": "Wood",
+   "category": "Decor, Seasonal Items",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "Placeable_HardRock",
+   "hash": -1499803462,
+   "en": "Mysterious Rock",
+   "material": "Wood",
+   "category": "Misc.",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_stack",
+   "hash": -2139848760,
+   "en": "Wood Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_fine_stack",
+   "hash": 719595997,
+   "en": "Finewood Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_core_stack",
+   "hash": -1421478172,
+   "en": "Corewood Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_yggdrasil_stack",
+   "hash": 1779884373,
+   "en": "Yggdrasil Wood Stack",
+   "material": "HardWood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackwood_stack",
+   "hash": 459681025,
+   "en": "Ashwood Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "wood_frost_stack",
+   "hash": -169814883,
+   "en": "Timberwood Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "stone_pile",
+   "hash": -1094350308,
+   "en": "Stone Pile",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "flint_pile",
+   "hash": 2072888774,
+   "en": "Flint Pile",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "blackmarble_pile",
+   "hash": 592534089,
+   "en": "Black Marble Pile",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "grausten_pile",
+   "hash": -1660100902,
+   "en": "Grausten Pile",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "bar_tin_stack",
+   "hash": 452844536,
+   "en": "Tin Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "bar_copper_stack",
+   "hash": 507375190,
+   "en": "Copper Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "bar_bronze_stack",
+   "hash": -1617535855,
+   "en": "Bronze Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "bar_iron_stack",
+   "hash": 1832122897,
+   "en": "Iron Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "bar_silver_stack",
+   "hash": -464902766,
+   "en": "Silver Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "bar_blackmetal_stack",
+   "hash": -97430039,
+   "en": "Black Metal Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "bar_flametal_stack",
+   "hash": -1113020955,
+   "en": "Flametal Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "bar_gold_stack",
+   "hash": 616126435,
+   "en": "Bloodgold Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "coal_pile",
+   "hash": 1803366038,
+   "en": "Coal Pile",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "bone_stack",
+   "hash": 1030887631,
+   "en": "Bone Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "skull_pile",
+   "hash": -523302552,
+   "en": "Pile of Skulls",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "treasure_stack",
+   "hash": -109499528,
+   "en": "Coin Stack",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "treasure_pile",
+   "hash": -2052101304,
+   "en": "Coin Pile",
+   "material": "Wood",
+   "category": "Misc., Piles and Stacks",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_asksvinskeleton",
+   "hash": 437601075,
+   "en": "Asksvin Skeleton",
+   "material": "Wood",
+   "category": "Decor",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "portal_wood",
+   "hash": -661882940,
+   "en": "Portal",
+   "material": "Wood",
+   "category": "Transportation",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "portal_stone",
+   "hash": 1854482458,
+   "en": "Portal  Stone",
+   "material": "Stone",
+   "category": "Transportation",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "Raft",
+   "hash": 49675681,
+   "en": "Raft",
+   "material": "Wood",
+   "category": "Transportation",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "Karve",
+   "hash": -925528333,
+   "en": "Karve",
+   "material": "Wood",
+   "category": "Transportation",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "VikingShip",
+   "hash": 118230510,
+   "en": "Longship",
+   "material": "Wood",
+   "category": "Transportation",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "VikingShip_Ashlands",
+   "hash": -811948769,
+   "en": "Drakkar",
+   "material": "Wood",
+   "category": "Transportation",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_bathtub",
+   "hash": 2109981969,
+   "en": "Hot Tub",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_barber",
+   "hash": 122965861,
+   "en": "Barber Station",
+   "material": "Wood",
+   "category": "Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_cartographytable",
+   "hash": -164515435,
+   "en": "Cartography Table",
+   "material": "Wood",
+   "category": "Misc., Furniture",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_TrainingDummy",
+   "hash": -871470687,
+   "en": "T.W.I.G.",
+   "material": "",
+   "category": "Misc., Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_ArcheryTarget",
+   "hash": -1252856128,
+   "en": "Archery Target",
+   "material": "Wood",
+   "category": "Misc.",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "guard_stone",
+   "hash": -1024209535,
+   "en": "Ward",
+   "material": "Stone",
+   "category": "Decor, Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_shieldgenerator",
+   "hash": 1611969521,
+   "en": "Shield Generator",
+   "material": "Stone",
+   "category": "Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_trap_troll",
+   "hash": 1294771866,
+   "en": "Trap",
+   "material": "Iron",
+   "category": "Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "piece_turret",
+   "hash": -816396091,
+   "en": "Ballista",
+   "material": "Wood",
+   "category": "Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "BatteringRam",
+   "hash": -231530696,
+   "en": "Battering Ram",
+   "material": "Wood",
+   "category": "Defence",
+   "snap": null,
+   "source": null
+  },
+  {
+   "name": "Catapult",
+   "hash": 1146805026,
+   "en": "Catapult",
+   "material": "Wood",
+   "category": "Defence",
+   "snap": null,
+   "source": null
+  }
+ ]
+}

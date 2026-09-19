@@ -26,6 +26,8 @@ import { SelectionInspector } from './ui/SelectionInspector.js';
 import { CalibrationPanel } from './ui/CalibrationPanel.js';
 import { MobileControls } from './ui/MobileControls.js';
 import { refreshIcons } from './ui/icons.js';
+import { BlueprintLayer } from './save/BlueprintLayer.js';
+import { ImportUI } from './save/ImportUI.js';
 
 const bus = new EventBus();
 const canvas = document.getElementById('main-canvas');
@@ -66,6 +68,9 @@ const planPanel = new PlanPanel(gridSettings, mapScale, assetLayer, layerManager
 const selectionInspector = new SelectionInspector(selectTool, viewport, assetLayer, toolManager, bus);
 const calibrationPanel = new CalibrationPanel(mapScale, calibrationTool, bus);
 const mobileControls = new MobileControls(toolManager, selectTool, mapScale, bus);
+
+const blueprintLayer = new BlueprintLayer(bus);
+const importUI = new ImportUI(bus, blueprintLayer, viewport, renderer, layerManager);
 
 const saveLoad = new SaveLoad(layerManager, mapLayer, assetLayer, mapScale, viewport, renderer, bus, gridSettings, fineTuneState);
 
@@ -124,6 +129,10 @@ emptyLoadInput.addEventListener('change', () => {
   }
 });
 
+document.getElementById('empty-import-save').addEventListener('click', () => importUI.show());
+
+bus.on('import:open', () => importUI.show());
+
 // --- All-shortcuts overlay ---
 document.getElementById('all-shortcuts-btn').addEventListener('click', () => {
   document.getElementById('help-panel').classList.remove('hidden');
@@ -177,7 +186,7 @@ bus.on('tool:changed', (name) => {
 toolManager.activate('select');
 
 // Test hook
-window._app = { bus, viewport, mapScale, mapLayer, assetLayer, layerManager, toolManager, renderer, calibrationTool, gridSettings, fineTuneState, assetEditSheet, saveLoad };
+window._app = { bus, viewport, mapScale, mapLayer, assetLayer, layerManager, toolManager, renderer, calibrationTool, gridSettings, fineTuneState, assetEditSheet, saveLoad, blueprintLayer, importUI };
 
 document.getElementById('help-close').addEventListener('click', () => {
   document.getElementById('help-panel').classList.add('hidden');

@@ -66,6 +66,13 @@ export class Toolbar {
     sep2.className = 'topbar-sep';
     right.appendChild(sep2);
 
+    const importBtn = document.createElement('button');
+    importBtn.className = 'btn-chip';
+    importBtn.innerHTML = '<span class="icon"><i data-lucide="folder-open"></i></span><span class="label-text">Import save</span>';
+    importBtn.title = 'Import world save';
+    importBtn.addEventListener('click', () => this.bus.emit('import:open'));
+    right.appendChild(importBtn);
+
     const mapBtn = document.createElement('button');
     mapBtn.className = 'btn-chip';
     mapBtn.innerHTML = '<span class="icon"><i data-lucide="image-plus"></i></span><span class="label-text">Map image</span>';
