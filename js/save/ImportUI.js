@@ -29,10 +29,11 @@ export class ImportUI {
         </div>
         <div class="import-body">
           <div class="import-step import-step-pick">
-            <p>Select your Valheim world folder. It lives at:</p>
+            <p>Select your Valheim world folder or drop a zip of it here. It lives at:</p>
             <code>%USERPROFILE%\\AppData\\LocalLow\\IronGate\\Valheim\\worlds_local\\&lt;WorldName&gt;</code>
             <div class="import-actions">
               <button class="btn-accent import-pick-btn"><i data-lucide="folder-open"></i> Choose World Folder</button>
+              <button class="btn-outline import-zip-btn"><i data-lucide="file-archive"></i> Choose Zip File</button>
               <div class="import-radius-row">
                 <label>Radius: <input type="number" class="import-radius" value="40" min="10" max="200" step="5"> m</label>
               </div>
@@ -61,6 +62,7 @@ export class ImportUI {
 
     this._modal.querySelector('.import-close').addEventListener('click', () => this.hide());
     this._modal.querySelector('.import-pick-btn').addEventListener('click', () => this._pickFolder());
+    this._modal.querySelector('.import-zip-btn').addEventListener('click', () => this._pickZip());
     this._modal.querySelector('.import-confirm-btn').addEventListener('click', () => this._confirm());
     this._modal.querySelector('.import-cancel-btn').addEventListener('click', () => this.hide());
     this._modal.querySelector('.import-retry-btn').addEventListener('click', () => this._showStep('pick'));
@@ -70,6 +72,29 @@ export class ImportUI {
 
     this._pendingResult = null;
     this._selectedSign = null;
+
+    const body = this._modal.querySelector('.import-body');
+    body.addEventListener('dragover', (e) => { e.preventDefault(); body.classList.add('drag-over'); });
+    body.addEventListener('dragleave', () => body.classList.remove('drag-over'));
+    body.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      body.classList.remove('drag-over');
+      const file = [...e.dataTransfer.files].find(f => f.name.endsWith('.zip'));
+      if (!file) return;
+      try {
+        this._showStep('progress');
+        this._modal.querySelector('.import-status').textContent = 'Extracting zip...';
+        const zip = await JSZip.loadAsync(file);
+        const files = [];
+        zip.forEach((relPath, entry) => {
+          if (entry.dir) return;
+          files.push({ name: relPath.split('/').pop(), arrayBuffer: () => entry.async('arraybuffer') });
+        });
+        await this._processFiles(files);
+      } catch (err) {
+        this._showError(err.message);
+      }
+    });
   }
 
   _buildSlider() {
@@ -213,6 +238,33 @@ export class ImportUI {
       });
       input.click();
     });
+  }
+
+  _pickZip() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.zip';
+    input.addEventListener('change', async () => {
+      if (!input.files[0]) return;
+      try {
+        this._showStep('progress');
+        this._modal.querySelector('.import-status').textContent = 'Extracting zip...';
+        const zip = await JSZip.loadAsync(input.files[0]);
+        const files = [];
+        zip.forEach((relPath, entry) => {
+          if (entry.dir) return;
+          const name = relPath.split('/').pop();
+          files.push({
+            name,
+            arrayBuffer: () => entry.async('arraybuffer'),
+          });
+        });
+        await this._processFiles(files);
+      } catch (e) {
+        this._showError(e.message);
+      }
+    });
+    input.click();
   }
 
   async _processFiles(files) {

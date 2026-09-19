@@ -2259,6 +2259,12 @@ kbd {
   padding: 20px;
 }
 
+.import-body.drag-over {
+  outline: 2px dashed var(--color-accent);
+  outline-offset: -4px;
+  background: var(--color-accent-tint);
+}
+
 .import-body p {
   margin-bottom: 8px;
   line-height: 1.5;
