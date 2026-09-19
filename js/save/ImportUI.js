@@ -199,13 +199,14 @@ export class ImportUI {
 
   async _pickFolder() {
     let files;
-    if (window.showDirectoryPicker) {
+    const useNativePicker = window.showDirectoryPicker && window.isSecureContext;
+    if (useNativePicker) {
       try {
         const dirHandle = await window.showDirectoryPicker();
         files = await this._collectFiles(dirHandle);
       } catch (e) {
         if (e.name === 'AbortError') return;
-        this._showError(e.message);
+        this._showError(`Folder picker failed: ${e.message}. Try the zip option instead.`);
         return;
       }
     } else {
@@ -233,8 +234,11 @@ export class ImportUI {
       input.type = 'file';
       input.webkitdirectory = true;
       input.multiple = true;
+      input.style.display = 'none';
+      document.body.appendChild(input);
       input.addEventListener('change', () => {
         resolve(input.files.length > 0 ? Array.from(input.files) : null);
+        input.remove();
       });
       input.click();
     });
