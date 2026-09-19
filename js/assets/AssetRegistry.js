@@ -145,6 +145,16 @@ export function resetVariantToFileData(categoryId, variantId) {
   return updateVariant(categoryId, variantId, structuredClone(pristine));
 }
 
+export function getInternalIdLookup() {
+  const lookup = new Map();
+  for (const [catId, mod] of categories) {
+    for (const v of mod.meta.variants) {
+      if (v.internalId) lookup.set(v.internalId, v.id);
+    }
+  }
+  return lookup;
+}
+
 export function isVariantDirty(categoryId, variantId) {
   const mod = categories.get(categoryId);
   const pristine = getPristineVariant(categoryId, variantId);

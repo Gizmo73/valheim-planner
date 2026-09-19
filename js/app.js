@@ -70,7 +70,7 @@ const calibrationPanel = new CalibrationPanel(mapScale, calibrationTool, bus);
 const mobileControls = new MobileControls(toolManager, selectTool, mapScale, bus);
 
 const blueprintLayer = new BlueprintLayer(bus);
-const importUI = new ImportUI(bus, blueprintLayer, viewport, renderer, layerManager);
+const importUI = new ImportUI(bus, blueprintLayer, viewport, renderer, layerManager, assetLayer, mapScale, gridSettings, fineTuneState);
 
 const saveLoad = new SaveLoad(layerManager, mapLayer, assetLayer, mapScale, viewport, renderer, bus, gridSettings, fineTuneState);
 

@@ -1,14 +1,20 @@
 import { readWorldFolder, filterNearSign, decompressTCData, parseTCData, HASH_TCDATA } from './saveReader.js';
 import { loadPieceLookup, lookupByHash } from './pieceLookup.js';
 import { refreshIcons } from '../ui/icons.js';
+import { createAsset, getInternalIdLookup } from '../assets/AssetRegistry.js';
+import { WorkingLayer } from '../layers/WorkingLayer.js';
 
 export class ImportUI {
-  constructor(bus, blueprintLayer, viewport, renderer, layerManager) {
+  constructor(bus, blueprintLayer, viewport, renderer, layerManager, assetLayer, mapScale, gridSettings, fineTuneState) {
     this.bus = bus;
     this.blueprintLayer = blueprintLayer;
     this.viewport = viewport;
     this.renderer = renderer;
     this.layerManager = layerManager;
+    this.assetLayer = assetLayer;
+    this.mapScale = mapScale;
+    this.gridSettings = gridSettings;
+    this.fineTuneState = fineTuneState;
     this._radius = 40;
     this._modal = null;
     this._slider = null;
@@ -300,13 +306,17 @@ export class ImportUI {
       this._selectedSign = result.signs[0];
       const nearPieces = filterNearSign(result.playerBuilt, this._selectedSign, this._radius);
 
+      const idLookup = getInternalIdLookup();
+      let matchedCount = 0;
       const counts = {};
       for (const p of nearPieces) {
         const info = lookupByHash(p.prefabHash);
         const name = info ? info.en : `Unknown (${p.prefabHash})`;
         counts[name] = (counts[name] || 0) + 1;
+        if (info && idLookup.has(info.name)) matchedCount++;
       }
       const topPieces = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      const unmatchedCount = nearPieces.length - matchedCount;
 
       this._showStep('result');
       const summary = this._modal.querySelector('.import-summary');
@@ -314,6 +324,7 @@ export class ImportUI {
         <p>Generation <strong>${result.generation}</strong> &middot; ${result.chunkFileCount} chunks &middot; ${result.totalZdos.toLocaleString()} ZDOs</p>
         <p><strong>${result.playerBuilt.length}</strong> player-built pieces total, <strong>${nearPieces.length}</strong> within ${this._radius} m of BLUEPRINT sign</p>
         <p>Sign at (${this._selectedSign.pos.x.toFixed(1)}, ${this._selectedSign.pos.y.toFixed(1)}, ${this._selectedSign.pos.z.toFixed(1)})</p>
+        <p><strong>${matchedCount}</strong> matched to assets, <strong>${unmatchedCount}</strong> unmatched (geometric fallback)</p>
         <table class="import-piece-table">
           <thead><tr><th>Piece</th><th>Count</th></tr></thead>
           <tbody>${topPieces.map(([n, c]) => `<tr><td>${n}</td><td>${c}</td></tr>`).join('')}</tbody>
@@ -352,6 +363,21 @@ export class ImportUI {
     const sign = this._selectedSign;
     const nearPieces = filterNearSign(result.playerBuilt, sign, this._radius);
 
+    const idLookup = getInternalIdLookup();
+
+    const matched = [];
+    const unmatched = [];
+    for (const zdo of nearPieces) {
+      const info = lookupByHash(zdo.prefabHash);
+      const pieceName = info ? info.name : null;
+      const assetType = pieceName ? idLookup.get(pieceName) : null;
+      if (assetType) {
+        matched.push({ zdo, info, assetType });
+      } else {
+        unmatched.push(zdo);
+      }
+    }
+
     this.blueprintLayer.setPieces(nearPieces, sign);
 
     const nearTCs = result.terrainCompilers.filter(tc => {
@@ -380,11 +406,51 @@ export class ImportUI {
     }
     this.blueprintLayer.visible = true;
 
-    const bounds = this.blueprintLayer.getBounds();
-    if (bounds) {
-      const w = bounds.maxX - bounds.minX;
-      const h = bounds.maxY - bounds.minY;
-      this.viewport.fitRect(bounds.minX, bounds.minY, w, h, this.renderer.width, this.renderer.height);
+    if (matched.length > 0) {
+      this.mapScale.locked = false;
+      this.mapScale.metresPerPixel = 1;
+
+      let wl = this.layerManager.getByType('working')[0];
+      if (!wl) {
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const zdo of nearPieces) {
+          const lx = zdo.pos.x - sign.pos.x;
+          const ly = -(zdo.pos.z - sign.pos.z);
+          minX = Math.min(minX, lx); maxX = Math.max(maxX, lx);
+          minY = Math.min(minY, ly); maxY = Math.max(maxY, ly);
+        }
+        const pad = 20;
+        const ox = minX - pad;
+        const oy = minY - pad;
+        const bw = (maxX - minX) + pad * 2;
+        const bh = (maxY - minY) + pad * 2;
+        wl = new WorkingLayer(ox, oy, bw, bh, this.bus, this.mapScale, this.gridSettings, this.fineTuneState);
+        wl.name = 'Blueprint area';
+        wl.gridAnchorX = 0;
+        wl.gridAnchorY = 0;
+        this.layerManager.addLayer(wl);
+      }
+
+      const group = this.assetLayer.addGroup('Blueprint Import');
+
+      for (const { zdo, assetType } of matched) {
+        const asset = createAsset(assetType);
+        if (!asset) continue;
+        asset.mapScale = this.mapScale;
+        asset.gridX = zdo.pos.x - sign.pos.x;
+        asset.gridY = -(zdo.pos.z - sign.pos.z);
+        asset.rotation = zdo.yawSnapped || 0;
+        asset.workingLayer = wl;
+        asset.groupId = group.id;
+        this.assetLayer.addAsset(asset);
+      }
+    }
+
+    const fitBounds = this.blueprintLayer.getBounds();
+    if (fitBounds) {
+      const w = fitBounds.maxX - fitBounds.minX;
+      const h = fitBounds.maxY - fitBounds.minY;
+      this.viewport.fitRect(fitBounds.minX, fitBounds.minY, w, h, this.renderer.width, this.renderer.height);
     }
 
     document.getElementById('empty-state').style.display = 'none';
