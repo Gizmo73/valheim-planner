@@ -72,6 +72,10 @@ const mobileControls = new MobileControls(toolManager, selectTool, mapScale, bus
 const blueprintLayer = new BlueprintLayer(bus);
 const importUI = new ImportUI(bus, blueprintLayer, viewport, renderer, layerManager, assetLayer, mapScale, gridSettings, fineTuneState);
 
+bus.on('blueprint:rotated', (deg) => {
+  viewport.rotation = deg * Math.PI / 180;
+});
+
 const saveLoad = new SaveLoad(layerManager, mapLayer, assetLayer, mapScale, viewport, renderer, bus, gridSettings, fineTuneState);
 
 bus.on('file:selected', async (file) => {

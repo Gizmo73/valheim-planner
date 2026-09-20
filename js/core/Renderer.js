@@ -49,13 +49,19 @@ export class Renderer {
     ctx.clearRect(0, 0, this.width, this.height);
     ctx.translate(vp.panX, vp.panY);
     ctx.scale(vp.zoom, vp.zoom);
+    if (vp.rotation) ctx.rotate(vp.rotation);
 
     this._renderLayers(ctx, vp);
 
     ctx.restore();
 
     if (this.toolManager) {
+      ctx.save();
+      ctx.translate(vp.panX, vp.panY);
+      ctx.scale(vp.zoom, vp.zoom);
+      if (vp.rotation) ctx.rotate(vp.rotation);
       this.toolManager.renderOverlay(ctx, vp);
+      ctx.restore();
     }
   }
 

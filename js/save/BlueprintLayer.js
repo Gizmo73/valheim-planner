@@ -100,6 +100,7 @@ export class BlueprintLayer {
   rotateLayer(deltaDeg) {
     this.layerRotationDeg = (this.layerRotationDeg + deltaDeg) % 360;
     if (this.layerRotationDeg < 0) this.layerRotationDeg += 360;
+    this.bus.emit('blueprint:rotated', this.layerRotationDeg);
     this.bus.emit('render:request');
   }
 
@@ -109,9 +110,6 @@ export class BlueprintLayer {
     ctx.save();
 
     this._renderGrid(ctx, viewport, canvasW, canvasH);
-
-    const layerRad = this.layerRotationDeg * Math.PI / 180;
-    if (layerRad !== 0) ctx.rotate(layerRad);
 
     if (this.showTerrain) {
       this._renderTerrainEdits(ctx, viewport);
@@ -351,17 +349,13 @@ export class BlueprintLayer {
 
   getBounds() {
     if (!this.pieces.length) return null;
-    const rad = this.layerRotationDeg * Math.PI / 180;
-    const cos = Math.cos(rad), sin = Math.sin(rad);
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const p of this.pieces) {
       const lx = p.localX, ly = -p.localZ;
-      const rx = lx * cos - ly * sin;
-      const ry = lx * sin + ly * cos;
-      minX = Math.min(minX, rx - 2);
-      maxX = Math.max(maxX, rx + 2);
-      minY = Math.min(minY, ry - 2);
-      maxY = Math.max(maxY, ry + 2);
+      minX = Math.min(minX, lx - 2);
+      maxX = Math.max(maxX, lx + 2);
+      minY = Math.min(minY, ly - 2);
+      maxY = Math.max(maxY, ly + 2);
     }
     return { minX, maxX, minY, maxY };
   }

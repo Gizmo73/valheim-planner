@@ -150,6 +150,7 @@ export class ImportUI {
 
     this._sliderContainer.querySelector('.blueprint-rotate-reset').addEventListener('click', () => {
       this.blueprintLayer.layerRotationDeg = 0;
+      this.bus.emit('blueprint:rotated', 0);
       this.bus.emit('render:request');
       this._updateRotateDisplay();
       this._refitViewport();
@@ -437,8 +438,8 @@ export class ImportUI {
         const asset = createAsset(assetType);
         if (!asset) continue;
         asset.mapScale = this.mapScale;
-        asset.gridX = zdo.pos.x - sign.pos.x;
-        asset.gridY = -(zdo.pos.z - sign.pos.z);
+        asset.gridX = (zdo.pos.x - sign.pos.x) - asset.widthM / 2;
+        asset.gridY = -(zdo.pos.z - sign.pos.z) - asset.heightM / 2;
         asset.rotation = zdo.yawSnapped || 0;
         asset.workingLayer = wl;
         asset.groupId = group.id;
