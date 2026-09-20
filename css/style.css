@@ -1024,6 +1024,45 @@ svg.lucide {
   color: var(--color-neutral-300);
 }
 
+.settings-text-input {
+  width: 100%;
+  padding: 7px 10px;
+  font: 400 12px Inter, system-ui, sans-serif;
+  color: var(--color-neutral-100);
+  background: var(--color-neutral-900);
+  border: 1px solid var(--color-control-border);
+  border-radius: 7px;
+  outline: none;
+  box-sizing: border-box;
+}
+.settings-text-input:focus {
+  border-color: var(--color-accent);
+}
+.settings-text-input::placeholder {
+  color: var(--color-neutral-600);
+}
+
+.library-status {
+  font: 500 11px Inter, system-ui, sans-serif;
+  color: var(--color-neutral-400);
+  min-height: 16px;
+}
+.library-status.dirty {
+  color: var(--color-accent-300);
+}
+
+.library-update-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+.library-update-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 /* Fine tune */
 
 .nudge-pad {

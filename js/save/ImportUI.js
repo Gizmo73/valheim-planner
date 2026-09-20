@@ -406,31 +406,31 @@ export class ImportUI {
     }
     this.blueprintLayer.visible = true;
 
-    if (matched.length > 0) {
-      this.mapScale.locked = false;
-      this.mapScale.metresPerPixel = 1;
+    this.mapScale.locked = false;
+    this.mapScale.metresPerPixel = 1;
 
-      let wl = this.layerManager.getByType('working')[0];
-      if (!wl) {
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        for (const zdo of nearPieces) {
-          const lx = zdo.pos.x - sign.pos.x;
-          const ly = -(zdo.pos.z - sign.pos.z);
-          minX = Math.min(minX, lx); maxX = Math.max(maxX, lx);
-          minY = Math.min(minY, ly); maxY = Math.max(maxY, ly);
-        }
-        const pad = 20;
-        const ox = minX - pad;
-        const oy = minY - pad;
-        const bw = (maxX - minX) + pad * 2;
-        const bh = (maxY - minY) + pad * 2;
-        wl = new WorkingLayer(ox, oy, bw, bh, this.bus, this.mapScale, this.gridSettings, this.fineTuneState);
-        wl.name = 'Blueprint area';
-        wl.gridAnchorX = 0;
-        wl.gridAnchorY = 0;
-        this.layerManager.addLayer(wl);
+    let wl = this.layerManager.getByType('working')[0];
+    if (!wl) {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const zdo of nearPieces) {
+        const lx = zdo.pos.x - sign.pos.x;
+        const ly = -(zdo.pos.z - sign.pos.z);
+        minX = Math.min(minX, lx); maxX = Math.max(maxX, lx);
+        minY = Math.min(minY, ly); maxY = Math.max(maxY, ly);
       }
+      const pad = 20;
+      const ox = minX - pad;
+      const oy = minY - pad;
+      const bw = (maxX - minX) + pad * 2;
+      const bh = (maxY - minY) + pad * 2;
+      wl = new WorkingLayer(ox, oy, bw, bh, this.bus, this.mapScale, this.gridSettings, this.fineTuneState);
+      wl.name = 'Blueprint area';
+      wl.gridAnchorX = 0;
+      wl.gridAnchorY = 0;
+      this.layerManager.addLayer(wl);
+    }
 
+    if (matched.length > 0) {
       const group = this.assetLayer.addGroup('Blueprint Import');
 
       for (const { zdo, assetType } of matched) {

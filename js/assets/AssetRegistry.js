@@ -163,3 +163,18 @@ export function isVariantDirty(categoryId, variantId) {
   if (!live) return false;
   return JSON.stringify(live) !== JSON.stringify(pristine);
 }
+
+export function isCategoryDirty(categoryId) {
+  const mod = categories.get(categoryId);
+  const pristine = pristineMeta.get(categoryId);
+  if (!mod || !pristine) return false;
+  return JSON.stringify(mod.meta) !== JSON.stringify(pristine);
+}
+
+export function getDirtyCategories() {
+  const dirty = [];
+  for (const id of categories.keys()) {
+    if (isCategoryDirty(id)) dirty.push(id);
+  }
+  return dirty;
+}

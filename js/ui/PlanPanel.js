@@ -1,4 +1,6 @@
 import { refreshIcons } from './icons.js';
+import { getDirtyCategories, getCategoryIds, getCategoryModule, CATEGORY_PATHS, commitCategoryModule } from '../assets/AssetRegistry.js';
+import { fetchCategorySource, replaceMetaBlock } from '../assets/categorySource.js';
 
 const GRID_COLORS = ['#4ee3ec', '#f3f5fe', '#9184d9', '#f0b64e'];
 const MAJOR_EVERY_OPTIONS = [2, 3, 4, 5, 6, 8, 10];
@@ -40,6 +42,8 @@ export class PlanPanel {
     this._el.appendChild(this._fineTuneSection());
     this._el.appendChild(Object.assign(document.createElement('div'), { className: 'plan-hr' }));
     this._el.appendChild(this._gridSection());
+    this._el.appendChild(Object.assign(document.createElement('div'), { className: 'plan-hr' }));
+    this._el.appendChild(this._librarySection());
     this._el.appendChild(Object.assign(document.createElement('div'), { className: 'plan-hr' }));
     this._el.appendChild(this._summarySection());
     refreshIcons();
@@ -349,6 +353,168 @@ export class PlanPanel {
     wrap.appendChild(aboveRow);
 
     return wrap;
+  }
+
+  _librarySection() {
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.flexDirection = 'column';
+    wrap.style.gap = '11px';
+
+    const label = document.createElement('div');
+    label.className = 'plan-section-label';
+    label.textContent = 'Asset library';
+    wrap.appendChild(label);
+
+    const tokenRow = document.createElement('div');
+    tokenRow.className = 'plan-field';
+    const tokenTitle = document.createElement('div');
+    tokenTitle.className = 'plan-field-title';
+    tokenTitle.innerHTML = '<span>GitHub token</span>';
+    tokenRow.appendChild(tokenTitle);
+    const tokenInput = document.createElement('input');
+    tokenInput.type = 'password';
+    tokenInput.className = 'settings-text-input';
+    tokenInput.placeholder = 'ghp_...';
+    try { tokenInput.value = localStorage.getItem('vp_gh_token') || ''; } catch (_) {}
+    tokenInput.addEventListener('keydown', (e) => e.stopPropagation());
+    tokenInput.addEventListener('change', () => {
+      try { localStorage.setItem('vp_gh_token', tokenInput.value); } catch (_) {}
+    });
+    tokenRow.appendChild(tokenInput);
+    wrap.appendChild(tokenRow);
+
+    const repoRow = document.createElement('div');
+    repoRow.className = 'plan-field';
+    const repoTitle = document.createElement('div');
+    repoTitle.className = 'plan-field-title';
+    repoTitle.innerHTML = '<span>Repository</span>';
+    repoRow.appendChild(repoTitle);
+    const repoInput = document.createElement('input');
+    repoInput.type = 'text';
+    repoInput.className = 'settings-text-input';
+    repoInput.placeholder = 'owner/repo';
+    try { repoInput.value = localStorage.getItem('vp_gh_repo') || 'gizmo73/valheim-planner'; } catch (_) {}
+    repoInput.addEventListener('keydown', (e) => e.stopPropagation());
+    repoInput.addEventListener('change', () => {
+      try { localStorage.setItem('vp_gh_repo', repoInput.value); } catch (_) {}
+    });
+    repoRow.appendChild(repoInput);
+    wrap.appendChild(repoRow);
+
+    const branchRow = document.createElement('div');
+    branchRow.className = 'plan-field';
+    const branchTitle = document.createElement('div');
+    branchTitle.className = 'plan-field-title';
+    branchTitle.innerHTML = '<span>Branch</span>';
+    branchRow.appendChild(branchTitle);
+    const branchInput = document.createElement('input');
+    branchInput.type = 'text';
+    branchInput.className = 'settings-text-input';
+    branchInput.placeholder = 'main';
+    try { branchInput.value = localStorage.getItem('vp_gh_branch') || 'main'; } catch (_) {}
+    branchInput.addEventListener('keydown', (e) => e.stopPropagation());
+    branchInput.addEventListener('change', () => {
+      try { localStorage.setItem('vp_gh_branch', branchInput.value); } catch (_) {}
+    });
+    branchRow.appendChild(branchInput);
+    wrap.appendChild(branchRow);
+
+    const dirty = getDirtyCategories();
+    const statusText = document.createElement('div');
+    statusText.className = 'library-status';
+    if (dirty.length > 0) {
+      statusText.textContent = `${dirty.length} modified: ${dirty.join(', ')}`;
+      statusText.classList.add('dirty');
+    } else {
+      statusText.textContent = 'No unsaved changes';
+    }
+    wrap.appendChild(statusText);
+
+    const updateBtn = document.createElement('button');
+    updateBtn.className = 'btn-accent library-update-btn';
+    updateBtn.innerHTML = '<i data-lucide="git-commit-horizontal"></i> Update Library';
+    updateBtn.disabled = dirty.length === 0;
+    updateBtn.addEventListener('click', () => this._commitLibrary(updateBtn, statusText));
+    wrap.appendChild(updateBtn);
+
+    return wrap;
+  }
+
+  async _commitLibrary(btn, statusEl) {
+    let token, repo, branch;
+    try {
+      token = localStorage.getItem('vp_gh_token') || '';
+      repo = localStorage.getItem('vp_gh_repo') || '';
+      branch = localStorage.getItem('vp_gh_branch') || 'main';
+    } catch (_) {
+      statusEl.textContent = 'Cannot read settings';
+      return;
+    }
+
+    if (!token) { statusEl.textContent = 'Set a GitHub token first'; return; }
+    if (!repo || !repo.includes('/')) { statusEl.textContent = 'Set repository as owner/repo'; return; }
+
+    const dirty = getDirtyCategories();
+    if (dirty.length === 0) { statusEl.textContent = 'Nothing to update'; return; }
+
+    btn.disabled = true;
+    statusEl.textContent = 'Committing...';
+    statusEl.classList.remove('dirty');
+
+    const apiBase = `https://api.github.com/repos/${repo}/contents`;
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+    };
+
+    const errors = [];
+    for (const catId of dirty) {
+      const filePath = CATEGORY_PATHS[catId];
+      if (!filePath) continue;
+
+      try {
+        statusEl.textContent = `Updating ${catId}...`;
+
+        const getRes = await fetch(`${apiBase}/${filePath}?ref=${encodeURIComponent(branch)}`, { headers });
+        if (!getRes.ok) throw new Error(`GET ${filePath}: ${getRes.status}`);
+        const fileData = await getRes.json();
+
+        const source = await fetchCategorySource(catId);
+        const mod = getCategoryModule(catId);
+        const updated = replaceMetaBlock(source, mod.meta);
+        const encoded = btoa(unescape(encodeURIComponent(updated)));
+
+        const putRes = await fetch(`${apiBase}/${filePath}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            message: `Update ${catId} asset library`,
+            content: encoded,
+            sha: fileData.sha,
+            branch,
+          }),
+        });
+        if (!putRes.ok) {
+          const body = await putRes.json().catch(() => ({}));
+          throw new Error(`PUT ${filePath}: ${putRes.status} ${body.message || ''}`);
+        }
+
+        commitCategoryModule(catId, mod);
+      } catch (e) {
+        errors.push(`${catId}: ${e.message}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      statusEl.textContent = `Errors: ${errors.join('; ')}`;
+      statusEl.classList.add('dirty');
+    } else {
+      statusEl.textContent = 'Committed successfully';
+      statusEl.classList.remove('dirty');
+    }
+    btn.disabled = getDirtyCategories().length === 0;
   }
 
   _summarySection() {
