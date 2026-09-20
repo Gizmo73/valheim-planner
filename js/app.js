@@ -448,6 +448,7 @@ function isTypingTarget(el) {
 
 window.addEventListener('keydown', (e) => {
   if (isTypingTarget(document.activeElement)) return;
+  if (!document.getElementById('asset-edit-modal')?.classList.contains('hidden')) return;
   if (e.code === 'Escape') { fineTuneState.clearLatch(); return; }
   if (!layerManager.getByType('working')[0]) return;
 

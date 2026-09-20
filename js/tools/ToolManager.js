@@ -127,8 +127,11 @@ export class ToolManager {
   _onKeyDown(e) {
     const el = document.activeElement;
     const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+    const modalOpen = !document.getElementById('asset-edit-modal')?.classList.contains('hidden');
 
-    if (e.code === 'Space' && !e.repeat && !typing) {
+    if (typing || modalOpen) return;
+
+    if (e.code === 'Space' && !e.repeat) {
       this._spaceDown = true;
       this.canvas.style.cursor = 'grab';
       e.preventDefault();
@@ -150,8 +153,6 @@ export class ToolManager {
       e.preventDefault();
       return;
     }
-
-    if (typing) return;
 
     if (this.currentTool && this.currentTool.onKeyDown) {
       this.currentTool.onKeyDown(e);
