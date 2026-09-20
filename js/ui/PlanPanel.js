@@ -395,7 +395,11 @@ export class PlanPanel {
     repoInput.type = 'text';
     repoInput.className = 'settings-text-input';
     repoInput.placeholder = 'owner/repo';
-    try { repoInput.value = localStorage.getItem('vp_gh_repo') || 'gizmo73/valheim-planner'; } catch (_) {}
+    try {
+      const stored = localStorage.getItem('vp_gh_repo');
+      repoInput.value = stored || 'gizmo73/valheim-planner';
+      if (!stored) localStorage.setItem('vp_gh_repo', repoInput.value);
+    } catch (_) {}
     repoInput.addEventListener('keydown', (e) => e.stopPropagation());
     repoInput.addEventListener('change', () => {
       try { localStorage.setItem('vp_gh_repo', repoInput.value); } catch (_) {}
@@ -413,7 +417,11 @@ export class PlanPanel {
     branchInput.type = 'text';
     branchInput.className = 'settings-text-input';
     branchInput.placeholder = 'main';
-    try { branchInput.value = localStorage.getItem('vp_gh_branch') || 'main'; } catch (_) {}
+    try {
+      const stored = localStorage.getItem('vp_gh_branch');
+      branchInput.value = stored || 'main';
+      if (!stored) localStorage.setItem('vp_gh_branch', branchInput.value);
+    } catch (_) {}
     branchInput.addEventListener('keydown', (e) => e.stopPropagation());
     branchInput.addEventListener('change', () => {
       try { localStorage.setItem('vp_gh_branch', branchInput.value); } catch (_) {}
