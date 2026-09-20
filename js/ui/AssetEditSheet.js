@@ -71,6 +71,7 @@ export class AssetEditSheet {
   _touch(patch) {
     updateVariant(this._categoryId, this._type, patch);
     this.bus.emit('render:request');
+    this.bus.emit('library:changed');
     this._render();
   }
 
@@ -145,6 +146,7 @@ export class AssetEditSheet {
       resetBtn.addEventListener('click', () => {
         resetVariantToFileData(this._categoryId, this._type);
         this.bus.emit('render:request');
+        this.bus.emit('library:changed');
         this._render();
       });
       const saveBtn = document.createElement('button');
@@ -499,6 +501,7 @@ export class AssetEditSheet {
         if (commit) commitCategoryModule(categoryId, result.module);
         else previewCategoryModule(categoryId, result.module);
         this.bus.emit('render:request');
+        this.bus.emit('library:changed');
         redrawThumbs();
       } else {
         errorBanner.textContent = result.error;

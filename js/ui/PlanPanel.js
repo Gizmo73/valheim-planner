@@ -31,6 +31,7 @@ export class PlanPanel {
     bus.on('layer:created', () => this._render());
     bus.on('layer:removed', () => this._render());
     bus.on('finetune:changed', () => this._render());
+    bus.on('library:changed', () => this._render());
   }
 
   _workingLayer() {
