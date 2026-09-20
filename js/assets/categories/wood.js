@@ -1,217 +1,79 @@
-import { shapeFromVariant } from '../shapes.js';
-
-const PX_PER_M = 64;
-
-export const meta = {
-  id: 'wood',
-  label: 'Wood',
-  variants: [
-    { id: 'wood-plank-floor', label: 'Wood Floor 2x2', widthM: 2, heightM: 2, shapeKind: 'rect', snapPoints: null },
-    { id: 'wood-plank-floor-1x1', label: 'Wood Floor 1x1', widthM: 1, heightM: 1, shapeKind: 'rect', snapPoints: null },
-    { id: 'wood-beam-2m', label: 'Wood Beam 2m', widthM: 2, heightM: 0.5, shapeKind: 'rect', snapPoints: [{ x: -1, y: 0 }, { x: 1, y: 0 }] },
-    { id: 'wood-beam-1m', label: 'Wood Beam 1m', widthM: 1, heightM: 0.5, shapeKind: 'rect', snapPoints: [{ x: -0.5, y: 0 }, { x: 0.5, y: 0 }] },
-    { id: 'wood-beam-vertical', label: 'Vertical Beam', widthM: 0.5, heightM: 0.5, shapeKind: 'rect', snapPoints: [{ x: 0, y: 0 }] },
-    { id: 'log-beam-2m', label: 'Log Beam 2m', widthM: 2, heightM: 0.2, shapeKind: 'rect', snapPoints: [{ x: -1, y: 0 }, { x: 1, y: 0 }] },
-    { id: 'log-beam-4m', label: 'Log Beam 4m', widthM: 4, heightM: 0.2, shapeKind: 'rect', snapPoints: [{ x: -2, y: 0 }, { x: 2, y: 0 }] },
-    { id: 'log-pole', label: 'Log Pole', widthM: 0.2, heightM: 0.2, shapeKind: 'circle', snapPoints: [{ x: 0, y: 0 }] },
-    { id: 'wood-stairs-2x2', label: 'Wood Stairs 2x2', widthM: 2, heightM: 2, shapeKind: 'rect', snapPoints: null },
-    { id: 'wood-stairs-1x2', label: 'Wood Stairs 1x2', widthM: 1, heightM: 2, shapeKind: 'rect', snapPoints: null },
-    { id: 'wood-wall-1m', label: 'Wood Wall 1m', widthM: 1, heightM: 0.3, shapeKind: 'rect', snapPoints: [{ x: -0.5, y: 0 }, { x: 0.5, y: 0 }] },
-    { id: 'wood-wall-2m', label: 'Wood Wall 2m', widthM: 2, heightM: 0.3, shapeKind: 'rect', snapPoints: [{ x: -1, y: 0 }, { x: 1, y: 0 }] },
-  ],
-};
-
-export function shape(id) {
-  return shapeFromVariant(meta, id);
-}
-
-function drawPlankFloor(ctx, w, h) {
-  ctx.fillStyle = '#8B6914';
-  ctx.fillRect(0, 0, w, h);
-
-  const plankCount = Math.max(1, Math.round((h / PX_PER_M) / 0.5));
-  const plankH = h / plankCount;
-  const colors = ['#7A5C12', '#8B6914', '#9A7520', '#806018'];
-
-  for (let i = 0; i < plankCount; i++) {
-    const y = i * plankH;
-    ctx.fillStyle = colors[i % colors.length];
-    ctx.fillRect(0, y + 1, w, plankH - 2);
-
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(255, 220, 150, 0.08)';
-    ctx.lineWidth = 0.5;
-    for (let g = 0; g < 6; g++) {
-      const gy = y + 3 + g * (plankH / 7);
-      ctx.beginPath();
-      ctx.moveTo(0, gy);
-      for (let x = 0; x < w; x += 10) {
-        ctx.lineTo(x + 10, gy + (Math.random() - 0.5) * 1.5);
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'">
+    <title>Site not found &middot; GitHub Pages</title>
+    <style type="text/css" media="screen">
+      body {
+        background-color: #f1f1f1;
+        margin: 0;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
       }
-      ctx.stroke();
-    }
-  }
 
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
-}
+      .container { margin: 50px auto 40px auto; width: 600px; text-align: center; }
 
-function drawBeam(ctx, w, h) {
-  ctx.fillStyle = '#6B4F12';
-  ctx.fillRect(0, 0, w, h);
+      a { color: #4183c4; text-decoration: none; }
+      a:hover { text-decoration: underline; }
 
-  ctx.strokeStyle = 'rgba(255, 200, 100, 0.1)';
-  ctx.lineWidth = 0.5;
-  for (let g = 0; g < w; g += 3) {
-    ctx.beginPath();
-    ctx.moveTo(g, 0);
-    ctx.lineTo(g + (Math.random() - 0.5) * 2, h);
-    ctx.stroke();
-  }
+      h1 { width: 800px; position:relative; left: -100px; letter-spacing: -1px; line-height: 60px; font-size: 60px; font-weight: 100; margin: 0px 0 50px 0; text-shadow: 0 1px 0 #fff; }
+      p { color: rgba(0, 0, 0, 0.5); margin: 20px 0; line-height: 1.6; }
 
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
-}
+      ul { list-style: none; margin: 25px 0; padding: 0; }
+      li { display: table-cell; font-weight: bold; width: 1%; }
 
-function drawLogBeam(ctx, w, h) {
-  ctx.fillStyle = '#5C3D1E';
-  ctx.fillRect(0, 0, w, h);
-
-  const grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, 'rgba(0, 0, 0, 0.2)');
-  grad.addColorStop(0.3, 'rgba(255, 200, 130, 0.08)');
-  grad.addColorStop(0.5, 'rgba(255, 200, 130, 0.12)');
-  grad.addColorStop(0.7, 'rgba(255, 200, 130, 0.08)');
-  grad.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, w, h);
-
-  ctx.strokeStyle = 'rgba(80, 50, 20, 0.25)';
-  ctx.lineWidth = 0.5;
-  for (let g = 0; g < w; g += 4) {
-    ctx.beginPath();
-    ctx.moveTo(g, 0);
-    ctx.lineTo(g + (Math.random() - 0.5) * 3, h);
-    ctx.stroke();
-  }
-
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
-}
-
-function drawLogPole(ctx, w, h) {
-  ctx.fillStyle = '#5C3D1E';
-  ctx.fillRect(0, 0, w, h);
-
-  const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.min(w, h) / 2);
-  grad.addColorStop(0, 'rgba(200, 160, 100, 0.15)');
-  grad.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
-  grad.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, w, h);
-
-  ctx.strokeStyle = 'rgba(100, 70, 30, 0.15)';
-  ctx.lineWidth = 0.5;
-  for (let r = 3; r < Math.min(w, h) / 2; r += 3) {
-    ctx.beginPath();
-    ctx.arc(w / 2, h / 2, r, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-}
-
-function drawStairs(ctx, w, h) {
-  ctx.fillStyle = '#8B6914';
-  ctx.fillRect(0, 0, w, h);
-
-  const hMetres = h / PX_PER_M;
-  const plankCount = Math.max(1, Math.round(hMetres * 2) + 1);
-  const plankH = h / plankCount;
-  const colors = ['#7A5C12', '#8B6914', '#9A7520', '#806018', '#8B6914'];
-
-  for (let i = 0; i < plankCount; i++) {
-    const py = i * plankH;
-    ctx.fillStyle = colors[i % colors.length];
-    ctx.fillRect(0, py + 0.5, w, plankH - 1);
-
-    ctx.strokeStyle = 'rgba(255, 220, 150, 0.06)';
-    ctx.lineWidth = 0.5;
-    for (let g = 0; g < 3; g++) {
-      const gy = py + 2 + g * (plankH / 4);
-      ctx.beginPath();
-      ctx.moveTo(0, gy);
-      for (let x = 0; x < w; x += 10) {
-        ctx.lineTo(x + 10, gy + (Math.random() - 0.5) * 1);
+      .logo { display: inline-block; margin-top: 35px; }
+      .logo-img-2x { display: none; }
+      @media
+      only screen and (-webkit-min-device-pixel-ratio: 2),
+      only screen and (   min--moz-device-pixel-ratio: 2),
+      only screen and (     -o-min-device-pixel-ratio: 2/1),
+      only screen and (        min-device-pixel-ratio: 2),
+      only screen and (                min-resolution: 192dpi),
+      only screen and (                min-resolution: 2dppx) {
+        .logo-img-1x { display: none; }
+        .logo-img-2x { display: inline-block; }
       }
-      ctx.stroke();
-    }
-  }
 
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-  ctx.lineWidth = 1.5;
-  const steps = Math.max(1, Math.round(hMetres * 2));
-  for (let i = 1; i < steps; i++) {
-    const y = (i / steps) * h;
-    ctx.beginPath();
-    ctx.moveTo(2, y);
-    ctx.lineTo(w - 2, y);
-    ctx.stroke();
-  }
+      #suggestions {
+        margin-top: 35px;
+        color: #ccc;
+      }
+      #suggestions a {
+        color: #666666;
+        font-weight: 200;
+        font-size: 14px;
+        margin: 0 10px;
+      }
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-  ctx.beginPath();
-  ctx.moveTo(w / 2, 6);
-  ctx.lineTo(w / 2 - 8, 18);
-  ctx.lineTo(w / 2 + 8, 18);
-  ctx.closePath();
-  ctx.fill();
+    </style>
+  </head>
+  <body>
 
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
-}
+    <div class="container">
 
-function drawWall(ctx, w, h) {
-  ctx.fillStyle = '#6B4F12';
-  ctx.fillRect(0, 0, w, h);
+      <h1>404</h1>
+      <p><strong>There isn't a GitHub Pages site here.</strong></p>
 
-  const plankW = 12;
-  const colors = ['#5E4410', '#6B4F12', '#7A5C18', '#624A10'];
-  for (let i = 0; i < Math.ceil(w / plankW); i++) {
-    const px = i * plankW;
-    ctx.fillStyle = colors[i % colors.length];
-    ctx.fillRect(px + 0.5, 0, plankW - 1, h);
+      <p>
+        If you're trying to publish one,
+        <a href="https://help.github.com/pages/">read the full documentation</a>
+        to learn how to set up <strong>GitHub Pages</strong>
+        for your repository, organization, or user account.
+      </p>
 
-    ctx.strokeStyle = 'rgba(255, 200, 100, 0.06)';
-    ctx.lineWidth = 0.5;
-    for (let g = 0; g < 2; g++) {
-      const gx = px + 2 + g * (plankW / 3);
-      ctx.beginPath();
-      ctx.moveTo(gx, 0);
-      ctx.lineTo(gx + (Math.random() - 0.5) * 2, h);
-      ctx.stroke();
-    }
-  }
+      <div id="suggestions">
+        <a href="https://githubstatus.com">GitHub Status</a> &mdash;
+        <a href="https://twitter.com/githubstatus">@githubstatus</a>
+      </div>
 
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
-}
+      <a href="/" class="logo logo-img-1x">
+        <img width="32" height="32" title="" alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoTWFjaW50b3NoKSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpFMTZCRDY3REIzRjAxMUUyQUQzREIxQzRENUFFNUM5NiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpFMTZCRDY3RUIzRjAxMUUyQUQzREIxQzRENUFFNUM5NiI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkUxNkJENjdCQjNGMDExRTJBRDNEQjFDNEQ1QUU1Qzk2IiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOkUxNkJENjdDQjNGMDExRTJBRDNEQjFDNEQ1QUU1Qzk2Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+SM9MCAAAA+5JREFUeNrEV11Ik1EY3s4+ddOp29Q5b0opCgKFsoKoi5Kg6CIhuwi6zLJLoYLopq4qsKKgi4i6CYIoU/q5iDAKs6syoS76IRWtyJ+p7cdt7sf1PGOD+e0c3dygAx/67ZzzPM95/877GYdHRg3ZjMXFxepQKNS6sLCwJxqNNuFpiMfjVs4ZjUa/pmmjeD6VlJS8NpvNT4QQ7mxwjSsJiEQim/1+/9lgMHgIr5ohuxG1WCw9Vqv1clFR0dCqBODElV6v90ogEDjGdYbVjXhpaendioqK07CIR7ZAqE49PT09BPL2PMgTByQGsYiZlQD4uMXtdr+JxWINhgINYhGT2MsKgMrm2dnZXgRXhaHAg5jEJodUAHxux4LudHJE9RdEdA+i3Juz7bGHe4mhE9FNrgwBCLirMFV9Okh5eflFh8PR5nK5nDabrR2BNJlKO0T35+Li4n4+/J+/JQCxhmu5h3uJoXNHPbmWZAHMshWB8l5/ipqammaAf0zPDDx1ONV3vurdidqwAQL+pEc8sLcAe1CCvQ3YHxIW8Pl85xSWNC1hADDIv0rIE/o4J0k3kww4xSlwIhcq3EFFOm7KN/hUGOQkt0CFa5WpNJlMvxBEz/IVQAxg/ZRZl9wiHA63yDYieM7DnLP5CiAGsC7I5sgtYKJGWe2A8seFqgFJrJjEPY1Cn3pJ8/9W1e5VWsFDTEmFrBcoDhZJEQkXuhICMyKpjhahqN21hRYATKfUOlDmkygrR4o4C0VOLGJKrOITKB4jijzdXygBKixyC5TDQdnk/Pz8qRw6oOWGlsTKGOQW6OH6FBWsyePxdOXLTgxiyebILZCjz+GLgMIKnXNzc49YMlcRdHXcSwxFVgTInQhC9G33UhNoJLuqq6t345p9y3eUy8OTk5PjAHuI9uo4b07FBaOhsu0A4Unc+T1TU1Nj3KsSSE5yJ65jqF2DDd8QqWYmAZrIM2VlZTdnZmb6AbpdV9V6ec9znf5Q7HjYumdRE0JOp3MjitO4SFa+cZz8Umqe3TCbSLvdfkR/kWDdNQl5InuTcysOcpFT35ZrbBxx4p3JAHlZVVW1D/634VRt+FvLBgK/v5LV9WS+10xMTEwtRw7XvqOL+e2Q8V3AYIOIAXQ26/heWVnZCVfcyKHg2CBgTpmPmjYM8l24GyaUHyaIh7XwfR9ErE8qHoDfn2LTNAVC0HX6MFcBIP8Bi+6F6cdW/DICkANRfx99fEYFQ7Nph5i/uQiA214gno7K+guhaiKg9gC62+M8eR7XsBsYJ4ilam60Fb7r7uAj8wFyuwM1oIOWgfmDy6RXEEQzJMPe23DXrVS7rtyD3Df8z/FPgAEAzWU5Ku59ZAUAAAAASUVORK5CYII=">
+      </a>
 
-export function texture(ctx, id) {
-  const w = ctx.canvas.width, h = ctx.canvas.height;
-  if (id === 'wood-plank-floor' || id === 'wood-plank-floor-1x1') drawPlankFloor(ctx, w, h);
-  else if (id === 'wood-beam-2m' || id === 'wood-beam-1m' || id === 'wood-beam-vertical') drawBeam(ctx, w, h);
-  else if (id === 'log-beam-2m' || id === 'log-beam-4m') drawLogBeam(ctx, w, h);
-  else if (id === 'log-pole') drawLogPole(ctx, w, h);
-  else if (id === 'wood-stairs-2x2' || id === 'wood-stairs-1x2') drawStairs(ctx, w, h);
-  else if (id === 'wood-wall-1m' || id === 'wood-wall-2m') drawWall(ctx, w, h);
-}
+      <a href="/" class="logo logo-img-2x">
+        <img width="32" height="32" title="" alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoTWFjaW50b3NoKSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpEQUM1QkUxRUI0MUMxMUUyQUQzREIxQzRENUFFNUM5NiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpEQUM1QkUxRkI0MUMxMUUyQUQzREIxQzRENUFFNUM5NiI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkUxNkJENjdGQjNGMDExRTJBRDNEQjFDNEQ1QUU1Qzk2IiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOkUxNkJENjgwQjNGMDExRTJBRDNEQjFDNEQ1QUU1Qzk2Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+hfPRaQAAB6lJREFUeNrsW2mM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">
+      </a>
+    </div>
+  </body>
+</html>
