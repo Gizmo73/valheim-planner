@@ -2,113 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Valheim Build Planner</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://unpkg.com/lucide@0.544.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
   <div id="app">
-    <div id="topbar"></div>
-    <div id="context-bar" class="hidden"></div>
-
-    <div id="content">
-      <div id="canvas-container">
-        <canvas id="main-canvas"></canvas>
-
-        <div id="empty-state">
-          <div class="empty-inner">
-            <span class="empty-icon"><i data-lucide="image-plus"></i></span>
-            <div>
-              <div class="empty-title">Start with a screenshot of your map</div>
-              <div class="empty-desc">Drop an image here, or pick one. You'll set the scale next so pieces land on real metres.</div>
-            </div>
-            <div class="empty-actions">
-              <button id="empty-choose-map" class="btn-outline btn-outline-accent"><i data-lucide="image-plus"></i>Choose map image</button>
-              <button id="empty-import-save" class="btn-outline btn-outline-accent"><i data-lucide="folder-open"></i>Import world save</button>
-              <button id="empty-open-plan" class="btn-outline">Open a saved plan</button>
+    <header id="toolbar"></header>
+    <div id="context-bar"></div>
+    <main id="main">
+      <div id="stage">
+        <canvas id="canvas"></canvas>
+        <div id="empty-state" hidden>
+          <div class="empty-card">
+            <div class="empty-title">Start a plan</div>
+            <p>Import a world save to load the pieces around your anchor sign, or pick an asset and start placing.</p>
+            <div class="row-buttons">
+              <button id="empty-import" class="chip accent" data-icon="globe">Import world save</button>
+              <button id="empty-screenshot" class="chip" data-icon="image-plus">Add screenshot</button>
+              <button id="empty-open" class="chip" data-icon="folder-open">Open plan</button>
             </div>
           </div>
         </div>
-
-        <div id="selection-inspector" class="hidden"></div>
-
-        <div id="scale-modal" class="hidden"></div>
-        <div id="scale-hint" class="scale-hint hidden"><span class="icon"><i data-lucide="info"></i></span><span id="scale-hint-text"></span></div>
-        <div id="scale-preview-bar" class="hidden"></div>
-        <div id="finetune-axis-pill" class="finetune-axis-pill hidden"><span id="finetune-axis-text"></span><kbd id="finetune-axis-kbd"></kbd></div>
-
+        <div id="inspector" hidden></div>
+        <div id="toast"></div>
       </div>
-
-      <div id="sidebar">
-        <div class="panel-tabs">
-          <button class="panel-tab" data-tab="pieces">Pieces</button>
-          <button class="panel-tab" data-tab="layers">Layers</button>
-          <button class="panel-tab" data-tab="plan">Settings</button>
-        </div>
-
-        <div id="tab-pieces" class="tab-panel">
-          <div class="panel-search">
-            <div class="search-box">
-              <span><i data-lucide="search"></i></span>
-              <input id="asset-search" type="text" placeholder="Search pieces">
-            </div>
-          </div>
-          <div id="asset-list"></div>
-        </div>
-
-        <div id="tab-layers" class="tab-panel hidden">
-          <div id="layer-list"></div>
-        </div>
-
-        <div id="tab-plan" class="tab-panel hidden">
-          <div id="plan-panel"></div>
-        </div>
-      </div>
-      <div id="sidebar-backdrop" class="hidden"></div>
-    </div>
-
-    <div id="mobile-context" class="hidden"></div>
-    <div id="mobile-tabbar"></div>
-
-    <div id="shortcuts-bar">
-      <span class="shortcut"><kbd>Space</kbd>drag to pan</span>
-      <span class="shortcut"><kbd>Scroll</kbd>zoom</span>
-      <span class="shortcut"><kbd>R</kbd>rotate</span>
-      <span class="shortcut"><kbd>Q</kbd><kbd>E</kbd>snap point</span>
-      <span class="shortcut"><kbd>D</kbd>duplicate</span>
-      <span class="shortcut"><kbd>Del</kbd>delete</span>
-      <span class="shortcut"><kbd>Shift</kbd>+click multi-select</span>
-      <span class="shortcut"><kbd>G</kbd>group selected</span>
-      <span class="shortcut"><kbd>F</kbd>fill area</span>
-      <span class="shortcut"><kbd>Ctrl</kbd><kbd>A</kbd>select all</span>
-      <span class="shortcut"><kbd>Ctrl</kbd>snap to piece</span>
-      <span class="shortcut"><kbd>Shift</kbd>free place</span>
-      <button id="all-shortcuts-btn"><i data-lucide="keyboard"></i>All shortcuts</button>
-    </div>
-
-    <div id="help-panel" class="hidden">
-      <div class="help-shortcuts">
-        <span><kbd>Space</kbd> + drag to pan</span>
-        <span><kbd>Scroll</kbd> to zoom</span>
-        <span><kbd>R</kbd> rotate</span>
-        <span><kbd>Q</kbd><kbd>E</kbd> snap point</span>
-        <span><kbd>D</kbd> duplicate</span>
-        <span><kbd>Del</kbd> delete</span>
-        <span><kbd>Shift</kbd>+click multi-select</span>
-        <span><kbd>G</kbd> group selected</span>
-        <span><kbd>F</kbd> fill area</span>
-        <span><kbd>Ctrl</kbd>+<kbd>A</kbd> select all</span>
-        <span><kbd>Ctrl</kbd> asset snap</span>
-        <span><kbd>Shift</kbd> free place</span>
-      </div>
-      <button id="help-close">&#10005;</button>
-    </div>
-    <div id="asset-edit-modal" class="hidden"></div>
+      <aside id="sidebar">
+        <nav class="tabs">
+          <button class="tab active" data-tab="assets">Assets</button>
+          <button class="tab" data-tab="layers">Layers</button>
+          <button class="tab" data-tab="settings">Settings</button>
+        </nav>
+        <section id="tab-assets" class="tab-panel"></section>
+        <section id="tab-layers" class="tab-panel" hidden></section>
+        <section id="tab-settings" class="tab-panel" hidden></section>
+      </aside>
+    </main>
+    <footer id="statusbar"></footer>
   </div>
-
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

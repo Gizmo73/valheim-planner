@@ -1,469 +1,194 @@
 import { EventBus } from './core/EventBus.js';
 import { Viewport } from './core/Viewport.js';
-import { MapScale, TILE_METRES } from './core/MapScale.js';
-import { GridSettings } from './core/GridSettings.js';
-import { FineTuneState } from './core/FineTuneState.js';
-import { PerspectiveTransform } from './core/PerspectiveTransform.js';
+import { Grid } from './core/Grid.js';
+import { Plan } from './core/Plan.js';
 import { Renderer } from './core/Renderer.js';
-import { SaveLoad } from './core/SaveLoad.js';
-import { LayerManager } from './layers/LayerManager.js';
-import { MapLayer } from './layers/MapLayer.js';
-import { AssetLayer } from './layers/AssetLayer.js';
+import { wrapDeg } from './core/geometry.js';
+import { serialisePlan, loadPlan } from './core/planFile.js';
+import { AssetLibrary } from './assets/AssetLibrary.js';
+import { Screenshot } from './world/Screenshot.js';
 import { ToolManager } from './tools/ToolManager.js';
-import { PanTool } from './tools/PanTool.js';
-import { RegionSelectTool } from './tools/RegionSelectTool.js';
-import { PlaceTool } from './tools/PlaceTool.js';
 import { SelectTool } from './tools/SelectTool.js';
-import { CalibrationTool } from './tools/CalibrationTool.js';
-import { WorkingLayer } from './layers/WorkingLayer.js';
+import { PlaceTool } from './tools/PlaceTool.js';
+import { CalibrateTool } from './tools/CalibrateTool.js';
 import { Toolbar } from './ui/Toolbar.js';
-import { PlaceContextBar } from './ui/PlaceContextBar.js';
-import { LayerPanel } from './ui/LayerPanel.js';
+import { ContextBar } from './ui/ContextBar.js';
 import { AssetPanel } from './ui/AssetPanel.js';
-import { AssetEditSheet } from './ui/AssetEditSheet.js';
-import { PlanPanel } from './ui/PlanPanel.js';
-import { SelectionInspector } from './ui/SelectionInspector.js';
-import { CalibrationPanel } from './ui/CalibrationPanel.js';
-import { MobileControls } from './ui/MobileControls.js';
-import { refreshIcons } from './ui/icons.js';
-import { BlueprintLayer } from './save/BlueprintLayer.js';
-import { ImportUI } from './save/ImportUI.js';
+import { LayerPanel } from './ui/LayerPanel.js';
+import { SettingsPanel } from './ui/SettingsPanel.js';
+import { Inspector } from './ui/Inspector.js';
+import { StatusBar } from './ui/StatusBar.js';
+import { AssetEditor } from './ui/AssetEditor.js';
+import { ImportDialog } from './ui/ImportDialog.js';
+import { download, pickFiles, toast, icon } from './ui/dom.js';
 
+const $ = id => document.getElementById(id);
 const bus = new EventBus();
-const canvas = document.getElementById('main-canvas');
+const canvas = $('canvas');
 const viewport = new Viewport(bus);
-const mapScale = new MapScale(bus);
-const gridSettings = new GridSettings(bus);
-const fineTuneState = new FineTuneState(mapScale, bus);
+const env = {
+  bus,
+  viewport,
+  grid: new Grid(bus),
+  plan: new Plan(bus),
+  library: new AssetLibrary(bus),
+  tools: new ToolManager(canvas, viewport, bus),
+  actions: {},
+};
+const { plan, grid, library, tools } = env;
 
-const layerManager = new LayerManager(bus);
-const mapLayer = new MapLayer(bus);
-const assetLayer = new AssetLayer(bus);
+tools.register('select', new SelectTool(env));
+tools.register('place', new PlaceTool(env));
+tools.register('calibrate', new CalibrateTool(env));
+new Renderer(canvas, env);
 
-layerManager.addLayer(mapLayer);
-layerManager.addLayer(assetLayer);
-
-const toolManager = new ToolManager(canvas, viewport, bus);
-const panTool = new PanTool(viewport, bus);
-const regionTool = new RegionSelectTool(viewport, layerManager, mapScale, bus, gridSettings, fineTuneState);
-const placeTool = new PlaceTool(viewport, layerManager, assetLayer, mapScale, bus);
-const selectTool = new SelectTool(viewport, layerManager, assetLayer, mapScale, bus);
-const calibrationTool = new CalibrationTool(viewport, mapLayer, mapScale, bus);
-
-toolManager.register('pan', panTool);
-toolManager.register('region', regionTool);
-toolManager.register('place', placeTool);
-toolManager.register('select', selectTool);
-toolManager.register('calibrate', calibrationTool);
-
-const renderer = new Renderer(canvas, viewport, layerManager, toolManager, bus, gridSettings);
-
-const toolbar = new Toolbar(toolManager, mapScale, bus);
-const placeContextBar = new PlaceContextBar(placeTool, toolManager, bus);
-const layerPanel = new LayerPanel(layerManager, assetLayer, bus);
-const assetPanel = new AssetPanel(bus);
-const assetEditSheet = new AssetEditSheet(bus);
-bus.on('asset:edit', (type) => assetEditSheet.open(type));
-const planPanel = new PlanPanel(gridSettings, mapScale, assetLayer, layerManager, fineTuneState, bus);
-const selectionInspector = new SelectionInspector(selectTool, viewport, assetLayer, toolManager, bus);
-const calibrationPanel = new CalibrationPanel(mapScale, calibrationTool, bus);
-const mobileControls = new MobileControls(toolManager, selectTool, mapScale, bus);
-
-const blueprintLayer = new BlueprintLayer(bus);
-const importUI = new ImportUI(bus, blueprintLayer, viewport, renderer, layerManager, assetLayer, mapScale, gridSettings, fineTuneState);
-
-bus.on('blueprint:rotated', (deg) => {
-  viewport.rotation = deg * Math.PI / 180;
-});
-
-const saveLoad = new SaveLoad(layerManager, mapLayer, assetLayer, mapScale, viewport, renderer, bus, gridSettings, fineTuneState);
-
-bus.on('file:selected', async (file) => {
-  await mapLayer.loadFromFile(file);
-  viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
-  document.getElementById('empty-state').style.display = 'none';
-});
-
-// --- Tabbed side panel (Pieces / Layers / Plan) ---
-const TAB_NAMES = ['pieces', 'layers', 'plan'];
-let activeTab = 'pieces';
-
-function showTab(name) {
-  activeTab = name;
-  for (const t of TAB_NAMES) {
-    document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== name);
-  }
-  for (const btn of document.querySelectorAll('.panel-tab')) {
-    btn.classList.toggle('active', btn.dataset.tab === name);
-  }
-  bus.emit('panel:tabChanged', name);
+try {
+  await library.load();
+} catch (err) {
+  console.error(err);
+  toast('The asset library failed to load', 'error');
 }
 
-for (const btn of document.querySelectorAll('.panel-tab')) {
-  btn.addEventListener('click', () => showTab(btn.dataset.tab));
+// --- actions ---
+
+function contentBounds() {
+  const b = plan.bounds(library);
+  if (b) return b;
+  if (plan.terrain) {
+    const t = plan.terrain, x = t.x0 - t.anchor.x, y = t.anchor.z - (t.z0 + t.rows);
+    return { minX: x, minY: y, maxX: x + t.cols, maxY: y + t.rows };
+  }
+  if (plan.screenshot) {
+    const s = plan.screenshot;
+    const pts = [[0, 0], [s.width, 0], [s.width, s.height], [0, s.height]].map(([x, y]) => s.imageToWorld(x, y));
+    return { minX: Math.min(...pts.map(p => p.x)), maxX: Math.max(...pts.map(p => p.x)), minY: Math.min(...pts.map(p => p.y)), maxY: Math.max(...pts.map(p => p.y)) };
+  }
+  return { minX: -10, minY: -10, maxX: 10, maxY: 10 };
 }
 
-bus.on('panel:showTab', (name) => showTab(name));
-showTab('pieces');
-
-// --- Empty-state actions ---
-const emptyMapInput = document.createElement('input');
-emptyMapInput.type = 'file';
-emptyMapInput.accept = 'image/*';
-emptyMapInput.style.display = 'none';
-document.body.appendChild(emptyMapInput);
-document.getElementById('empty-choose-map').addEventListener('click', () => emptyMapInput.click());
-emptyMapInput.addEventListener('change', () => {
-  if (emptyMapInput.files[0]) {
-    bus.emit('file:selected', emptyMapInput.files[0]);
-    emptyMapInput.value = '';
+// Turn the view so most of the build is square to the screen, then line the grid up with it.
+function orient() {
+  const counts = new Map();
+  for (const it of plan.items) {
+    if (library.get(it.asset)?.category === 'nature') continue;
+    const k = wrapDeg(Math.round(it.rot / 22.5) * 22.5) % 90;
+    counts.set(k, (counts.get(k) || 0) + 1);
   }
-});
+  const [yaw] = [...counts].sort((a, b) => b[1] - a[1])[0] || [0];
+  viewport.setRotation(wrapDeg(-yaw));
+  viewport.fit(contentBounds());
+  grid.alignTo(plan.items, library, viewport);
+}
 
-const emptyLoadInput = document.createElement('input');
-emptyLoadInput.type = 'file';
-emptyLoadInput.accept = '.json';
-emptyLoadInput.style.display = 'none';
-document.body.appendChild(emptyLoadInput);
-document.getElementById('empty-open-plan').addEventListener('click', () => emptyLoadInput.click());
-emptyLoadInput.addEventListener('change', () => {
-  if (emptyLoadInput.files[0]) {
-    bus.emit('project:load', emptyLoadInput.files[0]);
-    emptyLoadInput.value = '';
-  }
-});
-
-document.getElementById('empty-import-save').addEventListener('click', () => importUI.show());
-
-bus.on('import:open', () => importUI.show());
-
-// --- All-shortcuts overlay ---
-document.getElementById('all-shortcuts-btn').addEventListener('click', () => {
-  document.getElementById('help-panel').classList.remove('hidden');
-});
-
-refreshIcons();
-
-bus.on('project:save', () => {
-  saveLoad.save();
-});
-
-bus.on('project:load', async (file) => {
+async function openPlanFile(file) {
   try {
-    await saveLoad.load(file);
+    await loadPlan(await file.text(), env);
+    tools.activate('select');
+    viewport.fit(contentBounds());
+    bus.emit('screenshot:changed');
+    toast(`Opened ${file.name}`);
   } catch (err) {
-    alert('Failed to load project: ' + err.message);
+    console.error(err);
+    toast(`Couldn't open plan: ${err.message}`, 'error');
   }
-});
-
-bus.on('asset:startPlace', (type) => {
-  placeTool.setAssetType(type);
-  if (toolManager.currentToolName !== 'place') {
-    toolManager.activate('place');
-  }
-
-  const mpp = mapScale.metresPerPixel;
-  const cellScreen = (1 / mpp) * viewport.zoom;
-  if (cellScreen < 8) {
-    const layers = layerManager.getByType('working');
-    const layer = layers.find(l => l.visible) || layers[0];
-    if (layer) {
-      const minZoom = 12 * mpp;
-      viewport.fitRect(layer.originX, layer.originY, layer.width, layer.height,
-        renderer.width, renderer.height, minZoom);
-    }
-  }
-
-  closeSidebar();
-  bus.emit('render:request');
-});
-
-bus.on('tool:activate', (name) => {
-  toolManager.activate(name);
-  if (name !== 'place') assetPanel.clearSelection();
-});
-
-bus.on('tool:changed', (name) => {
-  if (name !== 'place') assetPanel.clearSelection();
-});
-
-toolManager.activate('select');
-
-// Test hook
-window._app = { bus, viewport, mapScale, mapLayer, assetLayer, layerManager, toolManager, renderer, calibrationTool, gridSettings, fineTuneState, assetEditSheet, saveLoad, blueprintLayer, importUI };
-
-document.getElementById('help-close').addEventListener('click', () => {
-  document.getElementById('help-panel').classList.add('hidden');
-});
-
-// Sidebar (a right-hand rail on desktop, a bottom sheet on mobile)
-const sidebar = document.getElementById('sidebar');
-const backdrop = document.getElementById('sidebar-backdrop');
-
-function closeSidebar() {
-  sidebar.classList.remove('open');
-  backdrop.classList.add('hidden');
-  bus.emit('sidebar:changed', false);
 }
 
-function openSidebar() {
-  sidebar.classList.add('open');
-  backdrop.classList.remove('hidden');
-  bus.emit('sidebar:changed', true);
+async function setScreenshot(file) {
+  try {
+    const shot = await Screenshot.fromFile(file);
+    shot.placeInView(viewport);
+    plan.screenshot = shot;
+    bus.emit('screenshot:changed');
+    plan.changed();
+    tools.activate('calibrate');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
 
-if (backdrop) {
-  backdrop.addEventListener('click', closeSidebar);
-}
-
-bus.on('sidebar:toggle', () => {
-  if (sidebar.classList.contains('open')) closeSidebar();
-  else openSidebar();
-});
-bus.on('sidebar:open', openSidebar);
-bus.on('sidebar:close', closeSidebar);
-
-// State preserved across the preview step
-let _preCalibrationState = null;
-
-bus.on('calibration:apply', () => {
-  if (!mapLayer.image) return;
-
-  // Anchor the straightened output on a fixed point of the solved matrix —
-  // the rectangle's first corner, or the across pair's first pin — so the
-  // rest of the plan (working layer, existing assets) needs only a single
-  // reference point to re-anchor against.
-  let H, outPxPerTile, anchor;
-  if (calibrationTool.calibMethod === 'rectangle') {
-    const rect = calibrationTool.rectangle;
-    const rectSolve = MapScale.solveRectangle(rect.corners, rect.widthTiles, rect.heightTiles);
-    if (!rectSolve) return;
-    H = rectSolve.H;
-    outPxPerTile = rectSolve.outPxPerMetre * TILE_METRES;
-    anchor = rect.corners[0];
-  } else {
-    const pairs = calibrationTool.pairs;
-    const solve = MapScale.solveCalibration(pairs);
-    if (solve.mode !== 'affine' && solve.mode !== 'iso') return;
-    anchor = pairs.across.a;
-    outPxPerTile = (solve.pxPerTileX + solve.pxPerTileY) / 2;
-    H = MapScale.buildStraightenMatrix(solve, anchor, outPxPerTile);
-    if (!H) return;
-  }
-
-  const oldImage = mapLayer.image;
-  const oldWidth = mapLayer.width;
-  const oldHeight = mapLayer.height;
-  const oldMpp = mapScale.metresPerPixel;
-  const oldLayers = layerManager.getByType('working').map(wl => ({
-    id: wl.id, name: wl.name,
-    originX: wl.originX, originY: wl.originY,
-    width: wl.width, height: wl.height,
-    gridAnchorX: wl.gridAnchorX, gridAnchorY: wl.gridAnchorY,
-    visible: wl.visible,
-  }));
-  const oldAssets = assetLayer.assets.map(a => ({
-    asset: a,
-    gridX: a.gridX, gridY: a.gridY,
-    workingLayer: a.workingLayer,
-  }));
-
-  _preCalibrationState = { oldImage, oldWidth, oldHeight, oldMpp, oldLayers, oldAssets };
-
-  const outCanvas = PerspectiveTransform.correctImageFromMatrix(mapLayer.image, H);
-  if (!outCanvas) { _preCalibrationState = null; return; }
-
-  mapLayer.applyCorrectedImage(outCanvas);
-  mapScale.locked = false;
-  mapScale.metresPerPixel = TILE_METRES / outPxPerTile;
-  viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
-
-  if (mapScale.mapMode === 'local') {
-    const existing = layerManager.getByType('working');
-    const oldLayer = existing[0] || null;
-    for (const wl of existing) layerManager.removeLayer(wl.id);
-
-    const wl = new WorkingLayer(0, 0, mapLayer.width, mapLayer.height, bus, mapScale, gridSettings, fineTuneState);
-    wl.name = 'Build area 1';
-    wl.gridAnchorX = anchor.x;
-    wl.gridAnchorY = anchor.y;
-    layerManager.addLayer(wl);
-
-    const newMpp = mapScale.metresPerPixel;
-    const newAx = anchor.x;
-    const newAy = anchor.y;
-    for (const asset of assetLayer.assets) {
-      if (asset.workingLayer && oldLayer) {
-        const oldAx = oldLayer.gridAnchorX != null ? oldLayer.gridAnchorX : oldLayer.originX;
-        const oldAy = oldLayer.gridAnchorY != null ? oldLayer.gridAnchorY : oldLayer.originY;
-        const mapPx = oldAx + asset.gridX / oldMpp;
-        const mapPy = oldAy + asset.gridY / oldMpp;
-        asset.gridX = (mapPx - newAx) * newMpp;
-        asset.gridY = (mapPy - newAy) * newMpp;
-      }
-      asset.workingLayer = wl;
-    }
-
-    // Hide the working layer grid during preview (the tool draws its own)
-    wl.visible = false;
-
-    calibrationTool.enterPreview(anchor.x, anchor.y, newMpp);
-  } else {
-    _preCalibrationState = null;
-    toolManager.activate('select');
-  }
+Object.assign(env.actions, {
+  fit: () => viewport.fit(contentBounds()),
+  orient,
+  importWorld: () => bus.emit('import:open'),
+  addScreenshot: async () => {
+    const [file] = await pickFiles({ accept: 'image/*' });
+    if (file) setScreenshot(file);
+  },
+  open: async () => {
+    const [file] = await pickFiles({ accept: '.json,application/json' });
+    if (file) openPlanFile(file);
+  },
+  save: () => {
+    const name = (plan.anchor?.text || 'valheim-plan').replace(/[^\w-]+/g, '_');
+    download(`${name}.json`, serialisePlan(env));
+  },
 });
 
-bus.on('calibration:previewConfirm', () => {
-  const mpp = calibrationTool._previewMpp;
-  const ax = calibrationTool._previewAnchorX;
-  const ay = calibrationTool._previewAnchorY;
+// --- UI ---
 
-  mapScale.locked = false;
-  mapScale.metresPerPixel = mpp;
+new Toolbar($('toolbar'), env);
+new ContextBar($('context-bar'), env);
+new AssetPanel($('tab-assets'), env);
+new LayerPanel($('tab-layers'), env);
+new SettingsPanel($('tab-settings'), env);
+new Inspector($('inspector'), env);
+new StatusBar($('statusbar'), env);
+new AssetEditor(env);
+new ImportDialog(env);
 
-  const layers = layerManager.getByType('working');
-  if (layers[0]) {
-    layers[0].gridAnchorX = ax;
-    layers[0].gridAnchorY = ay;
-    layers[0].visible = true;
-  }
-
-  calibrationTool.exitPreview();
-  calibrationTool.resetPairs();
-  _preCalibrationState = null;
-  toolManager.activate('select');
-  bus.emit('render:request');
-});
-
-bus.on('calibration:previewCancel', () => {
-  calibrationTool.exitPreview();
-
-  if (_preCalibrationState) {
-    const s = _preCalibrationState;
-
-    // Restore original image
-    mapLayer.image = s.oldImage;
-    mapLayer.width = s.oldWidth;
-    mapLayer.height = s.oldHeight;
-    mapLayer._dataURL = null;
-
-    mapScale.locked = false;
-    mapScale.metresPerPixel = s.oldMpp;
-
-    // Restore working layers
-    const existing = layerManager.getByType('working');
-    for (const wl of existing) layerManager.removeLayer(wl.id);
-    for (const saved of s.oldLayers) {
-      const wl = new WorkingLayer(saved.originX, saved.originY, saved.width, saved.height, bus, mapScale, gridSettings, fineTuneState);
-      wl.name = saved.name;
-      wl.gridAnchorX = saved.gridAnchorX;
-      wl.gridAnchorY = saved.gridAnchorY;
-      wl.visible = saved.visible;
-      layerManager.addLayer(wl);
-    }
-
-    // Restore asset positions
-    for (const saved of s.oldAssets) {
-      saved.asset.gridX = saved.gridX;
-      saved.asset.gridY = saved.gridY;
-      saved.asset.workingLayer = saved.workingLayer;
-    }
-
-    viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
-    _preCalibrationState = null;
-  }
-
-  toolManager.activate('select');
-  bus.emit('render:request');
-});
-
-bus.on('finetune:lock', () => {
-  if (!mapLayer.image || !fineTuneState.hasPending) return;
-  const layers = layerManager.getByType('working');
-  const mainLayer = layers[0];
-  if (!mainLayer) return;
-
-  const mainBaseAnchor = {
-    x: mainLayer.gridAnchorX != null ? mainLayer.gridAnchorX : mainLayer.originX,
-    y: mainLayer.gridAnchorY != null ? mainLayer.gridAnchorY : mainLayer.originY,
-  };
-  const nudgedAnchor = { x: mainBaseAnchor.x + fineTuneState.dxPx, y: mainBaseAnchor.y + fineTuneState.dyPx };
-
-  const solve = {
-    mode: 'affine',
-    pxPerTileX: fineTuneState.across,
-    pxPerTileY: fineTuneState.down,
-    rotationDeg: fineTuneState.rotationDeg,
-    shearDeg: 0,
-  };
-  const outPxPerTile = (fineTuneState.across + fineTuneState.down) / 2;
-  const H = MapScale.buildStraightenMatrix(solve, nudgedAnchor, outPxPerTile);
-  if (!H) return;
-
-  const oldMpp = mapScale.metresPerPixel;
-  const outCanvas = PerspectiveTransform.correctImageFromMatrix(mapLayer.image, H);
-  if (!outCanvas) return;
-
-  // Snapshot old anchors/asset positions before mutating anything, then
-  // carry every one of them through the same matrix H so multiple working
-  // areas (and their assets) all shift consistently.
-  const oldLayerAnchors = layers.map(w => ({
-    layer: w,
-    x: w.gridAnchorX != null ? w.gridAnchorX : w.originX,
-    y: w.gridAnchorY != null ? w.gridAnchorY : w.originY,
-  }));
-  const oldAssetMapPx = assetLayer.assets.map(a => {
-    if (!a.workingLayer) return { asset: a, mapPx: null };
-    const ax = a.workingLayer.gridAnchorX != null ? a.workingLayer.gridAnchorX : a.workingLayer.originX;
-    const ay = a.workingLayer.gridAnchorY != null ? a.workingLayer.gridAnchorY : a.workingLayer.originY;
-    return { asset: a, mapPx: { x: ax + a.gridX / oldMpp, y: ay + a.gridY / oldMpp } };
+for (const btn of document.querySelectorAll('[data-tab]')) {
+  btn.addEventListener('click', () => {
+    for (const b of document.querySelectorAll('[data-tab]')) b.classList.toggle('active', b === btn);
+    for (const p of document.querySelectorAll('.tab-panel')) p.hidden = p.id !== `tab-${btn.dataset.tab}`;
   });
-
-  mapLayer.applyCorrectedImage(outCanvas);
-  mapScale.locked = false;
-  mapScale.metresPerPixel = TILE_METRES / outPxPerTile;
-  const newMpp = mapScale.metresPerPixel;
-
-  for (const { layer, x, y } of oldLayerAnchors) {
-    const newAnchor = PerspectiveTransform.transformPoint(H, x, y);
-    layer.gridAnchorX = newAnchor.x;
-    layer.gridAnchorY = newAnchor.y;
-  }
-
-  for (const { asset, mapPx } of oldAssetMapPx) {
-    if (!mapPx) continue;
-    const newMapPx = PerspectiveTransform.transformPoint(H, mapPx.x, mapPx.y);
-    const wl = asset.workingLayer;
-    asset.gridX = (newMapPx.x - wl.gridAnchorX) * newMpp;
-    asset.gridY = (newMapPx.y - wl.gridAnchorY) * newMpp;
-  }
-
-  viewport.fitImage(mapLayer.width, mapLayer.height, renderer.width, renderer.height);
-  fineTuneState.reset();
-  bus.emit('render:request');
-});
-
-// --- Fine tune keyboard shortcuts (arrow keys nudge, X/Y hold scales one
-// axis only, Escape clears a latch) ---
-function isTypingTarget(el) {
-  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
 }
 
-window.addEventListener('keydown', (e) => {
-  if (isTypingTarget(document.activeElement)) return;
-  if (!document.getElementById('asset-edit-modal')?.classList.contains('hidden')) return;
-  if (e.code === 'Escape') { fineTuneState.clearLatch(); return; }
-  if (!layerManager.getByType('working')[0]) return;
+for (const el of document.querySelectorAll('[data-icon]')) el.prepend(icon(el.dataset.icon));
+$('empty-import').addEventListener('click', env.actions.importWorld);
+$('empty-screenshot').addEventListener('click', env.actions.addScreenshot);
+$('empty-open').addEventListener('click', env.actions.open);
+const syncEmpty = () => { $('empty-state').hidden = !plan.isEmpty() || tools.name === 'place'; };
+for (const ev of ['plan:changed', 'screenshot:changed', 'tool:changed']) bus.on(ev, syncEmpty);
 
-  if (e.code === 'ArrowUp') { fineTuneState.nudge(0, -1); e.preventDefault(); }
-  else if (e.code === 'ArrowDown') { fineTuneState.nudge(0, 1); e.preventDefault(); }
-  else if (e.code === 'ArrowLeft') { fineTuneState.nudge(-1, 0); e.preventDefault(); }
-  else if (e.code === 'ArrowRight') { fineTuneState.nudge(1, 0); e.preventDefault(); }
-  else if (e.code === 'KeyX') { fineTuneState.holdAxis('x'); }
-  else if (e.code === 'KeyY') { fineTuneState.holdAxis('y'); }
+// Selects, sliders and toggles hand focus back once used, so shortcuts keep working.
+document.addEventListener('change', e => {
+  if (!e.target.matches('input[type=text], input[type=number], input[type=search], input[type=password], textarea')) e.target.blur();
 });
 
-window.addEventListener('keyup', (e) => {
-  if (e.code === 'KeyX' || e.code === 'KeyY') fineTuneState.holdAxis(null);
+// The grid follows the build: re-align whenever the view turns.
+bus.on('view:rotated', () => grid.alignTo(plan.items, library, viewport));
+
+const stage = $('stage');
+stage.addEventListener('dragover', e => e.preventDefault());
+stage.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  if (file.type.startsWith('image/')) setScreenshot(file);
+  else if (file.name.endsWith('.json')) openPlanFile(file);
+  else env.actions.importWorld();
 });
+
+tools.onGlobalKey = e => {
+  const ctrl = e.ctrlKey || e.metaKey;
+  if (ctrl) {
+    if (e.code === 'KeyZ') e.shiftKey ? plan.redo() : plan.undo();
+    else if (e.code === 'KeyY') plan.redo();
+    else if (e.code === 'KeyS') env.actions.save();
+    else if (e.code === 'KeyO') env.actions.open();
+    else return false;
+    return true;
+  }
+  if (e.code === 'KeyV') tools.activate('select');
+  else if (e.code === 'KeyB') tools.activate('place');
+  else if (e.code === 'KeyA') tools.activate('calibrate');
+  else if (e.code === 'BracketLeft') viewport.rotateBy(-1);
+  else if (e.code === 'BracketRight') viewport.rotateBy(1);
+  else if (e.code === 'Home') env.actions.fit();
+  else return false;
+  return true;
+};
+
+tools.activate('select');
+syncEmpty();
+window.planner = env; // handy from the devtools console

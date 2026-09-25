@@ -1,85 +1,72 @@
+// Draw order: terrain -> screenshot -> (grid) -> layers bottom to top -> (grid) -> anchor -> tool overlay.
 export class Renderer {
-  constructor(canvas, viewport, layerManager, toolManager, bus, gridSettings) {
-    this.canvas = canvas;
+  constructor(canvas, { bus, viewport, grid, plan, library, tools }) {
+    Object.assign(this, { canvas, viewport, grid, plan, library, tools });
     this.ctx = canvas.getContext('2d');
-    this.viewport = viewport;
-    this.layerManager = layerManager;
-    this.toolManager = toolManager;
-    this.bus = bus;
-    this.gridSettings = gridSettings || null;
-    this.needsRender = true;
-    this._rafId = null;
-
-    bus.on('render:request', () => { this.needsRender = true; });
-
-    const ro = new ResizeObserver(() => this._resize());
-    ro.observe(canvas.parentElement);
+    this._queued = false;
+    bus.on('render', () => this.request());
+    new ResizeObserver(() => this._resize()).observe(canvas.parentElement);
     this._resize();
-    this._loop();
   }
 
   _resize() {
-    const parent = this.canvas.parentElement;
+    const { clientWidth: w, clientHeight: h } = this.canvas.parentElement;
     const dpr = window.devicePixelRatio || 1;
-    const w = parent.clientWidth;
-    const h = parent.clientHeight;
-    this.canvas.width = w * dpr;
-    this.canvas.height = h * dpr;
-    this.canvas.style.width = w + 'px';
-    this.canvas.style.height = h + 'px';
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.width = w;
-    this.height = h;
-    this.needsRender = true;
+    this.dpr = dpr;
+    this.canvas.width = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
+    this.canvas.style.width = `${w}px`;
+    this.canvas.style.height = `${h}px`;
+    this.viewport.resize(w, h);
+    this.request();
   }
 
-  _loop() {
-    if (this.needsRender) {
-      this.needsRender = false;
+  request() {
+    if (this._queued) return;
+    this._queued = true;
+    requestAnimationFrame(() => {
+      this._queued = false;
       this._draw();
-    }
-    this._rafId = requestAnimationFrame(() => this._loop());
+    });
   }
 
   _draw() {
-    const ctx = this.ctx;
-    const vp = this.viewport;
+    const { ctx, viewport: vp, grid, plan } = this;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, vp.width, vp.height);
 
     ctx.save();
-    ctx.clearRect(0, 0, this.width, this.height);
-    ctx.translate(vp.panX, vp.panY);
-    ctx.scale(vp.zoom, vp.zoom);
-    if (vp.rotation) ctx.rotate(vp.rotation);
-
-    this._renderLayers(ctx, vp);
-
+    vp.applyTo(ctx);
+    plan.terrain?.draw(ctx);
+    plan.screenshot?.draw(ctx);
     ctx.restore();
 
-    if (this.toolManager) {
-      ctx.save();
-      ctx.translate(vp.panX, vp.panY);
-      ctx.scale(vp.zoom, vp.zoom);
-      if (vp.rotation) ctx.rotate(vp.rotation);
-      this.toolManager.renderOverlay(ctx, vp);
-      ctx.restore();
-    }
+    if (!grid.settings.abovePieces) grid.draw(ctx, vp);
+
+    ctx.save();
+    vp.applyTo(ctx);
+    for (const it of plan.drawOrder()) this.library.drawItem(ctx, it, vp.zoom);
+    ctx.restore();
+
+    if (grid.settings.abovePieces) grid.draw(ctx, vp);
+    if (plan.anchor) this._drawAnchor(ctx, vp);
+    this.tools.drawOverlay(ctx, vp);
   }
 
-  // Working-layer grids sit either above or below the asset layer,
-  // controlled by gridSettings.abovePieces — everything else renders in
-  // its normal layer-array order.
-  _renderLayers(ctx, vp) {
-    const layers = this.layerManager.layers;
-    const abovePieces = this.gridSettings ? this.gridSettings.abovePieces : true;
-
-    const mapLayers = layers.filter(l => l.visible && l.type === 'map');
-    const workingLayers = layers.filter(l => l.visible && l.type === 'working');
-    const otherLayers = layers.filter(l => l.visible && l.type !== 'map' && l.type !== 'working');
-
-    for (const l of mapLayers) l.render(ctx, vp, this.width, this.height);
-    for (const wl of workingLayers) wl.renderBase(ctx, vp, this.width, this.height);
-    if (!abovePieces) for (const wl of workingLayers) wl.renderGrid(ctx, vp, this.width, this.height);
-    for (const l of otherLayers) l.render(ctx, vp, this.width, this.height);
-    if (abovePieces) for (const wl of workingLayers) wl.renderGrid(ctx, vp, this.width, this.height);
+  _drawAnchor(ctx, vp) {
+    const p = vp.worldToScreen(0, 0);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = '#ff6b6b';
+    ctx.strokeStyle = '#161826';
+    ctx.lineWidth = 2;
+    ctx.fillRect(-5, -5, 10, 10);
+    ctx.strokeRect(-5, -5, 10, 10);
+    ctx.restore();
+    ctx.font = '600 11px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#ffd9d9';
+    ctx.textAlign = 'center';
+    ctx.fillText(this.plan.anchor.text, p.x, p.y - 12);
   }
 }

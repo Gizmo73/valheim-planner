@@ -1,113 +1,107 @@
+import { DEG, wrapDeg } from './geometry.js';
+
+export const ROTATION_STEP = 22.5;
+
+// World units are metres: x = east, y = south (Valheim -z), origin at the anchor sign.
+// Screen = pan + zoom * R(rotation) * world.
 export class Viewport {
   constructor(bus) {
     this.bus = bus;
     this.panX = 0;
     this.panY = 0;
-    this.zoom = 1;
-    this.rotation = 0;
-    this.minZoom = 0.02;
-    this.maxZoom = 256;
+    this.zoom = 24; // px per metre
+    this.rotation = 0; // degrees
+    this.width = 0;
+    this.height = 0;
+    this.minZoom = 0.5;
+    this.maxZoom = 400;
   }
 
-  screenToMap(sx, sy) {
-    const ux = (sx - this.panX) / this.zoom;
-    const uy = (sy - this.panY) / this.zoom;
-    if (this.rotation === 0) return { x: ux, y: uy };
-    const cos = Math.cos(-this.rotation);
-    const sin = Math.sin(-this.rotation);
-    return {
-      x: ux * cos - uy * sin,
-      y: ux * sin + uy * cos,
-    };
+  _changed() {
+    this.bus.emit('view:changed');
+    this.bus.emit('render');
   }
 
-  mapToScreen(mx, my) {
-    let rx = mx, ry = my;
-    if (this.rotation !== 0) {
-      const cos = Math.cos(this.rotation);
-      const sin = Math.sin(this.rotation);
-      rx = mx * cos - my * sin;
-      ry = mx * sin + my * cos;
-    }
-    return {
-      x: rx * this.zoom + this.panX,
-      y: ry * this.zoom + this.panY,
-    };
+  // Keeps whatever was at the centre of the view there when the canvas changes size.
+  resize(w, h) {
+    this.panX += (w - this.width) / 2;
+    this.panY += (h - this.height) / 2;
+    this.width = w;
+    this.height = h;
+  }
+
+  worldToScreen(x, y) {
+    const c = Math.cos(this.rotation * DEG), s = Math.sin(this.rotation * DEG);
+    return { x: this.panX + this.zoom * (x * c - y * s), y: this.panY + this.zoom * (x * s + y * c) };
+  }
+
+  screenToWorld(sx, sy) {
+    const c = Math.cos(this.rotation * DEG), s = Math.sin(this.rotation * DEG);
+    const ux = (sx - this.panX) / this.zoom, uy = (sy - this.panY) / this.zoom;
+    return { x: ux * c + uy * s, y: -ux * s + uy * c };
+  }
+
+  // "View" space is world rotated to screen orientation, still in metres — the grid lives here.
+  worldToView(x, y) {
+    const c = Math.cos(this.rotation * DEG), s = Math.sin(this.rotation * DEG);
+    return { x: x * c - y * s, y: x * s + y * c };
+  }
+
+  viewToWorld(x, y) {
+    const c = Math.cos(this.rotation * DEG), s = Math.sin(this.rotation * DEG);
+    return { x: x * c + y * s, y: -x * s + y * c };
+  }
+
+  applyTo(ctx) {
+    ctx.translate(this.panX, this.panY);
+    ctx.rotate(this.rotation * DEG);
+    ctx.scale(this.zoom, this.zoom);
   }
 
   panBy(dx, dy) {
     this.panX += dx;
     this.panY += dy;
-    this.bus.emit('viewport:changed');
-    this.bus.emit('render:request');
+    this._changed();
   }
 
-  zoomAt(screenX, screenY, delta) {
-    const factor = delta > 0 ? 0.9 : 1.1;
-    const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * factor));
-    if (newZoom === this.zoom) return;
-
-    const mapBefore = this.screenToMap(screenX, screenY);
-    this.zoom = newZoom;
-    const screenAfter = this.mapToScreen(mapBefore.x, mapBefore.y);
-    this.panX += screenX - screenAfter.x;
-    this.panY += screenY - screenAfter.y;
-
-    this.bus.emit('viewport:changed');
-    this.bus.emit('render:request');
+  zoomAt(sx, sy, factor) {
+    const zoom = Math.min(this.maxZoom, Math.max(this.minZoom, this.zoom * factor));
+    if (zoom === this.zoom) return;
+    const w = this.screenToWorld(sx, sy);
+    this.zoom = zoom;
+    const after = this.worldToScreen(w.x, w.y);
+    this.panX += sx - after.x;
+    this.panY += sy - after.y;
+    this._changed();
   }
 
-  fitImage(imgWidth, imgHeight, canvasWidth, canvasHeight) {
-    const scaleX = canvasWidth / imgWidth;
-    const scaleY = canvasHeight / imgHeight;
-    this.zoom = Math.min(scaleX, scaleY) * 0.9;
-    this.panX = (canvasWidth - imgWidth * this.zoom) / 2;
-    this.panY = (canvasHeight - imgHeight * this.zoom) / 2;
-    this.bus.emit('viewport:changed');
-    this.bus.emit('render:request');
+  // Rotates about the screen centre so the view doesn't jump.
+  setRotation(deg) {
+    const centre = this.screenToWorld(this.width / 2, this.height / 2);
+    this.rotation = wrapDeg(deg);
+    const after = this.worldToScreen(centre.x, centre.y);
+    this.panX += this.width / 2 - after.x;
+    this.panY += this.height / 2 - after.y;
+    this.bus.emit('view:rotated', this.rotation);
+    this._changed();
   }
 
-  fitRect(mapX, mapY, mapW, mapH, canvasWidth, canvasHeight, minZoom) {
-    const cos = Math.cos(this.rotation);
-    const sin = Math.sin(this.rotation);
-    const corners = [
-      [mapX, mapY], [mapX + mapW, mapY],
-      [mapX + mapW, mapY + mapH], [mapX, mapY + mapH],
-    ];
-    let rMinX = Infinity, rMaxX = -Infinity, rMinY = Infinity, rMaxY = -Infinity;
-    for (const [cx, cy] of corners) {
-      const rx = cx * cos - cy * sin;
-      const ry = cx * sin + cy * cos;
-      rMinX = Math.min(rMinX, rx); rMaxX = Math.max(rMaxX, rx);
-      rMinY = Math.min(rMinY, ry); rMaxY = Math.max(rMaxY, ry);
+  rotateBy(steps) {
+    this.setRotation(this.rotation + steps * ROTATION_STEP);
+  }
+
+  fit(bounds, padding = 0.1) {
+    if (!bounds) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const [x, y] of [[bounds.minX, bounds.minY], [bounds.maxX, bounds.minY], [bounds.maxX, bounds.maxY], [bounds.minX, bounds.maxY]]) {
+      const v = this.worldToView(x, y);
+      minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
+      minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
     }
-    const rW = rMaxX - rMinX;
-    const rH = rMaxY - rMinY;
-
-    const scaleX = canvasWidth / rW;
-    const scaleY = canvasHeight / rH;
-    let targetZoom = Math.min(scaleX, scaleY) * 0.85;
-    if (minZoom && targetZoom < minZoom) targetZoom = minZoom;
-    targetZoom = Math.min(targetZoom, this.maxZoom);
-    this.zoom = targetZoom;
-
-    const midX = (rMinX + rMaxX) / 2;
-    const midY = (rMinY + rMaxY) / 2;
-    this.panX = canvasWidth / 2 - midX * this.zoom;
-    this.panY = canvasHeight / 2 - midY * this.zoom;
-    this.bus.emit('viewport:changed');
-    this.bus.emit('render:request');
-  }
-
-  getVisibleMapBounds(canvasWidth, canvasHeight) {
-    const c0 = this.screenToMap(0, 0);
-    const c1 = this.screenToMap(canvasWidth, 0);
-    const c2 = this.screenToMap(canvasWidth, canvasHeight);
-    const c3 = this.screenToMap(0, canvasHeight);
-    const xs = [c0.x, c1.x, c2.x, c3.x];
-    const ys = [c0.y, c1.y, c2.y, c3.y];
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
-    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+    const w = Math.max(maxX - minX, 4), h = Math.max(maxY - minY, 4);
+    this.zoom = Math.min(this.maxZoom, Math.max(this.minZoom, Math.min(this.width / w, this.height / h) * (1 - padding * 2)));
+    this.panX = this.width / 2 - this.zoom * (minX + maxX) / 2;
+    this.panY = this.height / 2 - this.zoom * (minY + maxY) / 2;
+    this._changed();
   }
 }

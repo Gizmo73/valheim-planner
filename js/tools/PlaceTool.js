@@ -1,420 +1,217 @@
-import { createAsset } from '../assets/AssetRegistry.js';
-import { mapToGrid, snapToGrid, gridToMap } from '../core/CoordinateSystem.js';
+import { rotate, wrapDeg } from '../core/geometry.js';
+import { ROTATION_STEP } from '../core/Viewport.js';
+import { positionItem } from './snapping.js';
+
+const FILL_LIMIT = 2000;
+
+// Axis-aligned extent of an outline rotated by `deg` (relative to its centre).
+function rotatedBounds(o, deg) {
+  if (o.ellipse) {
+    const [rx, ry] = o.ellipse, t = deg * Math.PI / 180;
+    const hx = Math.hypot(rx * Math.cos(t), ry * Math.sin(t)), hy = Math.hypot(rx * Math.sin(t), ry * Math.cos(t));
+    return { minX: -hx, maxX: hx, minY: -hy, maxY: hy };
+  }
+  const pts = o.poly.map(([x, y]) => rotate(x, y, deg));
+  return {
+    minX: Math.min(...pts.map(p => p.x)), maxX: Math.max(...pts.map(p => p.x)),
+    minY: Math.min(...pts.map(p => p.y)), maxY: Math.max(...pts.map(p => p.y)),
+  };
+}
 
 export class PlaceTool {
-  constructor(viewport, layerManager, assetLayer, mapScale, bus) {
-    this.viewport = viewport;
-    this.layerManager = layerManager;
-    this.assetLayer = assetLayer;
-    this.mapScale = mapScale;
-    this.bus = bus;
-    this.assetType = null;
-    this.rotation = 0;
-    this._previewAsset = null;
-    this._cursorMap = null;
-    this._snappedPos = null;
-    this._snapMode = 'grid';
-    this._fillMode = false;
-    this._fillStart = null;
-    this._fillEnd = null;
-    this._filling = false;
-    this._activeSnapIndex = 0;
-
-    this.bus.on('snap:changed', (mode) => {
-      this._snapMode = mode;
-      if (this._cursorMap) {
-        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
-      }
-    });
-    this.bus.on('mobile:rotate', (deg) => {
-      this.rotation = ((this.rotation + deg) % 360 + 360) % 360;
-      if (this._cursorMap) {
-        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
-      }
-      this.bus.emit('place:changed');
-      this.bus.emit('render:request');
-    });
-    this.bus.on('mobile:fill', () => {
-      this._fillMode = !this._fillMode;
-      this._filling = false;
-      this.bus.emit('fill:changed', this._fillMode);
-      this.bus.emit('place:changed');
-      this.bus.emit('render:request');
-    });
-    this.bus.on('mobile:snapPrev', () => {
-      this._cycleSnapPoint(-1);
-    });
-    this.bus.on('mobile:snapNext', () => {
-      this._cycleSnapPoint(1);
-    });
+  constructor(env) {
+    this.env = env;
+    this.asset = null;
+    this.rot = 0; // world degrees
+    this.snapIndex = 0;
+    this.fillMode = false;
+    this.ghost = null;
+    this.cursor = 'crosshair';
+    this._fill = null;
+    this.hints = [
+      ['Click', 'place'], ['R / Shift+R', 'rotate'], ['Q / E', 'snap point'], ['Ctrl', 'snap to pieces'],
+      ['Alt', 'free'], ['F', 'fill area'], ['Shift+Middle', 'pick piece'], ['Esc', 'done'],
+    ];
   }
 
-  hitTest(pos) {
-    return this._fillMode;
+  get viewRotation() {
+    return wrapDeg(this.rot + this.env.viewport.rotation);
   }
 
-  setAssetType(type) {
-    this.assetType = type;
-    this.rotation = 0;
-    this._activeSnapIndex = 0;
-    this._fillMode = false;
-    this._filling = false;
-    this._previewAsset = createAsset(type);
-    if (this._previewAsset) this._previewAsset.mapScale = this.mapScale;
-    this.bus.emit('place:changed');
-  }
-
-  getState() {
-    const pts = this._previewAsset ? this._previewAsset.getGridSnapPoints() : [];
-    return {
-      assetType: this.assetType,
-      rotation: this.rotation,
-      snapMode: this._snapMode,
-      fillMode: this._fillMode,
-      snapIndex: this._activeSnapIndex,
-      snapCount: pts.length,
-    };
+  // Defaults to square-on to the screen (and so to the grid).
+  setAsset(id, rot = -this.env.viewport.rotation) {
+    this.asset = id;
+    this.rot = wrapDeg(rot);
+    this.snapIndex = 0;
+    this.refresh();
   }
 
   activate() {
-    if (this.assetType && !this._previewAsset) {
-      this._previewAsset = createAsset(this.assetType);
-      if (this._previewAsset) this._previewAsset.mapScale = this.mapScale;
-    }
+    this.refresh();
   }
 
   deactivate() {
-    this._previewAsset = null;
-    this._cursorMap = null;
-    this._snappedPos = null;
-    this._fillMode = false;
-    this._filling = false;
-    this._activeSnapIndex = 0;
+    this.ghost = null;
+    this._fill = null;
+    this.fillMode = false;
   }
 
-  _cycleSnapPoint(dir) {
-    if (!this._previewAsset) return;
-    const pts = this._previewAsset.getGridSnapPoints();
-    if (pts.length <= 1) return;
-    this._activeSnapIndex = (this._activeSnapIndex + dir + pts.length) % pts.length;
-    if (this._cursorMap) {
-      this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
-    }
-    this.bus.emit('place:changed');
-    this.bus.emit('render:request');
+  cancel() {
+    this._fill = null;
   }
 
-  _findWorkingLayer(mapX, mapY) {
-    const layers = this.layerManager.getByType('working');
-    for (let i = layers.length - 1; i >= 0; i--) {
-      if (layers[i].visible && layers[i].containsMapPoint(mapX, mapY)) {
-        return layers[i];
-      }
-    }
-    return layers.length > 0 ? layers[layers.length - 1] : null;
+  refresh() {
+    const p = this.env.tools.pointer;
+    this.ghost = p ? this._ghostAt(p) : null;
+    this.env.bus.emit('place:changed');
+    this.env.bus.emit('render');
   }
 
-  _getPosition(mapX, mapY) {
-    if (this._snapMode === 'free') return this._getFreePosition(mapX, mapY);
-    if (this._snapMode === 'asset') return this._getAssetSnappedPosition(mapX, mapY);
-    return this._getGridSnappedPosition(mapX, mapY);
+  rotateBy(steps) {
+    this.rot = wrapDeg(this.rot + steps * ROTATION_STEP);
+    this.refresh();
   }
 
-  _getGridSnappedPosition(mapX, mapY) {
-    const layer = this._findWorkingLayer(mapX, mapY);
-    if (!layer) return null;
-
-    const mpp = this.mapScale.metresPerPixel;
-    const grid = mapToGrid(mapX, mapY, layer, mpp);
-    const asset = this._previewAsset;
-    if (!asset) return null;
-
-    const hw = asset.widthM / 2;
-    const hh = asset.heightM / 2;
-    const rad = this.rotation * Math.PI / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
-
-    const snapPoints = asset.getGridSnapPoints();
-    const anchor = snapPoints[this._activeSnapIndex % snapPoints.length];
-
-    const snapPtX = grid.x + hw + anchor.x * cos - anchor.y * sin;
-    const snapPtY = grid.y + hh + anchor.x * sin + anchor.y * cos;
-    const snapped = snapToGrid(snapPtX, snapPtY);
-
-    const adjustedX = snapped.x - hw - anchor.x * cos + anchor.y * sin;
-    const adjustedY = snapped.y - hh - anchor.x * sin - anchor.y * cos;
-
-    const mapPos = gridToMap(adjustedX, adjustedY, layer, mpp);
-    return { mapX: mapPos.x, mapY: mapPos.y, gridX: adjustedX, gridY: adjustedY, layer, mode: 'grid' };
+  cycleSnap(dir) {
+    const def = this.env.library.get(this.asset);
+    if (!def) return;
+    const n = this.env.library.snaps(def).length;
+    this.snapIndex = (this.snapIndex + dir + n) % n;
+    this.refresh();
   }
 
-  _getFreePosition(mapX, mapY) {
-    const layer = this._findWorkingLayer(mapX, mapY);
-    if (!layer) return null;
-
-    const mpp = this.mapScale.metresPerPixel;
-    const grid = mapToGrid(mapX, mapY, layer, mpp);
-    return { mapX, mapY, gridX: grid.x, gridY: grid.y, layer, mode: 'free' };
+  toggleFill() {
+    this.fillMode = !this.fillMode;
+    this._fill = null;
+    this.refresh();
   }
 
-  _getAssetSnappedPosition(mapX, mapY) {
-    const layer = this._findWorkingLayer(mapX, mapY);
-    if (!layer) return null;
-
-    const existingPoints = this.assetLayer.getSnapPoints();
-    if (existingPoints.length === 0) return this._getGridSnappedPosition(mapX, mapY);
-
-    const asset = this._previewAsset;
-    const hw = asset.mapWidth / 2;
-    const hh = asset.mapHeight / 2;
-    const rad = this.rotation * Math.PI / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
-
-    const cx = mapX + hw;
-    const cy = mapY + hh;
-    const snapPts = asset.getLocalSnapOffsets().map(([lx, ly]) => ({
-      x: cx + lx * cos - ly * sin,
-      y: cy + lx * sin + ly * cos,
-    }));
-
-    let bestDist = Infinity;
-    let bestDx = 0;
-    let bestDy = 0;
-
-    for (const ep of existingPoints) {
-      for (const sp of snapPts) {
-        const dx = ep.x - sp.x;
-        const dy = ep.y - sp.y;
-        const d = dx * dx + dy * dy;
-        if (d < bestDist) {
-          bestDist = d;
-          bestDx = dx;
-          bestDy = dy;
-        }
-      }
-    }
-
-    const snappedMapX = mapX + bestDx;
-    const snappedMapY = mapY + bestDy;
-    const mpp = this.mapScale.metresPerPixel;
-    const grid = mapToGrid(snappedMapX, snappedMapY, layer, mpp);
-    return { mapX: snappedMapX, mapY: snappedMapY, gridX: grid.x, gridY: grid.y, layer, mode: 'asset' };
+  _ghostAt(p) {
+    if (!this.env.library.get(this.asset)) return null;
+    const cursor = this.env.viewport.screenToWorld(p.x, p.y);
+    const pos = positionItem(this.env, { asset: this.asset, rot: this.rot, snapIndex: this.snapIndex, cursor, mode: this.env.tools.effectiveSnap });
+    return { asset: this.asset, rot: this.rot, x: pos.x, y: pos.y, mode: pos.mode, target: pos.target };
   }
 
-  onMouseMove(pos) {
-    this._cursorMap = this.viewport.screenToMap(pos.x, pos.y);
+  onPointerMove(p) {
+    if (this._fill) this._fill.b = this.env.viewport.screenToWorld(p.x, p.y);
+    this.ghost = this._ghostAt(p);
+    this.env.bus.emit('render');
+  }
 
-    if (this._filling) {
-      this._fillEnd = { ...this._cursorMap };
-      this.bus.emit('render:request');
+  onPointerDown(p, e) {
+    if (e.button !== 0 || !this.asset) return;
+    if (this.fillMode) {
+      const w = this.env.viewport.screenToWorld(p.x, p.y);
+      this._fill = { a: w, b: w };
       return;
     }
-
-    this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
-    this.bus.emit('render:request');
+    const g = this._ghostAt(p);
+    if (!g) return;
+    const { plan } = this.env;
+    plan.checkpoint();
+    plan.revealGroup(plan.activeGroup);
+    plan.addItem(g.asset, g.x, g.y, g.rot);
+    plan.changed();
   }
 
-  onMouseDown(pos) {
-    if (!this.assetType) return;
-
-    const rawMap = this.viewport.screenToMap(pos.x, pos.y);
-
-    if (this._fillMode) {
-      this._filling = true;
-      this._fillStart = { ...rawMap };
-      this._fillEnd = { ...rawMap };
-      return;
-    }
-
-    const snapped = this._getPosition(rawMap.x, rawMap.y);
-    if (!snapped) return;
-
-    const asset = createAsset(this.assetType);
-    asset.mapScale = this.mapScale;
-    asset.gridX = snapped.gridX;
-    asset.gridY = snapped.gridY;
-    asset.rotation = this.rotation;
-    asset.workingLayer = snapped.layer;
-    this.assetLayer.addAsset(asset);
+  onPointerUp() {
+    if (!this._fill) return;
+    this._doFill();
+    this._fill = null;
+    this.fillMode = false;
+    this.refresh();
   }
 
-  onMouseUp(pos) {
-    if (this._filling && this._fillStart && this._fillEnd) {
-      this._executeFill();
-      this._filling = false;
-      this._fillStart = null;
-      this._fillEnd = null;
-    }
-  }
-
-  _executeFill() {
-    if (!this._previewAsset || !this._fillStart || !this._fillEnd) return;
-
-    const layer = this._findWorkingLayer(this._fillStart.x, this._fillStart.y);
-    if (!layer) return;
-
-    const mpp = this.mapScale.metresPerPixel;
-    const asset = this._previewAsset;
-
-    const rad = this.rotation * Math.PI / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
-
-    const effectiveW = Math.abs(asset.widthM * cos) + Math.abs(asset.heightM * sin);
-    const effectiveH = Math.abs(asset.widthM * sin) + Math.abs(asset.heightM * cos);
-
-    const g1 = mapToGrid(this._fillStart.x, this._fillStart.y, layer, mpp);
-    const g2 = mapToGrid(this._fillEnd.x, this._fillEnd.y, layer, mpp);
-
-    const offset = asset.getGridSnapOffset();
-    const startGridX = Math.min(g1.x, g2.x);
-    const startGridY = Math.min(g1.y, g2.y);
-    const endGridX = Math.max(g1.x, g2.x);
-    const endGridY = Math.max(g1.y, g2.y);
-
-    const snapStartX = Math.round(startGridX / effectiveW) * effectiveW;
-    const snapStartY = Math.round(startGridY / effectiveH) * effectiveH;
-
-    let count = 0;
-    const maxAssets = 500;
-
-    for (let gx = snapStartX; gx < endGridX; gx += effectiveW) {
-      for (let gy = snapStartY; gy < endGridY; gy += effectiveH) {
-        if (count >= maxAssets) break;
-        const placed = createAsset(this.assetType);
-        placed.mapScale = this.mapScale;
-        placed.gridX = gx + offset.x;
-        placed.gridY = gy + offset.y;
-        placed.rotation = this.rotation;
-        placed.workingLayer = layer;
-        this.assetLayer.addAsset(placed);
-        count++;
-      }
-      if (count >= maxAssets) break;
-    }
-
-    this._fillMode = false;
-    this.bus.emit('fill:changed', false);
-    this.bus.emit('render:request');
+  onPick(p) {
+    const { viewport, plan, library, bus } = this.env;
+    const w = viewport.screenToWorld(p.x, p.y);
+    const hit = plan.hitTest(w.x, w.y, library);
+    if (!hit) return;
+    this.setAsset(hit.asset, hit.rot);
+    bus.emit('asset:picked', hit.asset);
   }
 
   onKeyDown(e) {
-    if (e.code === 'KeyR') {
-      this.rotation = (this.rotation + 22.5) % 360;
-      if (this._cursorMap) {
-        this._snappedPos = this._getPosition(this._cursorMap.x, this._cursorMap.y);
-      }
-      this.bus.emit('place:changed');
-      this.bus.emit('render:request');
-      e.preventDefault();
-    } else if (e.code === 'KeyQ') {
-      this._cycleSnapPoint(-1);
-      e.preventDefault();
-    } else if (e.code === 'KeyE') {
-      this._cycleSnapPoint(1);
-      e.preventDefault();
-    } else if (e.code === 'KeyF') {
-      this._fillMode = !this._fillMode;
-      this._filling = false;
-      this.bus.emit('fill:changed', this._fillMode);
-      this.bus.emit('place:changed');
-      this.bus.emit('render:request');
-      e.preventDefault();
-    } else if (e.code === 'Escape') {
-      if (this._fillMode) {
-        this._fillMode = false;
-        this._filling = false;
-        this.bus.emit('place:changed');
-        this.bus.emit('render:request');
-      } else {
-        this.bus.emit('tool:activate', 'select');
-      }
-    }
+    if (e.ctrlKey || e.metaKey) return false;
+    if (e.code === 'KeyR') this.rotateBy(e.shiftKey ? -1 : 1);
+    else if (e.code === 'KeyQ') this.cycleSnap(-1);
+    else if (e.code === 'KeyE') this.cycleSnap(1);
+    else if (e.code === 'KeyF') this.toggleFill();
+    else if (e.code === 'Escape') {
+      if (this.fillMode) this.toggleFill();
+      else this.env.tools.activate('select');
+    } else return false;
+    return true;
   }
 
-  renderOverlay(ctx, viewport) {
-    if (!this._previewAsset) return;
+  _doFill() {
+    const { viewport: vp, grid, library, plan } = this.env;
+    const def = library.get(this.asset);
+    const a = vp.worldToView(this._fill.a.x, this._fill.a.y), b = vp.worldToView(this._fill.b.x, this._fill.b.y);
+    const snap = (v, axis) => grid.offset[axis] + Math.round(v - grid.offset[axis]);
+    const lo = { x: snap(Math.min(a.x, b.x), 'x'), y: snap(Math.min(a.y, b.y), 'y') };
+    const hi = { x: snap(Math.max(a.x, b.x), 'x'), y: snap(Math.max(a.y, b.y), 'y') };
+    const bb = rotatedBounds(def.outline, this.viewRotation);
+    const bw = bb.maxX - bb.minX, bh = bb.maxY - bb.minY;
+    const spots = [];
+    for (let y = lo.y; y + bh <= hi.y + 1e-6; y += bh) {
+      for (let x = lo.x; x + bw <= hi.x + 1e-6 && spots.length < FILL_LIMIT; x += bw) {
+        spots.push(vp.viewToWorld(x - bb.minX, y - bb.minY));
+      }
+    }
+    if (!spots.length) return;
+    plan.checkpoint();
+    plan.revealGroup(plan.activeGroup);
+    for (const s of spots) plan.addItem(this.asset, s.x, s.y, this.rot);
+    plan.changed();
+  }
 
-    if (this._filling && this._fillStart && this._fillEnd) {
-      this._renderFillPreview(ctx, viewport);
+  drawOverlay(ctx, vp) {
+    const { library } = this.env;
+    if (this._fill) {
+      const { a, b } = this._fill;
+      const va = vp.worldToView(a.x, a.y), vb = vp.worldToView(b.x, b.y);
+      const s = vp.worldToScreen(a.x, a.y), t = vp.worldToScreen(b.x, b.y);
+      ctx.save();
+      ctx.strokeStyle = '#f0b64e';
+      ctx.fillStyle = 'rgba(240, 182, 78, 0.12)';
+      ctx.setLineDash([6, 4]);
+      ctx.fillRect(Math.min(s.x, t.x), Math.min(s.y, t.y), Math.abs(t.x - s.x), Math.abs(t.y - s.y));
+      ctx.strokeRect(Math.min(s.x, t.x), Math.min(s.y, t.y), Math.abs(t.x - s.x), Math.abs(t.y - s.y));
+      ctx.fillStyle = '#f5e2b8';
+      ctx.font = '500 11px ui-monospace, Menlo, monospace';
+      ctx.fillText(`${Math.abs(vb.x - va.x).toFixed(1)} × ${Math.abs(vb.y - va.y).toFixed(1)} m`, Math.min(s.x, t.x), Math.min(s.y, t.y) - 6);
+      ctx.restore();
       return;
     }
-
-    if (!this._snappedPos) return;
-
-    const snapped = this._snappedPos;
-
-    const asset = this._previewAsset;
-
+    const g = this.ghost;
+    if (!g) return;
     ctx.save();
-    ctx.translate(viewport.panX, viewport.panY);
-    ctx.scale(viewport.zoom, viewport.zoom);
-    asset.renderPreview(ctx, snapped.mapX, snapped.mapY, this.rotation, 0.6, viewport);
+    vp.applyTo(ctx);
+    library.drawItem(ctx, g, vp.zoom, 0.6);
     ctx.restore();
 
-    const snapPoints = asset.getGridSnapPoints();
-    const snapIdx = this._activeSnapIndex % snapPoints.length;
-    const anchor = snapPoints[snapIdx];
-    const mpp = this.mapScale.metresPerPixel;
-    const rad = this.rotation * Math.PI / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
-    const cx = snapped.mapX + asset.mapWidth / 2;
-    const cy = snapped.mapY + asset.mapHeight / 2;
-    const dotMapX = cx + (anchor.x / mpp) * cos - (anchor.y / mpp) * sin;
-    const dotMapY = cy + (anchor.x / mpp) * sin + (anchor.y / mpp) * cos;
-    const dotScreen = viewport.mapToScreen(dotMapX, dotMapY);
-
+    const def = library.get(g.asset);
+    const snaps = library.snaps(def);
+    const [sx, sy] = snaps[this.snapIndex % snaps.length];
+    const o = rotate(sx, sy, g.rot);
+    const dot = vp.worldToScreen(g.x + o.x, g.y + o.y);
     ctx.save();
-    ctx.fillStyle = '#ff0000';
-    ctx.beginPath();
-    ctx.arc(dotScreen.x, dotScreen.y, 5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = g.mode === 'piece' ? '#f5d547' : '#ff6b6b';
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(dot.x, dot.y, 5, 0, Math.PI * 2);
+    ctx.fill();
     ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.font = '11px monospace';
-    let label = `${this.rotation}°`;
-    if (snapPoints.length > 1) label += ` [${snapIdx + 1}/${snapPoints.length}]`;
-    if (this._fillMode) label += ' FILL';
-    else if (this._snapMode === 'asset') label += ' snap';
-    else if (this._snapMode === 'free') label += ' free';
-    ctx.fillText(label, dotScreen.x + 8, dotScreen.y - 8);
-    ctx.restore();
-  }
-
-  _renderFillPreview(ctx, viewport) {
-    const s = viewport.mapToScreen(this._fillStart.x, this._fillStart.y);
-    const e = viewport.mapToScreen(this._fillEnd.x, this._fillEnd.y);
-
-    ctx.save();
-    ctx.strokeStyle = '#ff8800';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 4]);
-    ctx.fillStyle = 'rgba(255, 136, 0, 0.1)';
-
-    const x = Math.min(s.x, e.x);
-    const y = Math.min(s.y, e.y);
-    const w = Math.abs(e.x - s.x);
-    const h = Math.abs(e.y - s.y);
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeRect(x, y, w, h);
-    ctx.setLineDash([]);
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.font = '11px monospace';
-    const asset = this._previewAsset;
-    const mpp = this.mapScale.metresPerPixel;
-    const rectW = Math.abs(this._fillEnd.x - this._fillStart.x) * mpp;
-    const rectH = Math.abs(this._fillEnd.y - this._fillStart.y) * mpp;
-    ctx.fillText(`Fill: ${rectW.toFixed(1)}x${rectH.toFixed(1)}m`, x + 4, y - 6);
-
+    ctx.font = '500 11px ui-monospace, Menlo, monospace';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    let label = `${this.viewRotation}°`;
+    if (snaps.length > 1) label += ` · ${this.snapIndex % snaps.length + 1}/${snaps.length}`;
+    if (this.fillMode) label += ' · fill';
+    else if (g.mode !== 'grid') label += ` · ${g.mode}`;
+    ctx.fillText(label, dot.x + 9, dot.y - 9);
     ctx.restore();
   }
 }
