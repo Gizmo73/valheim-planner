@@ -9,13 +9,23 @@ const LOUPE_ZOOM = 4;
 export class CalibrateTool {
   constructor(env) {
     this.env = env;
-    this.pending = null; // image px of a half-made pair
+    this._pending = null; // image px of a half-made pair
     this.cursor = 'crosshair';
     this._drag = -1;
     this.hints = [
-      ['Click', 'pin a spot on the image'], ['Click', 'where it belongs'], ['Drag pin', 'fine-tune'],
+      ['Click', 'a spot on the image'], ['Click', 'the same spot on a piece'], ['Drag pin', 'fine-tune'],
       ['Right-click pin', 'remove'], ['Alt', 'no snapping'], ['Esc', 'done'],
     ];
+  }
+
+  get pending() {
+    return this._pending;
+  }
+
+  set pending(v) {
+    if (v === this._pending) return;
+    this._pending = v;
+    this.env.bus.emit('align:changed');
   }
 
   get shot() {
@@ -145,7 +155,7 @@ export class CalibrateTool {
         ctx.lineTo(at.x, at.y);
         ctx.stroke();
       }
-      this._pin(ctx, at, i + 1, i === this._drag);
+      this._pin(ctx, at, i + 1, i === this._drag, false, s.errors?.[i]);
     });
     if (this.pending) {
       const img = s.imageToWorld(this.pending.x, this.pending.y);
@@ -169,16 +179,29 @@ export class CalibrateTool {
     if (pointer) this._loupe(ctx, pointer, vp);
   }
 
-  _pin(ctx, at, n, active, hollow) {
+  // error: how far this pin lands from where it belongs under the fit (only with spare pins).
+  _pin(ctx, at, n, active, hollow, error) {
+    const tone = error == null ? '#b5abfc' : error < 0.25 ? '#6fdc8c' : error < 0.75 ? '#f0b64e' : '#ff6b6b';
     ctx.beginPath();
     ctx.arc(at.x, at.y, 8.5, 0, Math.PI * 2);
     ctx.fillStyle = hollow ? 'rgba(28, 30, 44, 0.6)' : 'rgba(28, 30, 44, 0.95)';
     ctx.fill();
     ctx.lineWidth = 2.5;
-    ctx.strokeStyle = active ? '#f5d547' : '#b5abfc';
+    ctx.strokeStyle = active ? '#f5d547' : tone;
     ctx.stroke();
     ctx.fillStyle = '#ddd9fd';
     ctx.fillText(String(n), at.x, at.y + 0.5);
+    if (error == null) return;
+    const label = Number.isFinite(error) ? `${error.toFixed(2)} m` : '?';
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.font = '600 10px ui-monospace, Menlo, monospace';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(22, 24, 38, 0.9)';
+    ctx.strokeText(label, at.x + 12, at.y + 0.5);
+    ctx.fillStyle = tone;
+    ctx.fillText(label, at.x + 12, at.y + 0.5);
+    ctx.restore();
   }
 
   // Magnified view of what's under the cursor, for placing pins precisely.

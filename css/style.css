@@ -286,3 +286,20 @@ textarea.code.errored { border-color: var(--danger); }
 .unmatched-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .unmatched-row .count { width: 36px; color: var(--label); font-family: var(--mono); text-align: right; }
 .unmatched-row code { color: var(--label); }
+
+/* ---------- help tooltips ---------- */
+
+.help { display: inline-flex; color: var(--label); cursor: help; border-radius: 50%; }
+.help:hover, .help:focus { color: var(--accent-300); outline: none; }
+.help svg { width: 16px; height: 16px; }
+.help-pop {
+  position: fixed; z-index: 20; width: 320px; padding: 12px 14px; border-radius: var(--radius-lg);
+  background: var(--surface); box-shadow: var(--shadow); color: var(--n-300); font-size: 12px; line-height: 1.5;
+  pointer-events: none;
+}
+.help-title { font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.help-pop ol { padding-left: 18px; display: grid; gap: 4px; margin-bottom: 8px; }
+.help-pop p { color: var(--label); }
+.ctx-step { color: var(--accent-300); }
+.ctx-hint.warn { color: var(--warn); }
+.help-pop p + p { margin-top: 6px; }

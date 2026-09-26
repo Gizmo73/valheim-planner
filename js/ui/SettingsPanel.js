@@ -1,5 +1,6 @@
 import { h, button, field, toggle, slider, toast } from './dom.js';
 import { githubSettings, saveGithubSettings } from '../assets/github.js';
+import { alignHelp } from './help.js';
 
 const GRID_COLOURS = ['#4ee3ec', '#f3f5fe', '#9184d9', '#f0b64e', '#1c1e2c'];
 const MAJOR_EVERY = [2, 4, 5, 8, 10];
@@ -10,7 +11,7 @@ export class SettingsPanel {
     this.background = h('div', { class: 'section' });
     this.libraryBox = h('div', { class: 'section' });
     this.info = h('div', { class: 'section' });
-    el.append(this._grid(), this.background, this.libraryBox, this.info);
+    el.append(this._grid(), this._lighting(), this.background, this.libraryBox, this.info);
     env.bus.on('library:changed', () => this._library());
     env.bus.on('screenshot:changed', () => this._background());
     env.bus.on('plan:changed', () => { this._background(); this._info(); });
@@ -51,6 +52,27 @@ export class SettingsPanel {
     );
   }
 
+  _lighting() {
+    const { lighting } = this.env;
+    const s = lighting.settings;
+    const direction = h('span', { class: 'field-value' });
+    const strength = h('span', { class: 'field-value' });
+    const labels = () => {
+      direction.textContent = `from ${s.azimuth}° ${lighting.compass}`;
+      strength.textContent = `${Math.round(s.strength * 100)}%`;
+    };
+    labels();
+    const row = (label, value, control) => h('div', { class: 'field' },
+      h('div', { class: 'field-row' }, h('span', { class: 'field-label' }, label), value), control);
+    return h('div', { class: 'section' },
+      h('div', { class: 'section-label' }, 'Lighting'),
+      h('label', { class: 'field-row' }, h('span', { class: 'field-label' }, 'Shade roof faces'), toggle(s.roofs, v => lighting.set('roofs', v))),
+      row('Light direction', direction, slider(0, 355, 5, s.azimuth, v => { lighting.set('azimuth', v); labels(); })),
+      row('Strength', strength, slider(0.1, 1, 0.05, s.strength, v => { lighting.set('strength', v); labels(); })),
+      h('p', { class: 'note' }, 'One sun-style light shades roof faces by the way they slope, and lights the terrain. The dot on the compass shows where it comes from.'),
+    );
+  }
+
   _background() {
     const { plan, bus, tools } = this.env;
     const parts = [h('div', { class: 'section-label' }, 'Background')];
@@ -60,6 +82,7 @@ export class SettingsPanel {
         h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Screenshot opacity'), slider(0.1, 1, 0.05, shot.opacity, v => { shot.opacity = v; bus.emit('render'); })),
         h('div', { class: 'row-buttons' },
           button('scan', 'Align image', () => tools.activate('calibrate'), { class: 'chip' }),
+          alignHelp(),
           button('trash-2', 'Remove', () => { plan.screenshot = null; tools.activate('select'); bus.emit('screenshot:changed'); plan.changed(); }, { class: 'chip danger' })),
       );
     }

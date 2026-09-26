@@ -11,6 +11,8 @@ Grid based planner for Valheim builds — https://gizmo73.github.io/valheim-plan
 3. **Screenshot** (optional) — add an image, then in *Align image* click a spot on it and where that spot belongs.
    2 pins fit move/rotate/scale, 3 add skew, 4+ add perspective.
 4. **Save / Open** — plans are one JSON file with pieces, layers, terrain and the screenshot.
+5. **Lighting** — *Settings → Lighting* shades roof faces by their slope from one sun you can turn, so hips
+   and valleys read across pieces. The same sun lights the terrain; the compass shows north and the sun.
 
 ## Assets
 Each asset is one file in `js/assets/library/`, listed in `js/assets/library/index.json`:

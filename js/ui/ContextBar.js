@@ -1,7 +1,8 @@
 import { h, button, toggle, slider } from './dom.js';
+import { alignHelp } from './help.js';
 
 const SNAP_MODES = [['grid', 'grid-3x3', 'Grid'], ['piece', 'magnet', 'Pieces'], ['free', 'move', 'Free']];
-const SOLVE_LABEL = ['Click the image, then where that spot belongs', 'Moved only — add a second pin', 'Move, rotate and scale', 'Plus skew', 'Plus perspective'];
+const FIT_LABEL = { 2: 'Scale, rotation and position set', 3: 'Plus skew', 4: 'Plus perspective' };
 
 // Options for the current mode, shown under the toolbar.
 export class ContextBar {
@@ -9,7 +10,7 @@ export class ContextBar {
     this.el = el;
     this.env = env;
     const render = () => this.render();
-    for (const ev of ['tool:changed', 'place:changed', 'snap:changed', 'screenshot:changed', 'selection:changed', 'library:changed']) env.bus.on(ev, render);
+    for (const ev of ['tool:changed', 'place:changed', 'snap:changed', 'screenshot:changed', 'align:changed', 'selection:changed', 'library:changed']) env.bus.on(ev, render);
     render();
   }
 
@@ -68,10 +69,19 @@ export class ContextBar {
     const shot = plan.screenshot;
     if (!shot) return [];
     const n = shot.pairs.length;
-    const res = shot.residual();
+    const acc = shot.accuracy;
+    const quality = acc == null ? 'exact fit — add a pin to check accuracy'
+      : Number.isFinite(acc) ? `about ±${acc.toFixed(2)} m` : 'pins disagree';
+    // What to do next, so the two-click rhythm is obvious.
+    const step = tools.tools.calibrate.pending ? 'Now click the same spot on your pieces'
+      : n === 0 ? 'Click a spot on the screenshot'
+        : n === 1 ? 'Pin a second spot, far from the first'
+          : `${FIT_LABEL[Math.min(n, shot.perspective ? 4 : 3)]} · ${quality}`;
     return [
+      alignHelp(),
       h('span', { class: 'ctx-name' }, `${n} pin${n === 1 ? '' : 's'}`),
-      h('span', { class: 'ctx-hint' }, SOLVE_LABEL[Math.min(n, shot.perspective ? 4 : 3)] + (res ? ` · error ${res.toFixed(2)} m` : '')),
+      h('span', { class: `ctx-hint${n < 2 ? ' ctx-step' : ''}` }, step),
+      shot.bunched && h('span', { class: 'ctx-hint warn' }, 'Pins are close together — the edges will drift, spread them out'),
       shot.unstable && h('span', { class: 'ctx-hint error' }, 'Pins disagree — perspective ignored, check them'),
       h('span', { class: 'sep' }),
       h('label', { class: 'ctx-toggle' }, toggle(shot.perspective, v => { shot.perspective = v; shot.solve(); bus.emit('screenshot:changed'); bus.emit('render'); }), 'Perspective (4+ pins)'),

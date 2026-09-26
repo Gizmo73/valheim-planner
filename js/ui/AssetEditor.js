@@ -317,7 +317,7 @@ export class AssetEditor {
   _drawPreview() {
     if (!this.modal) return;
     const def = this._def();
-    this._tex ||= renderTexture(def);
+    this._tex ||= renderTexture(def, this.library.bakedShadows);
     this.error.textContent = def.error || def.runtimeError || '';
     this.code.classList.toggle('errored', !!this.error.textContent);
 
@@ -338,7 +338,7 @@ export class AssetEditor {
 
     const [w, d] = def.size;
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(this._tex, g.ox - w / 2 * g.scale, g.oy - d / 2 * g.scale, w * g.scale, d * g.scale);
+    for (const layer of [this._tex.base, this._tex.markings]) if (layer) ctx.drawImage(layer, g.ox - w / 2 * g.scale, g.oy - d / 2 * g.scale, w * g.scale, d * g.scale);
     ctx.strokeStyle = '#b5abfc';
     ctx.lineWidth = 1.5;
     ctx.beginPath();

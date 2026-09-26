@@ -3,7 +3,7 @@ import { DEG, rotate } from '../core/geometry.js';
 import { stableHash } from '../world/saveReader.js';
 import { normalize, storable, toFileText, slugify } from './assetFile.js';
 import { CATEGORIES } from './categories.js';
-import { modifier, materialPasses, drawOverlay } from './modifiers.js';
+import { modifier, materialPasses, drawDetail, drawMarkings, shadeFaces } from './modifiers.js';
 import { tracePath, containsLocal } from './shapes.js';
 import { makeUtils } from './drawUtils.js';
 import { commitFiles } from './github.js';
@@ -23,25 +23,28 @@ function compile(def, previous) {
   return def;
 }
 
-export function renderTexture(def) {
+// Two layers: `base` (material and surface detail) and `markings` (arrows, badges), so scene
+// lighting can shade the surface without dimming the markings. markings is null if there are none.
+export function renderTexture(def, baked = true) {
   const [w, h] = def.size;
   const ppm = Math.min(MAX_PPM, MAX_TEXTURE_PX / Math.max(w, h));
   const W = Math.max(1, Math.round(w * ppm)), H = Math.max(1, Math.round(h * ppm));
-  const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  const clip = () => {
+  const layer = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
     ctx.beginPath();
     tracePath(ctx, def.outline, ppm, W / 2, H / 2);
     ctx.clip();
+    return { canvas, ctx };
   };
+  const { canvas: base, ctx } = layer();
   const mod = modifier(def.modifier);
   const shape = Array.isArray(def.shape) ? 'custom' : def.shape;
   def.runtimeError = null;
   for (const { area, flow } of materialPasses(mod, W, H)) {
     ctx.save();
-    clip();
     if (area) {
       ctx.beginPath();
       area.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
@@ -62,13 +65,11 @@ export function renderTexture(def) {
     }
     ctx.restore();
   }
-  if (mod) {
-    ctx.save();
-    clip();
-    drawOverlay(mod, ctx, W, H);
-    ctx.restore();
-  }
-  return canvas;
+  if (!mod) return { base, markings: null };
+  drawDetail(mod, ctx, W, H, baked);
+  const marks = layer();
+  drawMarkings(mod, marks.ctx, W, H);
+  return { base, markings: marks.canvas };
 }
 
 // Loads every asset file listed in library/index.json, then layers local edits (localStorage)
@@ -79,6 +80,7 @@ export class AssetLibrary {
     this.assets = new Map();
     this.baseline = new Map(); // id -> file text as served
     this._textures = new Map();
+    this.bakedShadows = true;
     this._byHash = new Map();
   }
 
@@ -212,21 +214,31 @@ export class AssetLibrary {
 
   // --- drawing & geometry ---
 
+  // Scene lighting replaces the fixed valley/hip shading, so textures are redrawn without it.
+  setBakedShadows(on) {
+    if (on === this.bakedShadows) return;
+    this.bakedShadows = on;
+    this._textures.clear();
+    this.bus.emit('library:changed');
+    this.bus.emit('render');
+  }
+
   texture(id) {
-    if (!this._textures.has(id)) this._textures.set(id, renderTexture(this.get(id)));
+    if (!this._textures.has(id)) this._textures.set(id, renderTexture(this.get(id), this.bakedShadows));
     return this._textures.get(id);
   }
 
   thumbnail(def, px) {
-    const tex = def === this.get(def.id) ? this.texture(def.id) : renderTexture(def);
+    const { base, markings } = def === this.get(def.id) ? this.texture(def.id) : renderTexture(def, this.bakedShadows);
     const c = document.createElement('canvas');
     c.width = c.height = px;
-    const k = Math.min(px * 0.86 / tex.width, px * 0.86 / tex.height);
-    c.getContext('2d').drawImage(tex, (px - tex.width * k) / 2, (px - tex.height * k) / 2, tex.width * k, tex.height * k);
+    const k = Math.min(px * 0.86 / base.width, px * 0.86 / base.height);
+    const ctx = c.getContext('2d');
+    for (const layer of [base, markings]) if (layer) ctx.drawImage(layer, (px - base.width * k) / 2, (px - base.height * k) / 2, base.width * k, base.height * k);
     return c;
   }
 
-  drawItem(ctx, it, zoom, alpha = 1) {
+  drawItem(ctx, it, zoom, alpha = 1, lighting = null) {
     const a = this.get(it.asset);
     ctx.save();
     ctx.translate(it.x, it.y);
@@ -239,7 +251,11 @@ export class AssetLibrary {
       ctx.fillStyle = a.colors.main;
       ctx.fillRect(-a.size[0] / 2, -a.size[1] / 2, a.size[0], a.size[1]);
     } else {
-      ctx.drawImage(this.texture(a.id), -a.size[0] / 2, -a.size[1] / 2, a.size[0], a.size[1]);
+      const [w, h] = a.size;
+      const { base, markings } = this.texture(a.id);
+      ctx.drawImage(base, -w / 2, -h / 2, w, h);
+      if (lighting?.settings.roofs) shadeFaces(modifier(a.modifier), ctx, a.size, it.rot, lighting);
+      if (markings) ctx.drawImage(markings, -w / 2, -h / 2, w, h);
       ctx.beginPath();
       tracePath(ctx, a.outline);
       ctx.lineWidth = 1 / zoom;

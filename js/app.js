@@ -1,6 +1,7 @@
 import { EventBus } from './core/EventBus.js';
 import { Viewport } from './core/Viewport.js';
 import { Grid } from './core/Grid.js';
+import { Lighting } from './core/Lighting.js';
 import { Plan } from './core/Plan.js';
 import { Renderer } from './core/Renderer.js';
 import { wrapDeg } from './core/geometry.js';
@@ -30,12 +31,13 @@ const env = {
   bus,
   viewport,
   grid: new Grid(bus),
+  lighting: new Lighting(bus),
   plan: new Plan(bus),
   library: new AssetLibrary(bus),
   tools: new ToolManager(canvas, viewport, bus),
   actions: {},
 };
-const { plan, grid, library, tools } = env;
+const { plan, grid, library, tools, lighting } = env;
 
 tools.register('select', new SelectTool(env));
 tools.register('place', new PlaceTool(env));
@@ -154,6 +156,10 @@ for (const ev of ['plan:changed', 'screenshot:changed', 'tool:changed']) bus.on(
 document.addEventListener('change', e => {
   if (!e.target.matches('input[type=text], input[type=number], input[type=search], input[type=password], textarea')) e.target.blur();
 });
+
+// Scene lighting replaces the fixed valley/hip shading drawn into roof textures.
+library.setBakedShadows(!lighting.settings.roofs);
+bus.on('lighting:changed', key => { if (key === 'roofs') library.setBakedShadows(!lighting.settings.roofs); });
 
 // The grid follows the build: re-align whenever the view turns.
 bus.on('view:rotated', () => grid.alignTo(plan.items, library, viewport));

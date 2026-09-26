@@ -189,7 +189,7 @@ export class PlaceTool {
     if (!g) return;
     ctx.save();
     vp.applyTo(ctx);
-    library.drawItem(ctx, g, vp.zoom, 0.6);
+    library.drawItem(ctx, g, vp.zoom, 0.6, this.env.lighting);
     ctx.restore();
 
     const def = library.get(g.asset);
