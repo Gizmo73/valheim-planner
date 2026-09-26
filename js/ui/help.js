@@ -29,5 +29,6 @@ export function alignHelp() {
       h('li', null, 'Click a spot on the screenshot that you can also find on your pieces — a floor corner, a wall end or a pole.'),
       h('li', null, 'Click that same spot on the pieces. It snaps to piece corners and snap points, then grid points; hold Alt to click freely.'),
       h('li', null, 'Do the same for a second spot, as far from the first as you can. Scale, rotation and position now match the 1 m grid.')),
-    h('p', null, 'While aligning, the screenshot shows over your pieces — lower the opacity to see both. Drag a pin to fine-tune, right-click to remove it. Only angled screenshots need a 3rd and 4th pin (Perspective).'));
+    h('p', null, 'Spread the pins out: pins close together drift at the edges of the image. Add one pin more than the fit needs (a 3rd, or a 5th with Perspective) and the bar shows how far off it is; each pin is coloured green, amber or red by its own error.'),
+    h('p', null, 'Things higher or lower than your pins (roofs, treetops) shift towards the edges of an in-game screenshot — pin spots at the height you care about. While aligning, the screenshot shows over your pieces; lower the opacity to see both. Drag a pin to fine-tune, right-click to remove it. Only angled screenshots need Perspective.'));
 }

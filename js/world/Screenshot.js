@@ -1,6 +1,21 @@
 import { applyH, invertH, isAffine, multiplyH, solveAlignment } from '../core/geometry.js';
 
 const MAX_WARP_PX = 4096;
+const PINS_NEEDED = { none: 0, move: 1, similarity: 2, affine: 3, perspective: 4 };
+const BUNCHED_SPAN = 0.35; // two pins closer than this fraction of the image diagonal
+const BUNCHED_AREA = 0.12; // 3+ pins enclosing less than this fraction of the image
+
+function hullArea(pts) {
+  const p = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const half = list => list.reduce((h, q) => {
+    while (h.length >= 2 && cross(h[h.length - 2], h[h.length - 1], q) <= 0) h.pop();
+    h.push(q);
+    return h;
+  }, []);
+  const hull = [...half(p).slice(0, -1), ...half([...p].reverse()).slice(0, -1)];
+  return Math.abs(hull.reduce((a, q, i) => a + q.x * hull[(i + 1) % hull.length].y - hull[(i + 1) % hull.length].x * q.y, 0)) / 2;
+}
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -81,7 +96,45 @@ export class Screenshot {
     // Pins that disagree can fold the image behind the camera; fall back to the skew fit then.
     this.unstable = !isAffine(this.H) && this._corners().some(([x, y]) => this.H[2][0] * x + this.H[2][1] * y + this.H[2][2] <= 0);
     if (this.unstable) this.H = solveAlignment(this.pairs, false) || this.base;
+    this.errors = this._checkPins();
+    this.bunched = this._bunched();
     this._warp = null;
+  }
+
+  get model() {
+    const n = this.pairs.length;
+    if (n < 3) return ['none', 'move', 'similarity'][n];
+    return n === 3 || !this.perspective || this.unstable ? 'affine' : 'perspective';
+  }
+
+  // Pins beyond what the fit needs. With none spare the fit is exact and its accuracy can't be checked.
+  get spare() {
+    return this.pairs.length - PINS_NEEDED[this.model];
+  }
+
+  // How far each pin lands from where it belongs under the fit. null when the fit is exact
+  // (no spare pin), because then every pin lands perfectly whatever the clicks were.
+  _checkPins() {
+    if (this.spare < 1) return null;
+    return this.pairs.map(p => {
+      const q = applyH(this.H, p.img.x, p.img.y);
+      return Math.hypot(q.x - p.world.x, q.y - p.world.y);
+    });
+  }
+
+  // Typical error (m), allowing for the fit bending towards its own pins: sum of squares over the
+  // spare coordinates (2 per pin, minus what the fit uses). null for an exact fit.
+  get accuracy() {
+    if (!this.errors) return null;
+    return Math.sqrt(this.errors.reduce((s, e) => s + e * e, 0) / (2 * this.spare));
+  }
+
+  // Pins close together, or in a line, cover little of the image, so errors grow towards its edges.
+  _bunched() {
+    const pts = this.pairs.map(p => p.img);
+    if (pts.length < 2) return false;
+    if (pts.length === 2) return Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y) < BUNCHED_SPAN * Math.hypot(this.width, this.height);
+    return hullArea(pts) < BUNCHED_AREA * this.width * this.height;
   }
 
   _corners() {
@@ -98,15 +151,6 @@ export class Screenshot {
   worldToImage(x, y) {
     const inv = invertH(this.H);
     return inv ? applyH(inv, x, y) : { x, y };
-  }
-
-  residual() {
-    if (this.pairs.length < 3) return 0;
-    const sq = this.pairs.reduce((s, p) => {
-      const q = this.imageToWorld(p.img.x, p.img.y);
-      return s + (q.x - p.world.x) ** 2 + (q.y - p.world.y) ** 2;
-    }, 0);
-    return Math.sqrt(sq / this.pairs.length);
   }
 
   draw(ctx) {

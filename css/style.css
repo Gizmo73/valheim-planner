@@ -301,3 +301,5 @@ textarea.code.errored { border-color: var(--danger); }
 .help-pop ol { padding-left: 18px; display: grid; gap: 4px; margin-bottom: 8px; }
 .help-pop p { color: var(--label); }
 .ctx-step { color: var(--accent-300); }
+.ctx-hint.warn { color: var(--warn); }
+.help-pop p + p { margin-top: 6px; }

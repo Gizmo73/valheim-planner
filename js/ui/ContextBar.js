@@ -69,16 +69,19 @@ export class ContextBar {
     const shot = plan.screenshot;
     if (!shot) return [];
     const n = shot.pairs.length;
-    const res = shot.residual();
+    const acc = shot.accuracy;
+    const quality = acc == null ? 'exact fit — add a pin to check accuracy'
+      : Number.isFinite(acc) ? `about ±${acc.toFixed(2)} m` : 'pins disagree';
     // What to do next, so the two-click rhythm is obvious.
     const step = tools.tools.calibrate.pending ? 'Now click the same spot on your pieces'
       : n === 0 ? 'Click a spot on the screenshot'
         : n === 1 ? 'Pin a second spot, far from the first'
-          : FIT_LABEL[Math.min(n, shot.perspective ? 4 : 3)] + (res ? ` · error ${res.toFixed(2)} m` : '');
+          : `${FIT_LABEL[Math.min(n, shot.perspective ? 4 : 3)]} · ${quality}`;
     return [
       alignHelp(),
       h('span', { class: 'ctx-name' }, `${n} pin${n === 1 ? '' : 's'}`),
       h('span', { class: `ctx-hint${n < 2 ? ' ctx-step' : ''}` }, step),
+      shot.bunched && h('span', { class: 'ctx-hint warn' }, 'Pins are close together — the edges will drift, spread them out'),
       shot.unstable && h('span', { class: 'ctx-hint error' }, 'Pins disagree — perspective ignored, check them'),
       h('span', { class: 'sep' }),
       h('label', { class: 'ctx-toggle' }, toggle(shot.perspective, v => { shot.perspective = v; shot.solve(); bus.emit('screenshot:changed'); bus.emit('render'); }), 'Perspective (4+ pins)'),
