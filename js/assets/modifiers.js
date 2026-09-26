@@ -1,7 +1,19 @@
-// Overlay presets drawn on top of any asset's texture. Texture "up" is the piece's forward (+z).
-// Roof arrows point downhill; the stairs arrow points up the stairs.
+// Overlay presets for any asset. Texture "up" is the piece's forward (+z).
+//
+// Roof modifiers split the piece into faces. Each face has the area it covers and the way it
+// drains (`flow`, degrees: 0 down, 90 left, 180 up, 270 right). The asset's material is drawn once
+// per face, turned so its "down" follows the flow, and the face's arrow uses the same angle — so
+// strands, shingle overlaps and arrows always agree. Materials never need to know about faces.
+//
+// Orientation matches pieces placed in-game: a straight roof rises towards the texture bottom.
 
-// Arrow pointing along +y (down) before rotation; 90° points left, 180° up.
+const ALL = (w, h) => [[0, 0], [w, 0], [w, h], [0, h]];
+const ABOVE_DIAGONAL = (w, h) => [[0, 0], [w, 0], [0, h]]; // the diagonal runs bottom-left to top-right
+const BELOW_DIAGONAL = (w, h) => [[w, 0], [w, h], [0, h]];
+const TOP_HALF = (w, h) => [[0, 0], [w, 0], [w, h / 2], [0, h / 2]];
+const BOTTOM_HALF = (w, h) => [[0, h / 2], [w, h / 2], [w, h], [0, h]];
+
+// Arrow pointing along +y (down) before rotation.
 function arrow(ctx, x, y, deg, len) {
   const head = len * 0.4, half = len / 2, shaft = head * 0.4;
   const p = new Path2D();
@@ -46,13 +58,27 @@ function badge(ctx, w, letter) {
   ctx.restore();
 }
 
-function diagonal(ctx, w, h, style) {
+function diagonal(ctx, w, h, style, width) {
   ctx.strokeStyle = style;
-  ctx.lineWidth = Math.min(w, h) * 0.03;
+  ctx.lineWidth = Math.min(w, h) * width;
   ctx.beginPath();
   ctx.moveTo(0, h);
   ctx.lineTo(w, 0);
   ctx.stroke();
+}
+
+// Shading that fades away from the diagonal into one face. side: -1 above it, 1 below it.
+function diagonalShade(ctx, w, h, side, dist, stops) {
+  const d = Math.min(w, h) * dist;
+  const g = ctx.createLinearGradient(0, h, side * d, h + side * d);
+  stops.forEach(([at, alpha]) => g.addColorStop(at, `rgba(0, 0, 0, ${alpha})`));
+  ctx.save();
+  ctx.beginPath();
+  (side < 0 ? ABOVE_DIAGONAL : BELOW_DIAGONAL)(w, h).forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.clip();
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
 }
 
 export const MODIFIERS = [
@@ -71,43 +97,66 @@ export const MODIFIERS = [
   {
     id: 'roof',
     label: 'Roof',
-    draw(ctx, w, h) {
-      arrow(ctx, w / 2, h / 2, 0, Math.min(w, h) * 0.4);
-    },
+    faces: [{ area: ALL, flow: 180, arrow: [0.5, 0.5, 0.4] }],
   },
   {
     id: 'roof-inner',
     label: 'Roof inner corner',
+    // Valley: both faces drain into the diagonal.
+    faces: [
+      { area: ABOVE_DIAGONAL, flow: 270, arrow: [0.32, 0.32, 0.3] },
+      { area: BELOW_DIAGONAL, flow: 180, arrow: [0.68, 0.68, 0.3] },
+    ],
     draw(ctx, w, h) {
-      diagonal(ctx, w, h, 'rgba(15, 8, 0, 0.9)');
-      arrow(ctx, w * 0.32, h * 0.32, 0, Math.min(w, h) * 0.3);
-      arrow(ctx, w * 0.68, h * 0.68, 90, Math.min(w, h) * 0.3);
+      const stops = [[0, 0.7], [0.5, 0.3], [1, 0]];
+      diagonalShade(ctx, w, h, -1, 0.14, stops);
+      diagonalShade(ctx, w, h, 1, 0.14, stops);
+      diagonal(ctx, w, h, 'rgba(15, 8, 0, 0.9)', 0.02);
       badge(ctx, w, 'I');
     },
   },
   {
     id: 'roof-outer',
     label: 'Roof outer corner',
+    // Hip: both faces drain away from the diagonal.
+    faces: [
+      { area: ABOVE_DIAGONAL, flow: 180, arrow: [0.32, 0.32, 0.3] },
+      { area: BELOW_DIAGONAL, flow: 270, arrow: [0.68, 0.68, 0.3] },
+    ],
     draw(ctx, w, h) {
-      diagonal(ctx, w, h, 'rgba(255, 245, 200, 0.8)');
-      arrow(ctx, w * 0.32, h * 0.32, 90, Math.min(w, h) * 0.3);
-      arrow(ctx, w * 0.68, h * 0.68, 0, Math.min(w, h) * 0.3);
+      diagonalShade(ctx, w, h, -1, 0.19, [[0, 0.65], [0.4, 0.25], [1, 0]]);
+      diagonal(ctx, w, h, 'rgba(255, 245, 200, 0.8)', 0.016);
       badge(ctx, w, 'O');
     },
   },
   {
     id: 'roof-ridge',
     label: 'Roof ridge',
+    faces: [
+      { area: TOP_HALF, flow: 180, arrow: [0.5, 0.25, 0.28] },
+      { area: BOTTOM_HALF, flow: 0, arrow: [0.5, 0.75, 0.28] },
+    ],
     draw(ctx, w, h) {
       const band = h * 0.06;
       ctx.fillStyle = 'rgba(40, 26, 12, 0.85)';
       ctx.fillRect(0, h / 2 - band / 2, w, band);
-      arrow(ctx, w / 2, h * 0.25, 180, Math.min(w, h) * 0.28);
-      arrow(ctx, w / 2, h * 0.75, 0, Math.min(w, h) * 0.28);
     },
   },
 ];
 
 export function modifier(id) {
   return MODIFIERS.find(m => m.id === id) || null;
+}
+
+// Where the asset's material goes: one pass per face, or the whole texture unturned.
+export function materialPasses(mod, w, h) {
+  return mod?.faces ? mod.faces.map(f => ({ area: f.area(w, h), flow: f.flow })) : [{ area: null, flow: 0 }];
+}
+
+export function drawOverlay(mod, ctx, w, h) {
+  mod.draw?.(ctx, w, h);
+  for (const f of mod.faces || []) {
+    const [x, y, size] = f.arrow;
+    arrow(ctx, w * x, h * y, f.flow, Math.min(w, h) * size);
+  }
 }

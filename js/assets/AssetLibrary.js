@@ -3,7 +3,7 @@ import { DEG, rotate } from '../core/geometry.js';
 import { stableHash } from '../world/saveReader.js';
 import { normalize, storable, toFileText, slugify } from './assetFile.js';
 import { CATEGORIES } from './categories.js';
-import { modifier } from './modifiers.js';
+import { modifier, materialPasses, drawOverlay } from './modifiers.js';
 import { tracePath, containsLocal } from './shapes.js';
 import { makeUtils } from './drawUtils.js';
 import { commitFiles } from './github.js';
@@ -36,22 +36,36 @@ export function renderTexture(def) {
     tracePath(ctx, def.outline, ppm, W / 2, H / 2);
     ctx.clip();
   };
-  ctx.save();
-  clip();
-  try {
-    def.draw(ctx, W, H, { ...def.colors }, makeUtils(def.id, ppm, Array.isArray(def.shape) ? 'custom' : def.shape, def.size));
-    def.runtimeError = null;
-  } catch (err) {
-    def.runtimeError = err.message;
-    ctx.fillStyle = '#a33';
-    ctx.fillRect(0, 0, W, H);
-  }
-  ctx.restore();
   const mod = modifier(def.modifier);
+  const shape = Array.isArray(def.shape) ? 'custom' : def.shape;
+  def.runtimeError = null;
+  for (const { area, flow } of materialPasses(mod, W, H)) {
+    ctx.save();
+    clip();
+    if (area) {
+      ctx.beginPath();
+      area.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.clip();
+    }
+    // Turn the material so its "down" runs along this face's slope.
+    const quarter = Math.round(flow / 90) % 2 === 1;
+    const [mw, mh] = quarter ? [H, W] : [W, H];
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate(flow * DEG);
+    ctx.translate(-mw / 2, -mh / 2);
+    try {
+      def.draw(ctx, mw, mh, { ...def.colors }, makeUtils(def.id, ppm, shape, def.size));
+    } catch (err) {
+      def.runtimeError = err.message;
+      ctx.fillStyle = '#a33';
+      ctx.fillRect(0, 0, mw, mh);
+    }
+    ctx.restore();
+  }
   if (mod) {
     ctx.save();
     clip();
-    mod.draw(ctx, W, H);
+    drawOverlay(mod, ctx, W, H);
     ctx.restore();
   }
   return canvas;

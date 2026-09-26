@@ -29,6 +29,9 @@ export default {
 };
 ```
 
+Draw code only ever draws a slope running top to bottom. Roof modifiers split the piece into faces and
+turn the material to each face's slope, so corners and ridges work for any roof material.
+
 Edits made in the tool are kept in the browser; **Settings → Push** commits them to the repo in one commit
 using a GitHub token with contents write access.
 

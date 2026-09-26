@@ -113,7 +113,7 @@ export class AssetEditor {
       step(1, 'Name', this.nameInput),
       step(2, 'Size',
         h('div', { class: 'dims' }, this.wInput, h('span', null, '×'), this.dInput, h('span', { class: 'unit' }, 'm')),
-        h('div', { class: 'note' }, 'Width × depth seen from above. Forward (the way arrows point up) is the top edge.'),
+        h('div', { class: 'note' }, 'Width × depth seen from above. The top edge faces forward.'),
         this.shapeSeg, this.customVerts),
       step(3, 'Internal IDs', this.idChips, h('div', { class: 'id-search' }, this.idInput, this.idResults),
         h('div', { class: 'note' }, 'Prefab names from the save. World imports place this asset wherever any of them appear.')),
