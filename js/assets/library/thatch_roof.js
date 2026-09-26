@@ -19,7 +19,6 @@ export default {
       ctx.lineTo(x + u.range(-2, 2), h);
       ctx.stroke();
     }
-    ctx.fillStyle = u.rgba(u.shade(c.main, -0.6), 0.35);
-    for (let y = 0.5 * u.ppm; y < h; y += 0.5 * u.ppm) ctx.fillRect(0, y - 2, w, 3);
+
   },
 };
