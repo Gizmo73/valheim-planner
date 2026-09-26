@@ -3,14 +3,14 @@ import { h, icon, button } from './dom.js';
 const MODES = [
   { name: 'select', label: 'Select', icon: 'mouse-pointer-2', key: 'V' },
   { name: 'place', label: 'Place', icon: 'blocks', key: 'B' },
-  { name: 'calibrate', label: 'Align image', icon: 'scan', key: 'A' },
+  { name: 'calibrate', label: 'Align image', icon: 'scan', key: 'A', tip: 'pin two spots on the screenshot to the same spots on your pieces' },
 ];
 
 export class Toolbar {
   constructor(el, { bus, tools, viewport, plan, actions }) {
     this.modeButtons = {};
     const modes = h('div', { class: 'seg' }, MODES.map(m => {
-      const b = button(m.icon, m.label, () => tools.activate(m.name), { class: 'seg-btn', title: `${m.label} (${m.key})` });
+      const b = button(m.icon, m.label, () => tools.activate(m.name), { class: 'seg-btn', title: `${m.label} (${m.key})${m.tip ? ` — ${m.tip}` : ''}` });
       this.modeButtons[m.name] = b;
       return b;
     }));

@@ -1,5 +1,6 @@
 import { h, button, field, toggle, slider, toast } from './dom.js';
 import { githubSettings, saveGithubSettings } from '../assets/github.js';
+import { alignHelp } from './help.js';
 
 const GRID_COLOURS = ['#4ee3ec', '#f3f5fe', '#9184d9', '#f0b64e', '#1c1e2c'];
 const MAJOR_EVERY = [2, 4, 5, 8, 10];
@@ -81,6 +82,7 @@ export class SettingsPanel {
         h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Screenshot opacity'), slider(0.1, 1, 0.05, shot.opacity, v => { shot.opacity = v; bus.emit('render'); })),
         h('div', { class: 'row-buttons' },
           button('scan', 'Align image', () => tools.activate('calibrate'), { class: 'chip' }),
+          alignHelp(),
           button('trash-2', 'Remove', () => { plan.screenshot = null; tools.activate('select'); bus.emit('screenshot:changed'); plan.changed(); }, { class: 'chip danger' })),
       );
     }

@@ -9,13 +9,23 @@ const LOUPE_ZOOM = 4;
 export class CalibrateTool {
   constructor(env) {
     this.env = env;
-    this.pending = null; // image px of a half-made pair
+    this._pending = null; // image px of a half-made pair
     this.cursor = 'crosshair';
     this._drag = -1;
     this.hints = [
-      ['Click', 'pin a spot on the image'], ['Click', 'where it belongs'], ['Drag pin', 'fine-tune'],
+      ['Click', 'a spot on the image'], ['Click', 'the same spot on a piece'], ['Drag pin', 'fine-tune'],
       ['Right-click pin', 'remove'], ['Alt', 'no snapping'], ['Esc', 'done'],
     ];
+  }
+
+  get pending() {
+    return this._pending;
+  }
+
+  set pending(v) {
+    if (v === this._pending) return;
+    this._pending = v;
+    this.env.bus.emit('align:changed');
   }
 
   get shot() {

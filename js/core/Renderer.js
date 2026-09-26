@@ -1,4 +1,5 @@
 // Draw order: terrain -> screenshot -> (grid) -> layers bottom to top -> (grid) -> anchor -> compass -> tool overlay.
+// While aligning, the screenshot goes over the pieces so the features you pin aren't hidden.
 export class Renderer {
   constructor(canvas, { bus, viewport, grid, plan, library, tools, lighting }) {
     Object.assign(this, { canvas, viewport, grid, plan, library, tools, lighting });
@@ -32,13 +33,14 @@ export class Renderer {
 
   _draw() {
     const { ctx, viewport: vp, grid, plan } = this;
+    const aligning = this.tools.name === 'calibrate';
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, vp.width, vp.height);
 
     ctx.save();
     vp.applyTo(ctx);
     plan.terrain?.draw(ctx, this.lighting);
-    plan.screenshot?.draw(ctx);
+    if (!aligning) plan.screenshot?.draw(ctx);
     ctx.restore();
 
     if (!grid.settings.abovePieces) grid.draw(ctx, vp);
@@ -46,6 +48,7 @@ export class Renderer {
     ctx.save();
     vp.applyTo(ctx);
     for (const it of plan.drawOrder()) this.library.drawItem(ctx, it, vp.zoom, 1, this.lighting);
+    if (aligning) plan.screenshot?.draw(ctx);
     ctx.restore();
 
     if (grid.settings.abovePieces) grid.draw(ctx, vp);

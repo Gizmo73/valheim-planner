@@ -28,7 +28,7 @@ export class Screenshot {
     this.dataURL = dataURL;
     this.pairs = [];
     this.perspective = true;
-    this.opacity = 0.75;
+    this.opacity = 0.6;
     this.visible = true;
     this.base = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
     this.H = this.base;
@@ -43,7 +43,7 @@ export class Screenshot {
 
   static async fromJSON(data) {
     const s = new Screenshot(await loadImage(data.dataURL), data.dataURL);
-    Object.assign(s, { pairs: data.pairs || [], perspective: data.perspective ?? true, opacity: data.opacity ?? 0.75, visible: data.visible ?? true, base: data.base || s.base });
+    Object.assign(s, { pairs: data.pairs || [], perspective: data.perspective ?? true, opacity: data.opacity ?? 0.6, visible: data.visible ?? true, base: data.base || s.base });
     s.solve();
     return s;
   }
