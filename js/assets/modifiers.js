@@ -91,8 +91,8 @@ export const MODIFIERS = [
       ctx.beginPath();
       for (let i = 1; i < 6; i++) { ctx.moveTo(0, (i / 6) * h); ctx.lineTo(w, (i / 6) * h); }
       ctx.stroke();
-      arrow(ctx, w / 2, h / 2, 180, Math.min(w, h) * 0.5);
     },
+    arrows: [[0.5, 0.5, 180, 0.5]],
   },
   {
     id: 'roof',
@@ -107,13 +107,15 @@ export const MODIFIERS = [
       { area: ABOVE_DIAGONAL, flow: 270, arrow: [0.32, 0.32, 0.3] },
       { area: BELOW_DIAGONAL, flow: 180, arrow: [0.68, 0.68, 0.3] },
     ],
-    draw(ctx, w, h) {
-      const stops = [[0, 0.7], [0.5, 0.3], [1, 0]];
-      diagonalShade(ctx, w, h, -1, 0.14, stops);
-      diagonalShade(ctx, w, h, 1, 0.14, stops);
+    draw(ctx, w, h, { baked }) {
+      if (baked) {
+        const stops = [[0, 0.7], [0.5, 0.3], [1, 0]];
+        diagonalShade(ctx, w, h, -1, 0.14, stops);
+        diagonalShade(ctx, w, h, 1, 0.14, stops);
+      }
       diagonal(ctx, w, h, 'rgba(15, 8, 0, 0.9)', 0.02);
-      badge(ctx, w, 'I');
     },
+    badge: 'I',
   },
   {
     id: 'roof-outer',
@@ -123,11 +125,11 @@ export const MODIFIERS = [
       { area: ABOVE_DIAGONAL, flow: 180, arrow: [0.32, 0.32, 0.3] },
       { area: BELOW_DIAGONAL, flow: 270, arrow: [0.68, 0.68, 0.3] },
     ],
-    draw(ctx, w, h) {
-      diagonalShade(ctx, w, h, -1, 0.19, [[0, 0.65], [0.4, 0.25], [1, 0]]);
+    draw(ctx, w, h, { baked }) {
+      if (baked) diagonalShade(ctx, w, h, -1, 0.19, [[0, 0.65], [0.4, 0.25], [1, 0]]);
       diagonal(ctx, w, h, 'rgba(255, 245, 200, 0.8)', 0.016);
-      badge(ctx, w, 'O');
     },
+    badge: 'O',
   },
   {
     id: 'roof-ridge',
@@ -153,10 +155,34 @@ export function materialPasses(mod, w, h) {
   return mod?.faces ? mod.faces.map(f => ({ area: f.area(w, h), flow: f.flow })) : [{ area: null, flow: 0 }];
 }
 
-export function drawOverlay(mod, ctx, w, h) {
-  mod.draw?.(ctx, w, h);
+// Surface detail: creases, ridge caps, step lines, and the fixed valley/hip shading when `baked`
+// (turned off while scene lighting shades the faces).
+export function drawDetail(mod, ctx, w, h, baked = true) {
+  mod.draw?.(ctx, w, h, { baked });
+}
+
+// Arrows and badges, kept separate so scene lighting never dims them.
+export function drawMarkings(mod, ctx, w, h) {
   for (const f of mod.faces || []) {
     const [x, y, size] = f.arrow;
     arrow(ctx, w * x, h * y, f.flow, Math.min(w, h) * size);
+  }
+  for (const [x, y, deg, size] of mod.arrows || []) arrow(ctx, w * x, h * y, deg, Math.min(w, h) * size);
+  if (mod.badge) badge(ctx, w, mod.badge);
+}
+
+// Scene lighting over each roof face. ctx is in the placed item's local metres; rot is its yaw.
+export function shadeFaces(mod, ctx, [w, h], rot, lighting) {
+  const r = rot * Math.PI / 180;
+  for (const f of mod?.faces || []) {
+    const t = f.flow * Math.PI / 180;
+    const lx = -Math.sin(t), ly = Math.cos(t); // downhill, in the texture
+    const k = lighting.faceShade(lx * Math.cos(r) - ly * Math.sin(r), lx * Math.sin(r) + ly * Math.cos(r)) * lighting.settings.strength * 2.5;
+    if (Math.abs(k) < 0.01) continue;
+    ctx.fillStyle = k < 0 ? `rgba(0, 0, 0, ${Math.min(0.75, -k)})` : `rgba(255, 244, 220, ${Math.min(0.5, k * 0.7)})`;
+    ctx.beginPath();
+    f.area(w, h).forEach(([x, y], i) => (i ? ctx.lineTo(x - w / 2, y - h / 2) : ctx.moveTo(x - w / 2, y - h / 2)));
+    ctx.closePath();
+    ctx.fill();
   }
 }

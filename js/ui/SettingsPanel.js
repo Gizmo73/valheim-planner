@@ -10,7 +10,7 @@ export class SettingsPanel {
     this.background = h('div', { class: 'section' });
     this.libraryBox = h('div', { class: 'section' });
     this.info = h('div', { class: 'section' });
-    el.append(this._grid(), this.background, this.libraryBox, this.info);
+    el.append(this._grid(), this._lighting(), this.background, this.libraryBox, this.info);
     env.bus.on('library:changed', () => this._library());
     env.bus.on('screenshot:changed', () => this._background());
     env.bus.on('plan:changed', () => { this._background(); this._info(); });
@@ -48,6 +48,27 @@ export class SettingsPanel {
           toast(grid.alignTo(plan.items, library, viewport) ? 'Grid aligned to pieces' : 'No pieces square to the screen at this rotation');
         }, { class: 'chip', title: 'Line the grid up with pieces that are square to the screen' }),
         button('crosshair', 'Reset', () => { grid.offset = { x: 0, y: 0 }; bus.emit('render'); }, { class: 'chip', title: 'Put a grid line through the anchor' })),
+    );
+  }
+
+  _lighting() {
+    const { lighting } = this.env;
+    const s = lighting.settings;
+    const direction = h('span', { class: 'field-value' });
+    const strength = h('span', { class: 'field-value' });
+    const labels = () => {
+      direction.textContent = `from ${s.azimuth}° ${lighting.compass}`;
+      strength.textContent = `${Math.round(s.strength * 100)}%`;
+    };
+    labels();
+    const row = (label, value, control) => h('div', { class: 'field' },
+      h('div', { class: 'field-row' }, h('span', { class: 'field-label' }, label), value), control);
+    return h('div', { class: 'section' },
+      h('div', { class: 'section-label' }, 'Lighting'),
+      h('label', { class: 'field-row' }, h('span', { class: 'field-label' }, 'Shade roof faces'), toggle(s.roofs, v => lighting.set('roofs', v))),
+      row('Light direction', direction, slider(0, 355, 5, s.azimuth, v => { lighting.set('azimuth', v); labels(); })),
+      row('Strength', strength, slider(0.1, 1, 0.05, s.strength, v => { lighting.set('strength', v); labels(); })),
+      h('p', { class: 'note' }, 'One sun-style light shades roof faces by the way they slope, and lights the terrain. The dot on the compass shows where it comes from.'),
     );
   }
 

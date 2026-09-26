@@ -115,10 +115,11 @@ export class Terrain {
     Object.assign(this, { x0, z0, cols, rows, heights, paint, anchor });
     this.visible = true;
     this.opacity = 1;
-    this.canvas = this._render();
+    this.canvas = null;
+    this._lit = null;
   }
 
-  _render() {
+  _render(L) {
     const { cols, rows, heights: h, paint } = this;
     const c = document.createElement('canvas');
     c.width = cols;
@@ -136,10 +137,10 @@ export class Terrain {
           for (let p = 0; p < 3; p++) if (w[p] > 0.02) col = lerp(col, PAINT_COLOURS[p], Math.min(1, w[p]));
         }
         if (height >= WATER_LEVEL) {
-          // Hillshade, lit from the north-west (world +z is north).
+          // Hillshade from the scene light (L: x east, y north, z up; world +z is north).
           const dx = (at(i + 1, j) - at(i - 1, j)) / 2, dz = (at(i, j + 1) - at(i, j - 1)) / 2;
           const n = Math.hypot(dx, 1, dz);
-          const light = (dx * 0.577 + 0.577 - dz * 0.577) / n;
+          const light = (-dx * L.x - dz * L.y + L.z) / n;
           const shade = 0.6 + 0.55 * Math.max(0, light);
           col = col.map(v => v * shade);
           const coast = [at(i + 1, j), at(i - 1, j), at(i, j + 1), at(i, j - 1)].some(v => v < WATER_LEVEL);
@@ -153,8 +154,13 @@ export class Terrain {
     return c;
   }
 
-  draw(ctx) {
+  draw(ctx, lighting) {
     if (!this.visible) return;
+    const { azimuth, elevation } = lighting.settings;
+    if (this._lit !== `${azimuth}/${elevation}`) {
+      this._lit = `${azimuth}/${elevation}`;
+      this.canvas = this._render(lighting.vector);
+    }
     ctx.save();
     ctx.globalAlpha = this.opacity;
     ctx.imageSmoothingEnabled = true;

@@ -1,7 +1,7 @@
-// Draw order: terrain -> screenshot -> (grid) -> layers bottom to top -> (grid) -> anchor -> tool overlay.
+// Draw order: terrain -> screenshot -> (grid) -> layers bottom to top -> (grid) -> anchor -> compass -> tool overlay.
 export class Renderer {
-  constructor(canvas, { bus, viewport, grid, plan, library, tools }) {
-    Object.assign(this, { canvas, viewport, grid, plan, library, tools });
+  constructor(canvas, { bus, viewport, grid, plan, library, tools, lighting }) {
+    Object.assign(this, { canvas, viewport, grid, plan, library, tools, lighting });
     this.ctx = canvas.getContext('2d');
     this._queued = false;
     bus.on('render', () => this.request());
@@ -37,7 +37,7 @@ export class Renderer {
 
     ctx.save();
     vp.applyTo(ctx);
-    plan.terrain?.draw(ctx);
+    plan.terrain?.draw(ctx, this.lighting);
     plan.screenshot?.draw(ctx);
     ctx.restore();
 
@@ -45,12 +45,44 @@ export class Renderer {
 
     ctx.save();
     vp.applyTo(ctx);
-    for (const it of plan.drawOrder()) this.library.drawItem(ctx, it, vp.zoom);
+    for (const it of plan.drawOrder()) this.library.drawItem(ctx, it, vp.zoom, 1, this.lighting);
     ctx.restore();
 
     if (grid.settings.abovePieces) grid.draw(ctx, vp);
     if (plan.anchor) this._drawAnchor(ctx, vp);
+    this._drawCompass(ctx, vp);
     this.tools.drawOverlay(ctx, vp);
+  }
+
+  // North and the light direction, which both turn with the view.
+  _drawCompass(ctx, vp) {
+    const r = 20, cx = r + 16, cy = vp.height - r - 16;
+    const toScreen = (x, y) => {
+      const a = vp.worldToScreen(0, 0), b = vp.worldToScreen(x, y);
+      const d = Math.hypot(b.x - a.x, b.y - a.y);
+      return { x: (b.x - a.x) / d, y: (b.y - a.y) / d };
+    };
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(22, 24, 38, 0.8)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(181, 171, 252, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    const n = toScreen(0, -1);
+    ctx.font = '600 10px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ddd9fd';
+    ctx.fillText('N', cx + n.x * (r - 8), cy + n.y * (r - 8));
+    const a = this.lighting.settings.azimuth * Math.PI / 180;
+    const l = toScreen(Math.sin(a), -Math.cos(a));
+    ctx.beginPath();
+    ctx.arc(cx + l.x * r, cy + l.y * r, 5, 0, Math.PI * 2);
+    ctx.fillStyle = this.lighting.settings.roofs ? '#f5d547' : 'rgba(245, 213, 71, 0.4)';
+    ctx.fill();
+    ctx.restore();
   }
 
   _drawAnchor(ctx, vp) {
