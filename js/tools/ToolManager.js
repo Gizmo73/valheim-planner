@@ -1,33 +1,44 @@
+// Shortcuts never fire while a modal is open or a text field has focus.
+export function keysBlocked() {
+  if (document.querySelector('.modal-backdrop')) return true;
+  const el = document.activeElement;
+  return !!el && (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable);
+}
+
+/**
+ * Routes pointer and keyboard input to the active tool. Panning is shared by every tool:
+ * middle-drag, Space + drag, or two-finger touch. Shift + middle-click is "pick" (tool.onPick).
+ * Hold Ctrl to snap to pieces, Alt for free placement; release to return to `snapMode`.
+ */
 export class ToolManager {
   constructor(canvas, viewport, bus) {
-    this.canvas = canvas;
-    this.viewport = viewport;
-    this.bus = bus;
+    Object.assign(this, { canvas, viewport, bus });
     this.tools = {};
-    this.currentTool = null;
-    this.currentToolName = null;
-    this._isPanning = false;
-    this._panStart = null;
-    this._spaceDown = false;
+    this.current = null;
+    this.name = null;
     this.snapMode = 'grid';
+    this.mods = { ctrl: false, alt: false, shift: false };
+    this.pointer = null;
+    this.onGlobalKey = null;
+    this._space = false;
+    this._pan = null;
+    this._touches = new Map();
 
-    // Mouse events
-    canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
-    canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
-    canvas.addEventListener('mouseup', (e) => this._onMouseUp(e));
-    canvas.addEventListener('wheel', (e) => this._onWheel(e), { passive: false });
-    canvas.addEventListener('dblclick', (e) => this._onDblClick(e));
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-    window.addEventListener('keydown', (e) => this._onKeyDown(e));
-    window.addEventListener('keyup', (e) => this._onKeyUp(e));
-
-    // Touch events
-    this._touchState = { active: [], startTime: 0, startPos: null, moved: false, panning: false };
-    this._pinch = { active: false, startDist: 0, startZoom: 0, center: null };
-    canvas.addEventListener('touchstart', (e) => this._onTouchStart(e), { passive: false });
-    canvas.addEventListener('touchmove', (e) => this._onTouchMove(e), { passive: false });
-    canvas.addEventListener('touchend', (e) => this._onTouchEnd(e), { passive: false });
-    canvas.addEventListener('touchcancel', (e) => this._onTouchEnd(e), { passive: false });
+    canvas.addEventListener('pointerdown', e => this._down(e));
+    canvas.addEventListener('pointermove', e => this._move(e));
+    canvas.addEventListener('pointerup', e => this._up(e));
+    canvas.addEventListener('pointercancel', e => this._up(e));
+    canvas.addEventListener('pointerleave', () => { this.pointer = null; this.bus.emit('render'); });
+    canvas.addEventListener('dblclick', e => this.current?.onDoubleClick?.(this._pos(e), e));
+    canvas.addEventListener('wheel', e => this._wheel(e), { passive: false });
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+    canvas.addEventListener('auxclick', e => e.preventDefault());
+    window.addEventListener('keydown', e => this._key(e, true));
+    window.addEventListener('keyup', e => this._key(e, false));
+    window.addEventListener('blur', () => {
+      this._space = false;
+      this._setMods({ ctrlKey: false, altKey: false, shiftKey: false });
+    });
   }
 
   register(name, tool) {
@@ -35,293 +46,139 @@ export class ToolManager {
   }
 
   activate(name) {
-    if (this.currentTool && this.currentTool.deactivate) {
-      this.currentTool.deactivate();
-    }
-    this.currentToolName = name;
-    this.currentTool = this.tools[name] || null;
-    if (this.currentTool && this.currentTool.activate) {
-      this.currentTool.activate();
-    }
+    if (!this.tools[name] || this.tools[name].enabled?.() === false) return;
+    this.current?.deactivate?.();
+    this.name = name;
+    this.current = this.tools[name];
+    this.current.activate?.();
+    this._cursor();
     this.bus.emit('tool:changed', name);
-    this.bus.emit('render:request');
+    this.bus.emit('render');
   }
-
-  _getPos(e) {
-    const rect = this.canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-  }
-
-  _getTouchPos(touch) {
-    const rect = this.canvas.getBoundingClientRect();
-    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
-  }
-
-  // --- Mouse handlers ---
-
-  _onMouseDown(e) {
-    const pos = this._getPos(e);
-
-    if (e.button === 1 || (e.button === 0 && this._spaceDown)) {
-      this._isPanning = true;
-      this._panStart = { x: e.clientX, y: e.clientY };
-      this.canvas.style.cursor = 'grabbing';
-      e.preventDefault();
-      return;
-    }
-
-    if (this.currentTool && this.currentTool.onMouseDown) {
-      this.currentTool.onMouseDown(pos, e);
-    }
-  }
-
-  _onMouseMove(e) {
-    const pos = this._getPos(e);
-
-    if (this._isPanning) {
-      const dx = e.clientX - this._panStart.x;
-      const dy = e.clientY - this._panStart.y;
-      this._panStart = { x: e.clientX, y: e.clientY };
-      this.viewport.panBy(dx, dy);
-      return;
-    }
-
-    if (this.currentTool && this.currentTool.onMouseMove) {
-      this.currentTool.onMouseMove(pos, e);
-    }
-  }
-
-  _onMouseUp(e) {
-    if (this._isPanning) {
-      this._isPanning = false;
-      this.canvas.style.cursor = '';
-      return;
-    }
-
-    if (this.currentTool && this.currentTool.onMouseUp) {
-      const pos = this._getPos(e);
-      this.currentTool.onMouseUp(pos, e);
-    }
-  }
-
-  _onDblClick(e) {
-    const pos = this._getPos(e);
-    if (this.currentTool && this.currentTool.onDblClick) {
-      this.currentTool.onDblClick(pos, e);
-    }
-  }
-
-  _onWheel(e) {
-    e.preventDefault();
-    if (this._isPanning) return;
-    const pos = this._getPos(e);
-
-    if (this.currentTool && this.currentTool.onWheel) {
-      const handled = this.currentTool.onWheel(pos, e);
-      if (handled) return;
-    }
-
-    this.viewport.zoomAt(pos.x, pos.y, e.deltaY);
-  }
-
-  _onKeyDown(e) {
-    if (e.code === 'Space' && !e.repeat) {
-      this._spaceDown = true;
-      this.canvas.style.cursor = 'grab';
-      e.preventDefault();
-      return;
-    }
-
-    if ((e.code === 'ControlLeft' || e.code === 'ControlRight') && !e.repeat) {
-      this.snapMode = this.snapMode === 'asset' ? 'grid' : 'asset';
-      this.bus.emit('snap:changed', this.snapMode);
-      this.bus.emit('render:request');
-      e.preventDefault();
-      return;
-    }
-
-    if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) {
-      this.snapMode = this.snapMode === 'free' ? 'grid' : 'free';
-      this.bus.emit('snap:changed', this.snapMode);
-      this.bus.emit('render:request');
-      e.preventDefault();
-      return;
-    }
-
-    if (this.currentTool && this.currentTool.onKeyDown) {
-      this.currentTool.onKeyDown(e);
-    }
-  }
-
-  _onKeyUp(e) {
-    if (e.code === 'Space') {
-      this._spaceDown = false;
-      if (!this._isPanning) {
-        this.canvas.style.cursor = '';
-      }
-    }
-  }
-
-  // --- Touch handlers ---
-
-  _onTouchStart(e) {
-    e.preventDefault();
-    const touches = e.touches;
-    const ts = this._touchState;
-
-    if (touches.length === 1) {
-      const t = touches[0];
-      const pos = this._getTouchPos(t);
-      ts.startTime = Date.now();
-      ts.startPos = { x: t.clientX, y: t.clientY };
-      ts.moved = false;
-      ts.panning = false;
-      ts.toolDrag = false;
-      ts.lastPos = { x: t.clientX, y: t.clientY };
-
-      if (this.currentTool && this.currentTool.hitTest && this.currentTool.hitTest(pos)) {
-        ts.toolDrag = true;
-        if (this.currentTool.onMouseDown) {
-          this.currentTool.onMouseDown(pos, {});
-        }
-      }
-    } else if (touches.length === 2) {
-      if (ts.toolDrag && this.currentTool && this.currentTool.onMouseUp) {
-        const pos = this._getTouchPos(touches[0]);
-        this.currentTool.onMouseUp(pos, {});
-      }
-      ts.toolDrag = false;
-      ts.panning = false;
-      ts.moved = true;
-      const t0 = touches[0];
-      const t1 = touches[1];
-      const dx = t1.clientX - t0.clientX;
-      const dy = t1.clientY - t0.clientY;
-      const rect = this.canvas.getBoundingClientRect();
-      this._pinch = {
-        active: true,
-        startDist: Math.hypot(dx, dy),
-        startZoom: this.viewport.zoom,
-        center: {
-          x: (t0.clientX + t1.clientX) / 2 - rect.left,
-          y: (t0.clientY + t1.clientY) / 2 - rect.top,
-        },
-        lastDist: Math.hypot(dx, dy),
-      };
-    }
-  }
-
-  _onTouchMove(e) {
-    e.preventDefault();
-    const touches = e.touches;
-    const ts = this._touchState;
-
-    if (touches.length === 2 && this._pinch.active) {
-      const t0 = touches[0];
-      const t1 = touches[1];
-      const dx = t1.clientX - t0.clientX;
-      const dy = t1.clientY - t0.clientY;
-      const dist = Math.hypot(dx, dy);
-      const scale = dist / this._pinch.startDist;
-      const newZoom = Math.max(
-        this.viewport.minZoom,
-        Math.min(this.viewport.maxZoom, this._pinch.startZoom * scale)
-      );
-
-      const mapBefore = this.viewport.screenToMap(this._pinch.center.x, this._pinch.center.y);
-      this.viewport.zoom = newZoom;
-      this.viewport.panX = this._pinch.center.x - mapBefore.x * this.viewport.zoom;
-      this.viewport.panY = this._pinch.center.y - mapBefore.y * this.viewport.zoom;
-      this.viewport.bus.emit('viewport:changed');
-      this.viewport.bus.emit('render:request');
-      return;
-    }
-
-    if (touches.length === 1) {
-      const t = touches[0];
-
-      if (ts.toolDrag) {
-        const pos = this._getTouchPos(t);
-        ts.lastPos = { x: t.clientX, y: t.clientY };
-        ts.moved = true;
-        if (this.currentTool && this.currentTool.onMouseMove) {
-          this.currentTool.onMouseMove(pos, {});
-        }
-        return;
-      }
-
-      const dx = t.clientX - ts.startPos.x;
-      const dy = t.clientY - ts.startPos.y;
-
-      if (!ts.moved && Math.hypot(dx, dy) > 10) {
-        ts.moved = true;
-        ts.panning = true;
-        ts.lastPos = { x: t.clientX, y: t.clientY };
-      }
-
-      if (ts.panning) {
-        const pdx = t.clientX - ts.lastPos.x;
-        const pdy = t.clientY - ts.lastPos.y;
-        ts.lastPos = { x: t.clientX, y: t.clientY };
-        this.viewport.panBy(pdx, pdy);
-      }
-    }
-  }
-
-  _onTouchEnd(e) {
-    e.preventDefault();
-    const ts = this._touchState;
-
-    if (this._pinch.active && e.touches.length < 2) {
-      this._pinch.active = false;
-      if (e.touches.length === 1) {
-        const t = e.touches[0];
-        ts.startPos = { x: t.clientX, y: t.clientY };
-        ts.lastPos = { x: t.clientX, y: t.clientY };
-        ts.moved = true;
-        ts.panning = true;
-        ts.toolDrag = false;
-      }
-      return;
-    }
-
-    if (e.touches.length === 0) {
-      if (ts.toolDrag) {
-        const ct = e.changedTouches[0];
-        const pos = ct
-          ? this._getTouchPos(ct)
-          : this._getTouchPos({ clientX: ts.lastPos.x, clientY: ts.lastPos.y });
-        if (this.currentTool && this.currentTool.onMouseUp) {
-          this.currentTool.onMouseUp(pos, {});
-        }
-      } else if (!ts.moved) {
-        const elapsed = Date.now() - ts.startTime;
-        if (elapsed < 300 && ts.startPos) {
-          const pos = this._getTouchPos({ clientX: ts.startPos.x, clientY: ts.startPos.y });
-          if (this.currentTool) {
-            if (this.currentTool.onMouseDown) this.currentTool.onMouseDown(pos, {});
-            if (this.currentTool.onMouseUp) this.currentTool.onMouseUp(pos, {});
-          }
-        }
-      }
-
-      ts.panning = false;
-      ts.moved = false;
-      ts.toolDrag = false;
-    }
-  }
-
-  // --- Snap mode (called from mobile controls too) ---
 
   setSnapMode(mode) {
     this.snapMode = mode;
     this.bus.emit('snap:changed', mode);
-    this.bus.emit('render:request');
+    this.current?.refresh?.();
   }
 
-  renderOverlay(ctx, viewport) {
-    if (this.currentTool && this.currentTool.renderOverlay) {
-      this.currentTool.renderOverlay(ctx, viewport);
+  // Snap mode after hold-modifiers are applied.
+  get effectiveSnap() {
+    return this.mods.alt ? 'free' : this.mods.ctrl ? 'piece' : this.snapMode;
+  }
+
+  drawOverlay(ctx, vp) {
+    this.current?.drawOverlay?.(ctx, vp);
+  }
+
+  _pos(e) {
+    const r = this.canvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  _cursor() {
+    this.canvas.style.cursor = this._pan ? 'grabbing' : this._space ? 'grab' : this.current?.cursor || 'default';
+  }
+
+  _setMods(e) {
+    const next = { ctrl: e.ctrlKey || e.metaKey, alt: e.altKey, shift: e.shiftKey };
+    if (next.ctrl === this.mods.ctrl && next.alt === this.mods.alt && next.shift === this.mods.shift) return;
+    this.mods = next;
+    this.bus.emit('snap:changed', this.effectiveSnap);
+    this.current?.refresh?.();
+  }
+
+  _down(e) {
+    const p = this._pos(e);
+    this._setMods(e);
+    if (e.pointerType === 'touch') {
+      this._touches.set(e.pointerId, p);
+      if (this._touches.size === 2) {
+        this.current?.cancel?.();
+        this._pinch = this._pinchState();
+        return;
+      }
     }
+    if (e.button === 1 && e.shiftKey) {
+      e.preventDefault();
+      this.current?.onPick?.(p);
+      return;
+    }
+    this.canvas.setPointerCapture(e.pointerId);
+    if (e.button === 1 || (e.button === 0 && this._space)) {
+      e.preventDefault();
+      this._pan = p;
+      this._cursor();
+      return;
+    }
+    this.current?.onPointerDown?.(p, e);
+  }
+
+  _move(e) {
+    const p = this._pos(e);
+    this.pointer = p;
+    this._setMods(e);
+    if (this._touches.has(e.pointerId)) {
+      this._touches.set(e.pointerId, p);
+      if (this._pinch) return this._pinchMove();
+    }
+    if (this._pan) {
+      this.viewport.panBy(p.x - this._pan.x, p.y - this._pan.y);
+      this._pan = p;
+      return;
+    }
+    this.current?.onPointerMove?.(p, e);
+    this.bus.emit('pointer:moved', p);
+  }
+
+  _up(e) {
+    this._touches.delete(e.pointerId);
+    if (this._pinch) {
+      if (this._touches.size < 2) this._pinch = null;
+      return;
+    }
+    if (this._pan) {
+      this._pan = null;
+      this._cursor();
+      return;
+    }
+    this.current?.onPointerUp?.(this._pos(e), e);
+  }
+
+  _pinchState() {
+    const [a, b] = [...this._touches.values()];
+    return { dist: Math.hypot(a.x - b.x, a.y - b.y), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+  }
+
+  _pinchMove() {
+    const next = this._pinchState();
+    this.viewport.panBy(next.mid.x - this._pinch.mid.x, next.mid.y - this._pinch.mid.y);
+    this.viewport.zoomAt(next.mid.x, next.mid.y, next.dist / this._pinch.dist);
+    this._pinch = next;
+  }
+
+  _wheel(e) {
+    e.preventDefault();
+    const p = this._pos(e);
+    const scale = e.deltaMode === 1 ? 16 : 1;
+    this.viewport.zoomAt(p.x, p.y, Math.exp(-e.deltaY * scale * (e.ctrlKey ? 0.01 : 0.0015)));
+  }
+
+  _key(e, down) {
+    this._setMods(e);
+    if (e.key === 'Alt') e.preventDefault(); // stops Alt focusing the browser menu
+    if (e.code === 'Space') {
+      if (down && keysBlocked()) return;
+      e.preventDefault();
+      this._space = down;
+      this._cursor();
+      return;
+    }
+    if (!down || keysBlocked()) return;
+    if (this.onGlobalKey?.(e)) {
+      e.preventDefault();
+      return;
+    }
+    if (this.current?.onKeyDown?.(e)) e.preventDefault();
   }
 }

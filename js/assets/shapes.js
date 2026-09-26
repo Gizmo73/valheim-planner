@@ -1,114 +1,62 @@
-export function rect(w, h) {
+export const SHAPES = ['rect', 'triangle', 'octagon', 'circle'];
+
+// Footprint in metres, centred on the asset origin: { ellipse: [rx, ry] } or { poly: [[x, y], ...] }.
+export function outline(shape, [w, h]) {
   const hw = w / 2, hh = h / 2;
-  return [{ x: -hw, y: -hh }, { x: hw, y: -hh }, { x: hw, y: hh }, { x: -hw, y: hh }];
-}
-
-export function triangle(w, h) {
-  const hw = w / 2, hh = h / 2;
-  return [{ x: -hw, y: hh }, { x: hw, y: hh }, { x: -hw, y: -hh }];
-}
-
-export function octagon(across) {
-  const h = across / 2;
-  const d = across * 0.2;
-  return [
-    { x: -h + d, y: -h }, { x: h - d, y: -h }, { x: h, y: -h + d }, { x: h, y: h - d },
-    { x: h - d, y: h }, { x: -h + d, y: h }, { x: -h, y: h - d }, { x: -h, y: -h + d },
-  ];
-}
-
-export function circle(r) {
-  return { circle: true, r };
-}
-
-export function isCircle(shapeResult) {
-  return !!(shapeResult && shapeResult.circle);
-}
-
-export function boundsOf(shapeResult) {
-  if (isCircle(shapeResult)) {
-    return { minX: -shapeResult.r, minY: -shapeResult.r, maxX: shapeResult.r, maxY: shapeResult.r };
+  if (Array.isArray(shape)) return { poly: shape };
+  if (shape === 'circle') return { ellipse: [hw, hh] };
+  if (shape === 'triangle') return { poly: [[-hw, hh], [hw, hh], [-hw, -hh]] };
+  if (shape === 'octagon') {
+    const c = Math.min(w, h) * 0.2929;
+    return { poly: [[-hw + c, -hh], [hw - c, -hh], [hw, -hh + c], [hw, hh - c], [hw - c, hh], [-hw + c, hh], [-hw, hh - c], [-hw, -hh + c]] };
   }
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const p of shapeResult) {
-    if (p.x < minX) minX = p.x;
-    if (p.y < minY) minY = p.y;
-    if (p.x > maxX) maxX = p.x;
-    if (p.y > maxY) maxY = p.y;
-  }
-  return { minX, minY, maxX, maxY };
+  return { poly: [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] };
 }
 
-export function areaCentroid(verts) {
-  let a = 0, cx = 0, cy = 0;
-  for (let i = 0; i < verts.length; i++) {
-    const p = verts[i], q = verts[(i + 1) % verts.length];
-    const cross = p.x * q.y - q.x * p.y;
-    a += cross;
-    cx += (p.x + q.x) * cross;
-    cy += (p.y + q.y) * cross;
+export function tracePath(ctx, o, scale = 1, ox = 0, oy = 0) {
+  if (o.ellipse) {
+    const [rx, ry] = o.ellipse;
+    ctx.moveTo(ox + rx * scale, oy);
+    ctx.ellipse(ox, oy, rx * scale, ry * scale, 0, 0, Math.PI * 2);
+    return;
   }
-  a *= 0.5;
-  if (Math.abs(a) < 1e-9) {
-    // Degenerate polygon (zero area) — fall back to the vertex average.
-    const n = verts.length || 1;
-    const sx = verts.reduce((s, p) => s + p.x, 0);
-    const sy = verts.reduce((s, p) => s + p.y, 0);
-    return { x: sx / n, y: sy / n };
-  }
-  return { x: cx / (6 * a), y: cy / (6 * a) };
+  o.poly.forEach(([x, y], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, ox + x * scale, oy + y * scale));
+  ctx.closePath();
 }
 
-export function edgeMidpoints(verts) {
-  return verts.map((p, i) => {
-    const q = verts[(i + 1) % verts.length];
-    return { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
-  });
+export function containsLocal(o, x, y) {
+  if (o.ellipse) {
+    const [rx, ry] = o.ellipse;
+    return (x / rx) ** 2 + (y / ry) ** 2 <= 1;
+  }
+  let inside = false;
+  const p = o.poly;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    const [xi, yi] = p[i], [xj, yj] = p[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
 }
 
-// Snap-point candidates derived purely from shape() output, per the design
-// handoff: vertices, true edge midpoints, area centroid; circles get centre
-// + four cardinal radius points instead of vertices.
-export function snapCandidates(shapeResult) {
-  if (isCircle(shapeResult)) {
-    const r = shapeResult.r;
-    return {
-      vertices: [],
-      edgeMids: [],
-      centroid: { x: 0, y: 0 },
-      cardinals: [{ x: 0, y: -r }, { x: r, y: 0 }, { x: 0, y: r }, { x: -r, y: 0 }],
-    };
+const round = n => Math.round(n * 1000) / 1000;
+
+// Snap point sets offered in the editor.
+export function snapSets(o) {
+  if (o.ellipse) {
+    const [rx, ry] = o.ellipse;
+    return { centre: [[0, 0]], cardinals: [[0, -ry], [rx, 0], [0, ry], [-rx, 0]] };
   }
+  const p = o.poly;
+  const n = p.length;
+  const cx = p.reduce((s, q) => s + q[0], 0) / n, cy = p.reduce((s, q) => s + q[1], 0) / n;
   return {
-    vertices: shapeResult,
-    edgeMids: edgeMidpoints(shapeResult),
-    centroid: areaCentroid(shapeResult),
-    cardinals: [],
+    corners: p.map(([x, y]) => [round(x), round(y)]),
+    edges: p.map(([x, y], i) => [round((x + p[(i + 1) % n][0]) / 2), round((y + p[(i + 1) % n][1]) / 2)]),
+    centre: [[round(cx), round(cy)]],
   };
 }
 
-// Shared shape() dispatcher: reads current dimensions from the variant's
-// own meta entry, so an Attributes-tab dimension edit is reflected in the
-// outline/hit-test immediately with no separate sync step. A hand-authored
-// `customVerts` on the variant (metres, from the Source tab) always wins.
-export function shapeFromVariant(meta, id) {
-  const v = meta.variants.find(x => x.id === id);
-  if (!v) return rect(1, 1);
-  if (v.customVerts) return v.customVerts;
-  if (v.shapeKind === 'circle') return circle(Math.max(v.widthM, v.heightM) / 2);
-  if (v.shapeKind === 'octagon') return octagon(Math.max(v.widthM, v.heightM));
-  if (v.shapeKind === 'triangle') return triangle(v.widthM, v.heightM);
-  return rect(v.widthM, v.heightM);
-}
-
-export function pointInPolygon(x, y, verts) {
-  let inside = false;
-  for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
-    const xi = verts[i].x, yi = verts[i].y;
-    const xj = verts[j].x, yj = verts[j].y;
-    const intersect = ((yi > y) !== (yj > y)) &&
-      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-    if (intersect) inside = !inside;
-  }
-  return inside;
+export function defaultSnaps(o) {
+  const s = snapSets(o);
+  return o.ellipse ? s.centre : [...s.corners, ...s.edges];
 }
